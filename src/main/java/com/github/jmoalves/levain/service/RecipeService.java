@@ -33,7 +33,7 @@ public class RecipeService {
         
         if (filter != null && !filter.isEmpty()) {
             return recipes.stream()
-                    .filter(r -> r.contains(filter.toLowerCase()))
+                    .filter(r -> r.toLowerCase().contains(filter.toLowerCase()))
                     .toList();
         }
         

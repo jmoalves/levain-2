@@ -1,12 +1,9 @@
 package com.github.jmoalves.levain.cucumber;
 
-import com.github.jmoalves.levain.model.Recipe;
 import com.github.jmoalves.levain.service.InstallService;
-import com.github.jmoalves.levain.service.RecipeService;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
-import org.mockito.Mockito;
 
 import static org.junit.jupiter.api.Assertions.*;
 

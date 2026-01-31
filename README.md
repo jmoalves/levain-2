@@ -164,7 +164,7 @@ The project can be imported into any Java IDE that supports Maven:
 
 ### Code Style
 
-- Java 21 language features
+- Java 17 language features
 - Follow standard Java naming conventions
 - Use SLF4J for logging
 
