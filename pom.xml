@@ -33,6 +33,11 @@
         <commons-io.version>2.18.0</commons-io.version>
         <jacoco.version>0.8.13</jacoco.version>
         <asm.version>9.7.1</asm.version>
+
+        <!-- Nexus Repository Configuration (optional for corporate environments) -->
+        <!-- Activates automatically when NEXUS_REPOSITORY_URL environment variable is set -->
+        <nexus.repository.releases.enabled>true</nexus.repository.releases.enabled>
+        <nexus.repository.snapshots.enabled>true</nexus.repository.snapshots.enabled>
     </properties>
 
     <dependencyManagement>
@@ -199,6 +204,37 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <!-- Repositories - can use Nexus if available via NEXUS_REPOSITORY_URL environment variable -->
+    <repositories>
+        <!-- Default Maven Central (always available) -->
+        <repository>
+            <id>central</id>
+            <name>Maven Central Repository</name>
+            <url>https://repo.maven.apache.org/maven2</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <!-- Default Maven Central (always available) -->
+        <pluginRepository>
+            <id>central</id>
+            <name>Maven Central Repository</name>
+            <url>https://repo.maven.apache.org/maven2</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </pluginRepository>
+    </pluginRepositories>
 
     <build>
         <plugins>
@@ -443,6 +479,86 @@
                     </plugin>
                 </plugins>
             </build>
+        </profile>
+
+        <!-- Profile for Nexus Repository (corporate environments) -->
+        <!-- Usage: mvn clean package -Pnexus -Dnexus.url=... or set NEXUS_REPOSITORY_URL
+        environment variable -->
+        <profile>
+            <id>nexus</id>
+            <activation>
+                <property>
+                    <name>env.NEXUS_REPOSITORY_URL</name>
+                </property>
+            </activation>
+            <properties>
+                <nexus.repository.url>${env.NEXUS_REPOSITORY_URL}</nexus.repository.url>
+            </properties>
+            <repositories>
+                <repository>
+                    <id>nexus-releases</id>
+                    <name>Nexus Releases</name>
+                    <url>${nexus.repository.url}</url>
+                    <releases>
+                        <enabled>${nexus.repository.releases.enabled}</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>${nexus.repository.snapshots.enabled}</enabled>
+                    </snapshots>
+                </repository>
+            </repositories>
+            <pluginRepositories>
+                <pluginRepository>
+                    <id>nexus-plugin-releases</id>
+                    <name>Nexus Plugin Releases</name>
+                    <url>${nexus.repository.url}</url>
+                    <releases>
+                        <enabled>${nexus.repository.releases.enabled}</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>${nexus.repository.snapshots.enabled}</enabled>
+                    </snapshots>
+                </pluginRepository>
+            </pluginRepositories>
+        </profile>
+
+        <!-- Profile for Nexus via command-line property -->
+        <profile>
+            <id>nexus-cli</id>
+            <activation>
+                <property>
+                    <name>nexus.url</name>
+                </property>
+            </activation>
+            <properties>
+                <nexus.repository.url>${nexus.url}</nexus.repository.url>
+            </properties>
+            <repositories>
+                <repository>
+                    <id>nexus-releases</id>
+                    <name>Nexus Releases</name>
+                    <url>${nexus.repository.url}</url>
+                    <releases>
+                        <enabled>${nexus.repository.releases.enabled}</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>${nexus.repository.snapshots.enabled}</enabled>
+                    </snapshots>
+                </repository>
+            </repositories>
+            <pluginRepositories>
+                <pluginRepository>
+                    <id>nexus-plugin-releases</id>
+                    <name>Nexus Plugin Releases</name>
+                    <url>${nexus.repository.url}</url>
+                    <releases>
+                        <enabled>${nexus.repository.releases.enabled}</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>${nexus.repository.snapshots.enabled}</enabled>
+                    </snapshots>
+                </pluginRepository>
+            </pluginRepositories>
         </profile>
     </profiles>
 </project>

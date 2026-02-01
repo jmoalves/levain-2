@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Template Maven settings.xml for Nexus Repository authentication
+  
+  Copy this file to ~/.m2/settings.xml and replace placeholders with your values:
+  - your-username: Your Nexus username
+  - your-password: Your Nexus password (use `mvn --encrypt-password` for encryption)
+  - nexus.example.com: Your Nexus server hostname
+  
+  For encrypted passwords:
+  1. Run: mvn --encrypt-password your-password
+  2. Copy the encrypted password and replace the plaintext one
+  3. Uncomment the master password section if needed
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
+                              http://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+    <!-- Server credentials for Nexus repositories -->
+    <servers>
+        <!-- Primary Nexus repository server -->
+        <server>
+            <id>nexus-releases</id>
+            <username>your-username</username>
+            <password>your-password</password>
+            <!-- 
+            For encrypted password (recommended for production):
+            <password>{Encryption...}</password>
+            -->
+        </server>
+
+        <!-- Plugin repository server (usually same credentials) -->
+        <server>
+            <id>nexus-plugin-releases</id>
+            <username>your-username</username>
+            <password>your-password</password>
+        </server>
+    </servers>
+
+    <!-- 
+    Optional: Mirror configuration to redirect ALL repository requests to Nexus
+    Uncomment this section if your Nexus is configured as a mirror for Maven Central
+    
+    <mirrors>
+        <mirror>
+            <id>nexus</id>
+            <mirrorOf>*</mirrorOf>
+            <url>http://nexus.example.com:8081/repository/maven-public</url>
+        </mirror>
+    </mirrors>
+    -->
+
+    <!-- 
+    Optional: Master password encryption settings
+    Only needed if using encrypted passwords
+    
+    <security>
+        <master>{master-password-hash}</master>
+    </security>
+    -->
+
+    <!-- 
+    Optional: Profile for active repository selection
+    
+    <activeProfiles>
+        <activeProfile>nexus-profile</activeProfile>
+    </activeProfiles>
+
+    <profiles>
+        <profile>
+            <id>nexus-profile</id>
+            <repositories>
+                <repository>
+                    <id>nexus-releases</id>
+                    <name>Nexus Repository</name>
+                    <url>http://nexus.example.com:8081/repository/maven-public</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </repository>
+            </repositories>
+            <pluginRepositories>
+                <pluginRepository>
+                    <id>nexus-plugin-releases</id>
+                    <name>Nexus Plugin Repository</name>
+                    <url>http://nexus.example.com:8081/repository/maven-public</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </pluginRepository>
+            </pluginRepositories>
+        </profile>
+    </profiles>
+    -->
+
+</settings>
