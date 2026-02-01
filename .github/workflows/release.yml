@@ -1,0 +1,162 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-jar:
+    name: Build Standalone JAR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build standalone JAR with Maven
+        run: mvn -B clean package -DskipTests
+        env:
+          MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
+
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: levain-standalone-jar
+          path: target/levain-standalone-*.jar
+          retention-days: 1
+
+  build-windows:
+    name: Build Windows x64 Executable
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'graalvm-community'
+          cache: maven
+
+      - name: Build Windows executable with Maven
+        run: mvn -B clean package -DskipTests -Pnative
+        env:
+          MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
+
+      - name: Create versioned copy for release
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path 'pom.xml' -Pattern '<version>(.*?)</version>' -AllMatches).Matches[0].Groups[1].Value
+          if (Test-Path "target/levain.exe") {
+            Copy-Item -Path "target/levain.exe" -Destination "target/levain-$version-windows-x64.exe"
+          }
+
+      - name: Upload Windows executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: levain-windows-x64-exe
+          path: target/levain.exe
+          retention-days: 1
+
+  build-linux:
+    name: Build Linux x64 Executable
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'graalvm-community'
+          cache: maven
+
+      - name: Install GraalVM native-image
+        run: gu install native-image
+
+      - name: Build Linux executable with Maven
+        run: mvn -B clean package -DskipTests -Pnative
+        env:
+          MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
+
+      - name: Create versioned copy for release
+        run: |
+          VERSION=$(grep '<version>' pom.xml | head -1 | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
+          if [ -f target/levain ]; then
+            cp target/levain target/levain-${VERSION}-linux-x64
+          fi
+
+      - name: Upload Linux executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: levain-linux-x64-exe
+          path: target/levain
+          retention-days: 1
+
+  release:
+    name: Create GitHub Release
+    needs: [build-jar, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+          find release-artifacts -type f -name '*.jar' -o -name '*.exe' -o -name 'levain-*-linux-x64' | while read file; do
+            cp "$file" release/
+          done
+          ls -la release/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-artifacts:
+    name: Publish Artifacts to Release
+    needs: [build-jar, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Display downloaded files
+        run: |
+          echo "Downloaded artifacts:"
+          find release-artifacts -type f
