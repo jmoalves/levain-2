@@ -338,33 +338,6 @@
                 </configuration>
             </plugin>
 
-            <!-- Maven Assembly Plugin for creating fat JAR -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.7.1</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>single</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <mainClass>com.github.jmoalves.levain.Levain</mainClass>
-                        </manifest>
-                    </archive>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
-                    <finalName>levain-${project.version}</finalName>
-                    <appendAssemblyId>false</appendAssemblyId>
-                </configuration>
-            </plugin>
-
             <!-- Maven Shade Plugin for creating executable JAR -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -377,6 +350,18 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <filters>
+                                <!-- Exclude module-info to avoid warnings and compatibility issues -->
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>module-info.class</exclude>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
                             <transformers>
                                 <transformer
                                     implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
