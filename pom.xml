@@ -23,10 +23,10 @@
         <cucumber.version>7.20.1</cucumber.version>
         <mockito.version>5.14.2</mockito.version>
         <jackson.version>2.18.2</jackson.version>
+        <log4j.version>2.24.3</log4j.version>
         
         <!-- Dependency versions (no BOM available) -->
         <slf4j.version>2.0.16</slf4j.version>
-        <logback.version>1.5.12</logback.version>
         <picocli.version>4.7.6</picocli.version>
         <snakeyaml.version>2.3</snakeyaml.version>
         <commons-io.version>2.18.0</commons-io.version>
@@ -66,6 +66,15 @@
                 <groupId>com.fasterxml.jackson</groupId>
                 <artifactId>jackson-bom</artifactId>
                 <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            
+            <!-- Log4j2 BOM -->
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -112,10 +121,15 @@
             <version>${slf4j.version}</version>
         </dependency>
         
+        <!-- Log4j2 implementation for SLF4J -->
         <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <version>${logback.version}</version>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j2-impl</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
         </dependency>
 
         <!-- Testing -->
