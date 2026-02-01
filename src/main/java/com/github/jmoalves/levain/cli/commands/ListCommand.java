@@ -23,10 +23,11 @@ public class ListCommand implements Callable<Integer> {
     @Parameters(arity = "0..1", description = "Optional filter pattern")
     private String filter;
 
-    @Inject
-    private RecipeService recipeService;
+    private final RecipeService recipeService;
 
-    public ListCommand() {
+    @Inject
+    public ListCommand(RecipeService recipeService) {
+        this.recipeService = recipeService;
     }
 
     @Override

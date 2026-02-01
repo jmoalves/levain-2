@@ -20,10 +20,13 @@ import io.cucumber.java.en.When;
 @Dependent
 public class ListRecipesSteps {
 
-    @Inject
-    private RecipeService recipeService;
-
+    private final RecipeService recipeService;
     private List<String> recipes;
+
+    @Inject
+    public ListRecipesSteps(RecipeService recipeService) {
+        this.recipeService = recipeService;
+    }
 
     @Given("the recipe service is available")
     public void theRecipeServiceIsAvailable() {

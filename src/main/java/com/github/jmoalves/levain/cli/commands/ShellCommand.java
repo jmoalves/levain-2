@@ -23,10 +23,11 @@ public class ShellCommand implements Callable<Integer> {
     @Parameters(arity = "0..*", description = "Package(s) to include in shell environment")
     private List<String> packages;
 
-    @Inject
-    private ShellService shellService;
+    private final ShellService shellService;
 
-    public ShellCommand() {
+    @Inject
+    public ShellCommand(ShellService shellService) {
+        this.shellService = shellService;
     }
 
     @Override

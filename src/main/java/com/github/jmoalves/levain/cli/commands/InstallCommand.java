@@ -23,10 +23,11 @@ public class InstallCommand implements Callable<Integer> {
     @Parameters(arity = "1..*", description = "Package(s) to install")
     private List<String> packages;
 
-    @Inject
-    private InstallService installService;
+    private final InstallService installService;
 
-    public InstallCommand() {
+    @Inject
+    public InstallCommand(InstallService installService) {
+        this.installService = installService;
     }
 
     @Override

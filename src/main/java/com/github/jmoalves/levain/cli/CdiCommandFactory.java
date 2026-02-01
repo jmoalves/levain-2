@@ -1,6 +1,8 @@
 package com.github.jmoalves.levain.cli;
 
 import jakarta.enterprise.inject.spi.CDI;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 
 /**
@@ -10,15 +12,20 @@ import picocli.CommandLine;
  * from the CDI container.
  */
 public class CdiCommandFactory implements CommandLine.IFactory {
+    private static final Logger logger = LoggerFactory.getLogger(CdiCommandFactory.class);
 
     @Override
     public <K> K create(Class<K> cls) throws Exception {
         try {
-            // Try to get the instance from CDI
-            return CDI.current().select(cls).get();
+            // Get the instance from CDI
+            var instance = CDI.current().select(cls).get();
+            logger.debug("Created bean of type {} from CDI", cls.getName());
+            return instance;
         } catch (Exception e) {
-            // Fall back to default construction if CDI doesn't have the bean
-            return CommandLine.defaultFactory().create(cls);
+            logger.error("Failed to create bean of type {} from CDI: {}", cls.getName(), e.getMessage());
+            throw new CommandLine.ExecutionException(
+                    new CommandLine(new Object()),
+                    "Cannot instantiate " + cls.getName() + " from CDI: " + e.getMessage());
         }
     }
 }

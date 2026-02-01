@@ -17,11 +17,14 @@ import io.cucumber.java.en.When;
 @Dependent
 public class InstallPackagesSteps {
 
-    @Inject
-    private InstallService installService;
-
+    private final InstallService installService;
     private boolean installSuccessful;
     private Exception installException;
+
+    @Inject
+    public InstallPackagesSteps(InstallService installService) {
+        this.installService = installService;
+    }
 
     @Given("the install service is available")
     public void theInstallServiceIsAvailable() {
