@@ -2,6 +2,10 @@
 
 _Something to help you make your software grow_
 
+[![Build Status](https://github.com/jmoalves/levain-2/actions/workflows/maven.yml/badge.svg)](https://github.com/jmoalves/levain-2/actions/workflows/maven.yml)
+[![codecov](https://codecov.io/gh/jmoalves/levain-2/branch/main/graph/badge.svg)](https://codecov.io/gh/jmoalves/levain-2)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 A Java standalone console application for development environment installation. This is a drop-in replacement for the original [levain](https://github.com/jmoalves/levain) and supports recipes from the [levain-pkgs](https://github.com/jmoalves/levain-pkgs) repository.
 
 ## Features
@@ -41,9 +45,9 @@ levain.exe [command] [options]
 
 ### Prerequisites
 
-- JDK 17 or later (Java 21+ recommended for long-term support)
+- JDK 25 or later
 - Maven 3.9 or later
-- (Optional) GraalVM 17+ for native executable builds
+- (Optional) GraalVM for native executable builds
 
 ### Build Commands
 
@@ -51,6 +55,13 @@ levain.exe [command] [options]
 ```bash
 mvn clean test
 ```
+
+**Build the project with code coverage:**
+```bash
+mvn clean verify
+```
+
+The coverage report will be generated at `target/site/jacoco/index.html`.
 
 **Build the standalone JAR:**
 ```bash

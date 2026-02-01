@@ -37,6 +37,10 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
 
+# Coverage reports
+*.exec
+.jacoco/
+
 # IDE
 .idea/
 *.iml
