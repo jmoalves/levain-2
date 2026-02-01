@@ -398,11 +398,6 @@
         <!-- Profile for Windows x64 native executable -->
         <profile>
             <id>native-windows</id>
-            <activation>
-                <os>
-                    <family>windows</family>
-                </os>
-            </activation>
             <build>
                 <plugins>
                     <plugin>
@@ -428,12 +423,6 @@
         <!-- Profile for Linux x64 native executable -->
         <profile>
             <id>native-linux</id>
-            <activation>
-                <os>
-                    <family>unix</family>
-                    <name>Linux</name>
-                </os>
-            </activation>
             <build>
                 <plugins>
                     <plugin>
