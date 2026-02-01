@@ -4,7 +4,7 @@ _Something to help you make your software grow_
 
 [![Build Status](https://github.com/jmoalves/levain-2/actions/workflows/maven.yml/badge.svg)](https://github.com/jmoalves/levain-2/actions/workflows/maven.yml)
 [![codecov](https://codecov.io/gh/jmoalves/levain-2/branch/main/graph/badge.svg)](https://codecov.io/gh/jmoalves/levain-2)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A Java standalone console application for development environment installation. This is a drop-in replacement for the original [levain](https://github.com/jmoalves/levain) and supports recipes from the [levain-pkgs](https://github.com/jmoalves/levain-pkgs) repository.
 
