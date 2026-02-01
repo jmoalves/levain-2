@@ -1,6 +1,7 @@
 package com.github.jmoalves.levain.cli.commands;
 
 import com.github.jmoalves.levain.service.InstallService;
+import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
@@ -20,10 +21,10 @@ public class InstallCommand implements Callable<Integer> {
     @Parameters(arity = "1..*", description = "Package(s) to install")
     private List<String> packages;
 
-    private final InstallService installService;
+    @Inject
+    private InstallService installService;
 
     public InstallCommand() {
-        this.installService = new InstallService();
     }
 
     @Override

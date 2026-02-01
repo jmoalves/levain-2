@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 
 import com.github.jmoalves.levain.service.RecipeService;
+import jakarta.enterprise.context.Dependent;
+import jakarta.inject.Inject;
 
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -15,14 +17,17 @@ import io.cucumber.java.en.When;
 /**
  * Cucumber step definitions for listing recipes.
  */
+@Dependent
 public class ListRecipesSteps {
 
+    @Inject
     private RecipeService recipeService;
+
     private List<String> recipes;
 
     @Given("the recipe service is available")
     public void theRecipeServiceIsAvailable() {
-        recipeService = new RecipeService();
+        // RecipeService is injected by CDI
     }
 
     @When("I request all recipes")

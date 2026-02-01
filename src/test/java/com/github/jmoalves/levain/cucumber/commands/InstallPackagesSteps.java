@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.jmoalves.levain.service.InstallService;
+import jakarta.enterprise.context.Dependent;
+import jakarta.inject.Inject;
 
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -12,15 +14,17 @@ import io.cucumber.java.en.When;
 /**
  * Cucumber step definitions for installing packages.
  */
+@Dependent
 public class InstallPackagesSteps {
 
+    @Inject
     private InstallService installService;
+
     private boolean installSuccessful;
     private Exception installException;
 
     @Given("the install service is available")
     public void theInstallServiceIsAvailable() {
-        installService = new InstallService();
         installSuccessful = false;
         installException = null;
     }
@@ -50,13 +54,19 @@ public class InstallPackagesSteps {
 
     @Then("the package should be installed successfully")
     public void thePackageShouldBeInstalledSuccessfully() {
+        if (installException != null) {
+            throw new AssertionError("Package installation failed with exception: " + installException.getMessage(),
+                    installException);
+        }
         assertTrue(installSuccessful, "Package installation should succeed");
-        assertNull(installException, "No exception should be thrown");
     }
 
     @Then("all packages should be installed successfully")
     public void allPackagesShouldBeInstalledSuccessfully() {
+        if (installException != null) {
+            throw new AssertionError("Package installation failed with exception: " + installException.getMessage(),
+                    installException);
+        }
         assertTrue(installSuccessful, "All packages should be installed successfully");
-        assertNull(installException, "No exception should be thrown");
     }
 }

@@ -4,6 +4,7 @@ import com.github.jmoalves.levain.model.Recipe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -19,13 +20,13 @@ class InstallServiceTest {
     @Mock
     private RecipeService recipeService;
 
+    @InjectMocks
     private InstallService installService;
 
     private Recipe mockRecipe;
 
     @BeforeEach
     void setUp() {
-        installService = new InstallService(recipeService);
         mockRecipe = new Recipe();
         mockRecipe.setVersion("1.0.0");
         mockRecipe.setDescription("Test recipe");
@@ -49,13 +50,13 @@ class InstallServiceTest {
         // Arrange
         String packageName = "failing-package";
         when(recipeService.loadRecipe(packageName))
-            .thenThrow(new RuntimeException("Recipe not found"));
+                .thenThrow(new RuntimeException("Recipe not found"));
 
         // Act & Assert
         assertThrows(RuntimeException.class, () -> {
             installService.install(packageName);
         });
-        
+
         verify(recipeService, times(1)).loadRecipe(packageName);
     }
 }

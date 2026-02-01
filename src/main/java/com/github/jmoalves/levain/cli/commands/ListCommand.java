@@ -1,6 +1,7 @@
 package com.github.jmoalves.levain.cli.commands;
 
 import com.github.jmoalves.levain.service.RecipeService;
+import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
@@ -20,10 +21,10 @@ public class ListCommand implements Callable<Integer> {
     @Parameters(arity = "0..1", description = "Optional filter pattern")
     private String filter;
 
-    private final RecipeService recipeService;
+    @Inject
+    private RecipeService recipeService;
 
     public ListCommand() {
-        this.recipeService = new RecipeService();
     }
 
     @Override

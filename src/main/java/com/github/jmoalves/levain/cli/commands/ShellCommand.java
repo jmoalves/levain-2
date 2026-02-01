@@ -1,6 +1,7 @@
 package com.github.jmoalves.levain.cli.commands;
 
 import com.github.jmoalves.levain.service.ShellService;
+import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine.Command;
@@ -20,10 +21,10 @@ public class ShellCommand implements Callable<Integer> {
     @Parameters(arity = "0..*", description = "Package(s) to include in shell environment")
     private List<String> packages;
 
-    private final ShellService shellService;
+    @Inject
+    private ShellService shellService;
 
     public ShellCommand() {
-        this.shellService = new ShellService();
     }
 
     @Override
