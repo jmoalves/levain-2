@@ -37,8 +37,8 @@ jobs:
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
-          name: levain-standalone-jar
-          path: target/levain-standalone-*.jar
+          name: levain-jar
+          path: target/levain.jar
           retention-days: 1
 
   build-windows:
@@ -130,9 +130,24 @@ jobs:
       - name: Prepare release files
         run: |
           mkdir -p release
-          find release-artifacts -type f -name '*.jar' -o -name '*.exe' -o -name 'levain-*-linux-x64' | while read file; do
+          VERSION=$(grep '<version>' pom.xml | head -1 | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
+          
+          # Copy all artifacts to release directory
+          find release-artifacts -type f \( -name '*.jar' -o -name '*.exe' -o -name 'levain' \) | while read file; do
             cp "$file" release/
           done
+          
+          # Create versioned copies for the GitHub Release
+          if [ -f "release/levain.jar" ]; then
+            cp "release/levain.jar" "release/levain-${VERSION}.jar"
+          fi
+          if [ -f "release/levain.exe" ]; then
+            cp "release/levain.exe" "release/levain-${VERSION}-windows-x64.exe"
+          fi
+          if [ -f "release/levain" ] && [ ! -f "release/levain.exe" ]; then
+            cp "release/levain" "release/levain-${VERSION}-linux-x64"
+          fi
+          
           ls -la release/
 
       - name: Create Release

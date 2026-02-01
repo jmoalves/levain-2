@@ -368,7 +368,7 @@
                                     <mainClass>com.github.jmoalves.levain.Levain</mainClass>
                                 </transformer>
                             </transformers>
-                            <finalName>levain-standalone-${project.version}</finalName>
+                            <finalName>levain</finalName>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                         </configuration>
                     </execution>
