@@ -1,16 +1,18 @@
 package com.github.jmoalves.levain;
 
-import com.github.jmoalves.levain.cli.CdiCommandFactory;
-import com.github.jmoalves.levain.cli.LevainCommand;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
+
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import picocli.CommandLine;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Properties;
+import com.github.jmoalves.levain.cli.CdiCommandFactory;
+import com.github.jmoalves.levain.cli.LevainCommand;
+
+import picocli.CommandLine;
 
 /**
  * Main entry point for Levain 2 - A Java console application for development

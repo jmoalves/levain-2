@@ -1,11 +1,14 @@
 package com.github.jmoalves.levain.service;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Unit tests for RecipeService using JUnit 5.
@@ -22,7 +25,7 @@ class RecipeServiceTest {
     @Test
     void testListRecipesWithoutFilter() {
         List<String> recipes = recipeService.listRecipes(null);
-        
+
         assertNotNull(recipes);
         assertFalse(recipes.isEmpty());
         assertTrue(recipes.contains("jdk-21"));
@@ -32,7 +35,7 @@ class RecipeServiceTest {
     @Test
     void testListRecipesWithFilter() {
         List<String> recipes = recipeService.listRecipes("jdk");
-        
+
         assertNotNull(recipes);
         assertFalse(recipes.isEmpty());
         assertTrue(recipes.contains("jdk-21"));
@@ -42,7 +45,7 @@ class RecipeServiceTest {
     @Test
     void testListRecipesWithNoMatch() {
         List<String> recipes = recipeService.listRecipes("nonexistent");
-        
+
         assertNotNull(recipes);
         assertTrue(recipes.isEmpty());
     }
@@ -50,7 +53,7 @@ class RecipeServiceTest {
     @Test
     void testLoadRecipe() {
         var recipe = recipeService.loadRecipe("jdk-21");
-        
+
         assertNotNull(recipe);
         assertEquals("1.0.0", recipe.getVersion());
         assertTrue(recipe.getDescription().contains("jdk-21"));

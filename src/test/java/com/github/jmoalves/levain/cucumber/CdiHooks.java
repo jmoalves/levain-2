@@ -1,9 +1,10 @@
 package com.github.jmoalves.levain.cucumber;
 
-import io.cucumber.java.Before;
-import io.cucumber.java.After;
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
+
+import io.cucumber.java.After;
+import io.cucumber.java.Before;
 
 /**
  * Cucumber hooks for CDI lifecycle management.
