@@ -5,6 +5,11 @@
   "initializeCommand": "docker context use default || true",
   
   "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "vscode",
+      "installZsh": "false",
+      "upgradePackages": "false"
+    },
     "ghcr.io/devcontainers/features/java:1": {
       "version": "25",
       "jdkDistro": "sem",
@@ -62,14 +67,10 @@
   },
 
   "mounts": [
-    "source=${localEnv:HOME}/.m2,target=/home/${localEnv:USER}/.m2,type=bind,consistency=cached"
+    "source=${localEnv:HOME}/.m2,target=/home/vscode/.m2,type=bind,consistency=cached"
   ],
 
   "onCreateCommand": "bash .devcontainer/setup.sh",
 
-  "remoteUser": "${localEnv:USER}",
-  
-  "containerUser": "${localEnv:USER}",
-  
-  "updateRemoteUserUID": true
+  "remoteUser": "vscode"
 }
