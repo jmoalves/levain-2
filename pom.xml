@@ -81,6 +81,15 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            
+            <!-- ByteBuddy BOM -->
+            <dependency>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy-parent</artifactId>
+                <version>${byte-buddy.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -121,13 +130,11 @@
         <dependency>
             <groupId>net.bytebuddy</groupId>
             <artifactId>byte-buddy</artifactId>
-            <version>${byte-buddy.version}</version>
         </dependency>
         
         <dependency>
             <groupId>net.bytebuddy</groupId>
             <artifactId>byte-buddy-agent</artifactId>
-            <version>${byte-buddy.version}</version>
         </dependency>
         
         <!-- ASM for bytecode analysis (Java 25 support) -->
