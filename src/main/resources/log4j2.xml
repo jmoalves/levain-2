@@ -1,24 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN">
     <Appenders>
+        <!-- 
+        Console appender for errors/warnings only
+        User-facing output (System.out/System.err) is separate and not affected by this
+        This only logs actual logger messages at WARN level or higher
+        -->
         <Console name="CONSOLE" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+            <PatternLayout pattern="%highlight{%-5level} %msg%n" />
+            <ThresholdFilter level="WARN" onMatch="ACCEPT" onMismatch="DENY" />
         </Console>
-        
+
+        <!-- 
+        File appender for debug/audit trail
+        Captures all INFO+ messages for troubleshooting
+        -->
         <RollingFile name="FILE" fileName="logs/levain.log"
-                     filePattern="logs/levain.%d{yyyy-MM-dd}.log">
-            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+            filePattern="logs/levain.%d{yyyy-MM-dd}.log">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n" />
             <Policies>
                 <TimeBasedTriggeringPolicy />
             </Policies>
-            <DefaultRolloverStrategy max="30"/>
+            <DefaultRolloverStrategy max="30" />
         </RollingFile>
     </Appenders>
-    
+
     <Loggers>
+        <!-- 
+        Root logger:
+        - INFO level: captures all info, debug, and trace messages to file
+        - Console: only shows WARN/ERROR (due to ThresholdFilter above)
+        - File: shows all INFO+ messages
+        -->
         <Root level="INFO">
-            <AppenderRef ref="CONSOLE"/>
-            <AppenderRef ref="FILE"/>
+            <AppenderRef ref="CONSOLE" />
+            <AppenderRef ref="FILE" />
         </Root>
     </Loggers>
 </Configuration>
