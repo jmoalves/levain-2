@@ -11,7 +11,9 @@ public class Recipe {
     private String description;
     private String recipesDir;
     private Map<String, List<String>> commands;
-    
+    private String name;
+    private List<String> dependencies;
+
     public Recipe() {
     }
 
@@ -47,6 +49,22 @@ public class Recipe {
         this.commands = commands;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public List<String> getDependencies() {
+        return dependencies;
+    }
+
+    public void setDependencies(List<String> dependencies) {
+        this.dependencies = dependencies;
+    }
+
     @Override
     public String toString() {
         return "Recipe{" +
@@ -54,6 +72,8 @@ public class Recipe {
                 ", description='" + description + '\'' +
                 ", recipesDir='" + recipesDir + '\'' +
                 ", commands=" + commands +
+                ", name='" + name + '\'' +
+                ", dependencies=" + dependencies +
                 '}';
     }
 }

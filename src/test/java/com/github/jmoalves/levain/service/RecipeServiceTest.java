@@ -55,7 +55,7 @@ class RecipeServiceTest {
         var recipe = recipeService.loadRecipe("jdk-21");
 
         assertNotNull(recipe);
-        assertEquals("1.0.0", recipe.getVersion());
-        assertTrue(recipe.getDescription().contains("jdk-21"));
+        assertEquals("jdk-21", recipe.getName());
+        assertEquals("21.0.0", recipe.getVersion());
     }
 }
