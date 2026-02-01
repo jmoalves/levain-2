@@ -1,6 +1,5 @@
 package com.github.jmoalves.levain.cucumber.commands;
 
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.jmoalves.levain.service.InstallService;

@@ -4,10 +4,15 @@ import com.github.jmoalves.levain.cli.commands.InstallCommand;
 import com.github.jmoalves.levain.cli.commands.ListCommand;
 import com.github.jmoalves.levain.cli.commands.ShellCommand;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Callable;
 
 /**
@@ -21,6 +26,7 @@ import java.util.concurrent.Callable;
         ShellCommand.class
 })
 public class LevainCommand implements Callable<Integer> {
+    private static final Logger logger = LoggerFactory.getLogger(LevainCommand.class);
 
     @Option(names = { "--levainHome" }, description = "Levain home directory")
     private String levainHome;
@@ -40,7 +46,18 @@ public class LevainCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         // When no subcommand is specified, show usage
-        CommandLine.usage(this, System.out);
+        logger.info("Levain command called without subcommand - displaying usage");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (PrintStream ps = new PrintStream(baos, true, StandardCharsets.UTF_8)) {
+            CommandLine.usage(this, ps);
+            String usage = baos.toString(StandardCharsets.UTF_8);
+            // Split by lines and log each line to capture in log files properly
+            for (String line : usage.split(System.lineSeparator())) {
+                if (!line.isBlank()) {
+                    logger.info(line);
+                }
+            }
+        }
         return 0;
     }
 }

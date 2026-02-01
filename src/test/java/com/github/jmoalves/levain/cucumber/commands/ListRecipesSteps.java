@@ -51,8 +51,8 @@ public class ListRecipesSteps {
 
     @Then("I should see a filtered list of recipes")
     public void iShouldSeeAFilteredListOfRecipes() {
-        assertNotNull(recipes);
-        assertFalse(recipes.isEmpty());
+        // Same assertion as non-filtered list since the filter has already been applied
+        iShouldSeeAListOfRecipes();
     }
 
     @Then("I should see an empty list of recipes")

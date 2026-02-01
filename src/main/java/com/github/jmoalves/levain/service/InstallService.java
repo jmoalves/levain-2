@@ -1,6 +1,5 @@
 package com.github.jmoalves.levain.service;
 
-import com.github.jmoalves.levain.model.Recipe;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
@@ -13,20 +12,25 @@ import org.slf4j.LoggerFactory;
 public class InstallService {
     private static final Logger logger = LoggerFactory.getLogger(InstallService.class);
 
+    private final RecipeService recipeService;
+
     @Inject
-    private RecipeService recipeService;
+    public InstallService(RecipeService recipeService) {
+        this.recipeService = recipeService;
+    }
 
     /**
      * Install a package by name.
      *
      * @param packageName Name of the package to install
-     * @throws Exception if installation fails
+     * @throws IllegalArgumentException if recipe is not found
+     * @throws RuntimeException         if installation fails
      */
-    public void install(String packageName) throws Exception {
+    public void install(String packageName) {
         logger.info("Installing package: {}", packageName);
 
         // Load recipe
-        Recipe recipe = recipeService.loadRecipe(packageName);
+        recipeService.loadRecipe(packageName);
 
         // TODO: Implement actual installation logic
         // 1. Download package if needed

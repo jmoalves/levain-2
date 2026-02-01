@@ -22,10 +22,10 @@ public class CdiCommandFactory implements CommandLine.IFactory {
             logger.debug("Created bean of type {} from CDI", cls.getName());
             return instance;
         } catch (Exception e) {
-            logger.error("Failed to create bean of type {} from CDI: {}", cls.getName(), e.getMessage());
+            logger.error("Failed to create bean of type {} from CDI", cls.getName(), e);
             throw new CommandLine.ExecutionException(
                     new CommandLine(new Object()),
-                    "Cannot instantiate " + cls.getName() + " from CDI: " + e.getMessage());
+                    "Cannot instantiate " + cls.getName() + " from CDI: " + e.getMessage(), e);
         }
     }
 }

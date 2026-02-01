@@ -37,11 +37,15 @@ public class ListCommand implements Callable<Integer> {
         List<String> recipes = recipeService.listRecipes(filter);
 
         if (recipes.isEmpty()) {
-            console.info("No recipes found" + (filter != null ? " matching '" + filter + "'" : ""));
+            if (filter != null) {
+                console.info("No recipes found matching '{}'", filter);
+            } else {
+                console.info("No recipes found");
+            }
         } else {
             console.info("Available recipes:");
             for (String recipe : recipes) {
-                console.info("  - " + recipe);
+                console.info("  - {}", recipe);
             }
         }
 

@@ -39,7 +39,7 @@ public class ShellCommand implements Callable<Integer> {
             return 0;
         } catch (Exception e) {
             logger.error("Failed to open shell", e);
-            console.error("Failed to open shell: " + e.getMessage());
+            console.error("Failed to open shell: {}", e.getMessage());
             return 1;
         }
     }

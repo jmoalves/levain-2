@@ -35,13 +35,13 @@ public class InstallCommand implements Callable<Integer> {
         logger.info("Installing packages: {}", packages);
 
         for (String pkg : packages) {
-            console.info("Installing package: " + pkg);
+            console.info("Installing package: {}", pkg);
             try {
                 installService.install(pkg);
-                console.info("  ✓ " + pkg + " installed successfully");
+                console.info("  ✓ {} installed successfully", pkg);
             } catch (Exception e) {
                 logger.error("Failed to install package: {}", pkg, e);
-                console.error("  ✗ Failed to install " + pkg + ": " + e.getMessage());
+                console.error("  ✗ Failed to install {}: {}", pkg, e.getMessage());
                 return 1;
             }
         }
