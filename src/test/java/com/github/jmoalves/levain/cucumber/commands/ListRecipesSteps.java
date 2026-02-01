@@ -1,13 +1,16 @@
-package com.github.jmoalves.levain.cucumber;
+package com.github.jmoalves.levain.cucumber.commands;
 
-import com.github.jmoalves.levain.service.RecipeService;
-import io.cucumber.java.en.Given;
-import io.cucumber.java.en.Then;
-import io.cucumber.java.en.When;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import com.github.jmoalves.levain.service.RecipeService;
+
+import io.cucumber.java.en.Given;
+import io.cucumber.java.en.Then;
+import io.cucumber.java.en.When;
 
 /**
  * Cucumber step definitions for listing recipes.

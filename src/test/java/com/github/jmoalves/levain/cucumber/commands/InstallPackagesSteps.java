@@ -1,11 +1,13 @@
-package com.github.jmoalves.levain.cucumber;
+package com.github.jmoalves.levain.cucumber.commands;
+
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.jmoalves.levain.service.InstallService;
+
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Cucumber step definitions for installing packages.
