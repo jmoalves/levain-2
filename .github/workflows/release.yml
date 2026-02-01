@@ -62,14 +62,6 @@ jobs:
         env:
           MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
 
-      - name: Create versioned copy for release
-        shell: pwsh
-        run: |
-          $version = (Select-String -Path 'pom.xml' -Pattern '<version>(.*?)</version>' -AllMatches).Matches[0].Groups[1].Value
-          if (Test-Path "target/levain.exe") {
-            Copy-Item -Path "target/levain.exe" -Destination "target/levain-$version-windows-x64.exe"
-          }
-
       - name: Upload Windows executable artifact
         uses: actions/upload-artifact@v4
         with:
@@ -97,13 +89,6 @@ jobs:
         run: mvn -B clean package -DskipTests -Pnative-linux
         env:
           MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
-
-      - name: Create versioned copy for release
-        run: |
-          VERSION=$(grep '<version>' pom.xml | head -1 | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
-          if [ -f target/levain ]; then
-            cp target/levain target/levain-${VERSION}-linux-x64
-          fi
 
       - name: Upload Linux executable artifact
         uses: actions/upload-artifact@v4
@@ -157,20 +142,3 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  publish-artifacts:
-    name: Publish Artifacts to Release
-    needs: [build-jar, build-windows, build-linux]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: release-artifacts
-
-      - name: Display downloaded files
-        run: |
-          echo "Downloaded artifacts:"
-          find release-artifacts -type f
