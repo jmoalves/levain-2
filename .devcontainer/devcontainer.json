@@ -53,11 +53,11 @@
   },
 
   "containerEnv": {
-    "MAVEN_OPTS": "-Dnet.bytebuddy.experimental=true"
+    "MAVEN_OPTS": "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
   },
 
   "remoteEnv": {
-    "MAVEN_OPTS": "-Dnet.bytebuddy.experimental=true"
+    "MAVEN_OPTS": "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
   },
 
   "postCreateCommand": "mvn clean install -DskipTests",

@@ -226,6 +226,8 @@
                     </includes>
                     <argLine>
                         -Dnet.bytebuddy.experimental=true
+                        -XX:+EnableDynamicAgentLoading
+                        -Djdk.instrument.traceUsage=false
                         --add-opens java.base/java.lang=ALL-UNNAMED
                         --add-opens java.base/java.util=ALL-UNNAMED
                         --add-opens java.base/java.lang.reflect=ALL-UNNAMED

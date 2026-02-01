@@ -25,7 +25,7 @@ jobs:
     - name: Build with Maven
       run: mvn -B clean verify
       env:
-        MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true"
+        MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
 
     - name: Generate JaCoCo Badge
       uses: cicirello/jacoco-badge-generator@v2
