@@ -60,10 +60,14 @@
   },
 
   "mounts": [
-    "source=${localEnv:HOME}/.m2,target=/root/.m2,type=bind,consistency=cached"
+    "source=${localEnv:HOME}/.m2,target=/home/${localEnv:USER}/.m2,type=bind,consistency=cached"
   ],
 
   "onCreateCommand": "bash .devcontainer/setup.sh",
 
-  "remoteUser": "root"
+  "remoteUser": "${localEnv:USER}",
+  
+  "containerUser": "${localEnv:USER}",
+  
+  "updateRemoteUserUID": true
 }
