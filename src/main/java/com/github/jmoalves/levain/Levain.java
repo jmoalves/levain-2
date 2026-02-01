@@ -39,22 +39,16 @@ public class Levain {
     }
 
     /**
-     * Initialize the CDI container with all required beans.
+     * Initialize the CDI container using automatic bean discovery.
+     * 
+     * All beans marked with CDI scopes (@ApplicationScoped, @Dependent, etc.)
+     * in the classpath will be automatically discovered via the beans.xml
+     * configuration with bean-discovery-mode="all".
      * 
      * @return initialized WeldContainer
      */
     private static WeldContainer initializeCdiContainer() {
-        Weld weld = new Weld()
-                .disableDiscovery()
-                .addBeanClasses(
-                        LevainCommand.class,
-                        com.github.jmoalves.levain.cli.commands.ListCommand.class,
-                        com.github.jmoalves.levain.cli.commands.InstallCommand.class,
-                        com.github.jmoalves.levain.cli.commands.ShellCommand.class,
-                        com.github.jmoalves.levain.service.RecipeService.class,
-                        com.github.jmoalves.levain.service.InstallService.class,
-                        com.github.jmoalves.levain.service.ShellService.class);
-
+        Weld weld = new Weld();
         return weld.initialize();
     }
 
