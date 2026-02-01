@@ -55,5 +55,10 @@
             <AppenderRef ref="ERROR_CONSOLE" />
             <AppenderRef ref="FILE" />
         </Root>
+
+        <!-- Suppress Weld SE container startup/shutdown messages -->
+        <Logger name="org.jboss.weld" level="WARN" additivity="false">
+            <AppenderRef ref="FILE" />
+        </Logger>
     </Loggers>
 </Configuration>

@@ -25,18 +25,34 @@ public class Levain {
         String version = getVersion();
         logger.info("Starting Levain {}...", version);
 
+        int exitCode = 0;
+
         // Initialize CDI container
-        Weld weld = new Weld();
+        Weld weld = new Weld()
+                .disableDiscovery() // Disable automatic discovery, use beans.xml
+                .addBeanClasses(
+                        LevainCommand.class,
+                        com.github.jmoalves.levain.cli.commands.ListCommand.class,
+                        com.github.jmoalves.levain.cli.commands.InstallCommand.class,
+                        com.github.jmoalves.levain.cli.commands.ShellCommand.class,
+                        com.github.jmoalves.levain.service.RecipeService.class,
+                        com.github.jmoalves.levain.service.InstallService.class,
+                        com.github.jmoalves.levain.service.ShellService.class);
+
         try (WeldContainer container = weld.initialize()) {
             // Get LevainCommand instance from CDI with all dependencies injected
             LevainCommand command = container.select(LevainCommand.class).get();
 
             // Create CommandLine with CDI factory for subcommands
-            int exitCode = new CommandLine(command, new CdiCommandFactory()).execute(args);
+            exitCode = new CommandLine(command, new CdiCommandFactory()).execute(args);
 
             logger.info("Levain finished with exit code: {}", exitCode);
-            System.exit(exitCode);
+        } catch (Exception e) {
+            logger.error("Error executing command", e);
+            exitCode = 1;
         }
+
+        System.exit(exitCode);
     }
 
     /**
