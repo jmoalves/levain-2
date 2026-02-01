@@ -7,17 +7,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 
 import com.github.jmoalves.levain.service.RecipeService;
-import jakarta.enterprise.context.Dependent;
-import jakarta.inject.Inject;
 
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 /**
  * Cucumber step definitions for listing recipes.
+ * Using ApplicationScoped to maintain state across steps within a scenario.
  */
-@Dependent
+@ApplicationScoped
 public class ListRecipesSteps {
 
     private final RecipeService recipeService;

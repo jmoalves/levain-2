@@ -1,6 +1,7 @@
 package com.github.jmoalves.levain.cli;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.jmoalves.levain.cli.commands.ListCommand;
@@ -70,13 +71,8 @@ class CdiCommandFactoryTest {
         class UnknownClass {
         }
 
-        // Act & Assert
-        try {
-            factory.create(UnknownClass.class);
-        } catch (Exception e) {
-            // Expected: factory should throw an exception for unknown CDI beans
-            // Just verify that an exception was thrown - the specific message varies
-            assertNotNull(e, "Factory should throw an exception for unknown CDI beans");
-        }
+        // Act & Assert - expect an exception to be thrown
+        assertThrows(Exception.class, () -> factory.create(UnknownClass.class),
+                "Factory should throw an exception for unknown CDI beans");
     }
 }

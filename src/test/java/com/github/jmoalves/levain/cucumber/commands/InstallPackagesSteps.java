@@ -3,17 +3,18 @@ package com.github.jmoalves.levain.cucumber.commands;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.jmoalves.levain.service.InstallService;
-import jakarta.enterprise.context.Dependent;
-import jakarta.inject.Inject;
 
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 /**
  * Cucumber step definitions for installing packages.
+ * Using ApplicationScoped to maintain state across steps within a scenario.
  */
-@Dependent
+@ApplicationScoped
 public class InstallPackagesSteps {
 
     private final InstallService installService;
