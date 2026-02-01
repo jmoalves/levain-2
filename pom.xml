@@ -31,6 +31,8 @@
         <picocli.version>4.7.6</picocli.version>
         <snakeyaml.version>2.3</snakeyaml.version>
         <commons-io.version>2.18.0</commons-io.version>
+        <jacoco.version>0.8.13</jacoco.version>
+        <asm.version>9.7.1</asm.version>
     </properties>
 
     <dependencyManagement>
@@ -126,6 +128,13 @@
             <groupId>net.bytebuddy</groupId>
             <artifactId>byte-buddy-agent</artifactId>
             <version>${byte-buddy.version}</version>
+        </dependency>
+        
+        <!-- ASM for bytecode analysis (Java 25 support) -->
+        <dependency>
+            <groupId>org.ow2.asm</groupId>
+            <artifactId>asm</artifactId>
+            <version>${asm.version}</version>
         </dependency>
 
         <!-- Logging -->
@@ -223,7 +232,14 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.12</version>
+                <version>${jacoco.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.ow2.asm</groupId>
+                        <artifactId>asm</artifactId>
+                        <version>${asm.version}</version>
+                    </dependency>
+                </dependencies>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
