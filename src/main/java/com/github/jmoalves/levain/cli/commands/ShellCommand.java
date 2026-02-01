@@ -12,13 +12,10 @@ import java.util.concurrent.Callable;
 /**
  * Command to open a configured shell with specified packages.
  */
-@Command(
-    name = "shell",
-    description = "Open a configured shell with specified packages",
-    mixinStandardHelpOptions = true
-)
+@Command(name = "shell", description = "Open a configured shell with specified packages", mixinStandardHelpOptions = true)
 public class ShellCommand implements Callable<Integer> {
     private static final Logger logger = LoggerFactory.getLogger(ShellCommand.class);
+    private static final Logger console = LoggerFactory.getLogger("CONSOLE");
 
     @Parameters(arity = "0..*", description = "Package(s) to include in shell environment")
     private List<String> packages;
@@ -32,13 +29,13 @@ public class ShellCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         logger.info("Opening shell with packages: {}", packages);
-        
+
         try {
             shellService.openShell(packages != null ? packages : List.of());
             return 0;
         } catch (Exception e) {
             logger.error("Failed to open shell", e);
-            System.err.println("Failed to open shell: " + e.getMessage());
+            console.error("Failed to open shell: " + e.getMessage());
             return 1;
         }
     }

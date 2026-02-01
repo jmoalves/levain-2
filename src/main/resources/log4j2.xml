@@ -2,12 +2,19 @@
 <Configuration status="WARN">
     <Appenders>
         <!-- 
-        Console appender for errors/warnings only
-        User-facing output (System.out/System.err) is separate and not affected by this
-        This only logs actual logger messages at WARN level or higher
+        User-facing console output (clean, no timestamps/levels)
+        Used by ConsoleLogger for direct user interaction
         -->
-        <Console name="CONSOLE" target="SYSTEM_OUT">
-            <PatternLayout pattern="%highlight{%-5level} %msg%n" />
+        <Console name="USER_CONSOLE" target="SYSTEM_OUT">
+            <PatternLayout pattern="%msg%n" />
+        </Console>
+
+        <!-- 
+        Error console output (for warnings and errors)
+        Shows highlighted level for critical messages
+        -->
+        <Console name="ERROR_CONSOLE" target="SYSTEM_ERR">
+            <PatternLayout pattern="%highlight{[%level]} %msg%n" />
             <ThresholdFilter level="WARN" onMatch="ACCEPT" onMismatch="DENY" />
         </Console>
 
@@ -27,13 +34,25 @@
 
     <Loggers>
         <!-- 
-        Root logger:
-        - INFO level: captures all info, debug, and trace messages to file
-        - Console: only shows WARN/ERROR (due to ThresholdFilter above)
-        - File: shows all INFO+ messages
+        Special logger for user-facing console output
+        Usage: Logger console = LogManager.getLogger("CONSOLE");
+        - INFO level messages go to clean console output
+        - WARN/ERROR go to error console with highlighting
+        - All messages also logged to file for audit
+        -->
+        <Logger name="CONSOLE" level="INFO" additivity="false">
+            <AppenderRef ref="USER_CONSOLE" level="INFO" />
+            <AppenderRef ref="ERROR_CONSOLE" level="WARN" />
+            <AppenderRef ref="FILE" />
+        </Logger>
+
+        <!-- 
+        Root logger for internal debug/audit messages
+        - Only WARN+ to console (for unexpected errors)
+        - All INFO+ to file
         -->
         <Root level="INFO">
-            <AppenderRef ref="CONSOLE" />
+            <AppenderRef ref="ERROR_CONSOLE" />
             <AppenderRef ref="FILE" />
         </Root>
     </Loggers>

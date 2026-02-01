@@ -12,13 +12,10 @@ import java.util.concurrent.Callable;
 /**
  * Command to install packages.
  */
-@Command(
-    name = "install",
-    description = "Install one or more packages",
-    mixinStandardHelpOptions = true
-)
+@Command(name = "install", description = "Install one or more packages", mixinStandardHelpOptions = true)
 public class InstallCommand implements Callable<Integer> {
     private static final Logger logger = LoggerFactory.getLogger(InstallCommand.class);
+    private static final Logger console = LoggerFactory.getLogger("CONSOLE");
 
     @Parameters(arity = "1..*", description = "Package(s) to install")
     private List<String> packages;
@@ -32,20 +29,20 @@ public class InstallCommand implements Callable<Integer> {
     @Override
     public Integer call() {
         logger.info("Installing packages: {}", packages);
-        
+
         for (String pkg : packages) {
-            System.out.println("Installing package: " + pkg);
+            console.info("Installing package: " + pkg);
             try {
                 installService.install(pkg);
-                System.out.println("  ✓ " + pkg + " installed successfully");
+                console.info("  ✓ " + pkg + " installed successfully");
             } catch (Exception e) {
                 logger.error("Failed to install package: {}", pkg, e);
-                System.err.println("  ✗ Failed to install " + pkg + ": " + e.getMessage());
+                console.error("  ✗ Failed to install " + pkg + ": " + e.getMessage());
                 return 1;
             }
         }
-        
-        System.out.println("\nAll packages installed successfully!");
+
+        console.info("\nAll packages installed successfully!");
         return 0;
     }
 }
