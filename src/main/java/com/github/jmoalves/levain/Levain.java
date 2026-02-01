@@ -27,9 +27,25 @@ public class Levain {
 
         int exitCode = 0;
 
-        // Initialize CDI container
+        try (WeldContainer container = initializeCdiContainer()) {
+            exitCode = executeCommand(container, args);
+            logger.info("Levain finished with exit code: {}", exitCode);
+        } catch (Exception e) {
+            logger.error("Error executing command", e);
+            exitCode = 1;
+        }
+
+        System.exit(exitCode);
+    }
+
+    /**
+     * Initialize the CDI container with all required beans.
+     * 
+     * @return initialized WeldContainer
+     */
+    private static WeldContainer initializeCdiContainer() {
         Weld weld = new Weld()
-                .disableDiscovery() // Disable automatic discovery, use beans.xml
+                .disableDiscovery()
                 .addBeanClasses(
                         LevainCommand.class,
                         com.github.jmoalves.levain.cli.commands.ListCommand.class,
@@ -39,20 +55,19 @@ public class Levain {
                         com.github.jmoalves.levain.service.InstallService.class,
                         com.github.jmoalves.levain.service.ShellService.class);
 
-        try (WeldContainer container = weld.initialize()) {
-            // Get LevainCommand instance from CDI with all dependencies injected
-            LevainCommand command = container.select(LevainCommand.class).get();
+        return weld.initialize();
+    }
 
-            // Create CommandLine with CDI factory for subcommands
-            exitCode = new CommandLine(command, new CdiCommandFactory()).execute(args);
-
-            logger.info("Levain finished with exit code: {}", exitCode);
-        } catch (Exception e) {
-            logger.error("Error executing command", e);
-            exitCode = 1;
-        }
-
-        System.exit(exitCode);
+    /**
+     * Execute the command line with CDI-injected dependencies.
+     * 
+     * @param container the CDI container
+     * @param args      command line arguments
+     * @return exit code from command execution
+     */
+    private static int executeCommand(WeldContainer container, String[] args) {
+        LevainCommand command = container.select(LevainCommand.class).get();
+        return new CommandLine(command, new CdiCommandFactory()).execute(args);
     }
 
     /**
