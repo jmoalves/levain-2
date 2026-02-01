@@ -2,6 +2,8 @@
   "name": "Levain 2 - Java 25",
   "image": "mcr.microsoft.com/devcontainers/base:bookworm",
   
+  "initializeCommand": "docker context use default || true",
+  
   "features": {
     "ghcr.io/devcontainers/features/java:1": {
       "version": "25",

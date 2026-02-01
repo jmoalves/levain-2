@@ -24,6 +24,31 @@ This directory contains the configuration for the VS Code Dev Container for Leva
 4. Open this project in VS Code
 5. When prompted, click "Reopen in Container" or run the command "Dev Containers: Reopen in Container"
 
+## Docker Context
+
+This devcontainer is configured to automatically use the **default/local Docker context** for portability.
+
+### Using Remote Docker
+
+If you need to use a remote Docker daemon, run the setup script:
+
+```bash
+# With default host (astronauta.biruta.net)
+.devcontainer/setup-docker-contexts.sh
+
+# With custom host
+.devcontainer/setup-docker-contexts.sh myserver.com
+.devcontainer/setup-docker-contexts.sh 192.168.1.100
+```
+
+This creates the `levain` Docker context using your current username. Then, before opening the devcontainer, switch to it:
+
+```bash
+docker context use levain
+```
+
+The devcontainer will automatically detect and use the currently active Docker context.
+
 ## What's Configured
 
 - **Java 25** with experimental ByteBuddy support
