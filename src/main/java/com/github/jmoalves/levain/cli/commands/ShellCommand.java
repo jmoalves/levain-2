@@ -1,6 +1,7 @@
 package com.github.jmoalves.levain.cli.commands;
 
 import com.github.jmoalves.levain.service.ShellService;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,7 @@ import java.util.concurrent.Callable;
 /**
  * Command to open a configured shell with specified packages.
  */
+@ApplicationScoped
 @Command(name = "shell", description = "Open a configured shell with specified packages", mixinStandardHelpOptions = true)
 public class ShellCommand implements Callable<Integer> {
     private static final Logger logger = LoggerFactory.getLogger(ShellCommand.class);

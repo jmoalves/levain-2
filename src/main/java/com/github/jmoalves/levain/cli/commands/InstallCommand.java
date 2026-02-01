@@ -1,6 +1,7 @@
 package com.github.jmoalves.levain.cli.commands;
 
 import com.github.jmoalves.levain.service.InstallService;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +14,7 @@ import java.util.concurrent.Callable;
 /**
  * Command to install packages.
  */
+@ApplicationScoped
 @Command(name = "install", description = "Install one or more packages", mixinStandardHelpOptions = true)
 public class InstallCommand implements Callable<Integer> {
     private static final Logger logger = LoggerFactory.getLogger(InstallCommand.class);

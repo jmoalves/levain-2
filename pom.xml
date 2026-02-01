@@ -35,6 +35,7 @@
         <asm.version>9.7.1</asm.version>
         <cdi.version>4.0.1</cdi.version>
         <weld.version>5.1.2.Final</weld.version>
+        <disruptor.version>3.4.4</disruptor.version>
 
         <!-- Nexus Repository Configuration (optional for corporate environments) -->
         <!-- Activates automatically when NEXUS_REPOSITORY_URL environment variable is set -->
@@ -169,6 +170,13 @@
             <artifactId>log4j-core</artifactId>
         </dependency>
 
+        <!-- LMAX Disruptor for Log4j2 async logging -->
+        <dependency>
+            <groupId>com.lmax</groupId>
+            <artifactId>disruptor</artifactId>
+            <version>${disruptor.version}</version>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -218,7 +226,6 @@
             <groupId>org.jboss.weld.se</groupId>
             <artifactId>weld-se-core</artifactId>
             <version>${weld.version}</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 
