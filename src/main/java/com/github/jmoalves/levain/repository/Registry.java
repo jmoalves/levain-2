@@ -1,0 +1,292 @@
+package com.github.jmoalves.levain.repository;
+
+import com.github.jmoalves.levain.model.Recipe;
+import com.github.jmoalves.levain.service.RecipeLoader;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Registry of installed recipes.
+ * 
+ * The registry maintains an inventory of installed recipes by storing copies
+ * of the recipe YAML files that were used during installation. This provides:
+ * 
+ * - Audit trail: Know what was installed and when
+ * - Recovery: Can reinstall from registry if original source is unavailable
+ * - Versioning: Can track which version of a recipe was installed
+ * - Debugging: Check exact recipe configuration that was used
+ * 
+ * The registry is implemented as a directory repository and supports all
+ * standard repository operations (list, resolve, etc.).
+ * 
+ * Default location: ~/.levain/registry/
+ * Each recipe is stored as a YAML file: {recipeName}.yml
+ */
+public class Registry implements Repository {
+    private static final Logger logger = LogManager.getLogger(Registry.class);
+    private static final String DEFAULT_REGISTRY_DIR = System.getProperty("user.home") + "/.levain/registry";
+
+    private final Path registryPath;
+    private boolean initialized = false;
+
+    /**
+     * Create a registry with the default location (~/.levain/registry).
+     */
+    public Registry() {
+        this(DEFAULT_REGISTRY_DIR);
+    }
+
+    /**
+     * Create a registry at a custom location.
+     * 
+     * @param registryDir The directory to use for the registry
+     */
+    public Registry(String registryDir) {
+        this.registryPath = Paths.get(registryDir);
+        logger.debug("Registry initialized with path: {}", registryPath);
+    }
+
+    @Override
+    public String describe() {
+        return "Registry[" + registryPath.toAbsolutePath() + "]";
+    }
+
+    @Override
+    public String getName() {
+        return "registry";
+    }
+
+    @Override
+    public String getUri() {
+        return "registry://" + registryPath.toAbsolutePath();
+    }
+
+    @Override
+    public void init() {
+        try {
+            // Ensure registry directory exists
+            if (!Files.exists(registryPath)) {
+                Files.createDirectories(registryPath);
+                logger.info("Created registry directory: {}", registryPath.toAbsolutePath());
+            }
+            initialized = true;
+            logger.debug("Registry initialized successfully at: {}", registryPath.toAbsolutePath());
+        } catch (IOException e) {
+            logger.error("Failed to initialize registry at {}: {}", registryPath, e.getMessage());
+            throw new RuntimeException("Cannot initialize registry: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public boolean isInitialized() {
+        return initialized;
+    }
+
+    @Override
+    public List<Recipe> listRecipes() {
+        ensureInitialized();
+        List<Recipe> recipes = new ArrayList<>();
+
+        try {
+            File[] files = registryPath.toFile()
+                    .listFiles((dir, name) -> name.endsWith(".yml") || name.endsWith(".yaml"));
+
+            if (files != null) {
+                for (File file : files) {
+                    try {
+                        String yamlContent = Files.readString(file.toPath());
+                        String recipeName = extractRecipeName(file.getName());
+                        Recipe recipe = RecipeLoader.parseRecipeYaml(yamlContent, recipeName);
+                        recipes.add(recipe);
+                    } catch (Exception e) {
+                        logger.warn("Failed to load recipe from registry file {}: {}",
+                                file.getName(), e.getMessage());
+                    }
+                }
+            }
+            logger.debug("Listed {} recipes from registry", recipes.size());
+        } catch (Exception e) {
+            logger.error("Failed to list recipes from registry: {}", e.getMessage());
+        }
+
+        return recipes;
+    }
+
+    @Override
+    public Optional<Recipe> resolveRecipe(String recipeName) {
+        ensureInitialized();
+
+        try {
+            // Try both .yml and .yaml extensions
+            for (String extension : new String[] { ".yml", ".yaml" }) {
+                Path recipePath = registryPath.resolve(recipeName + extension);
+                if (Files.exists(recipePath)) {
+                    String yamlContent = Files.readString(recipePath);
+                    Recipe recipe = RecipeLoader.parseRecipeYaml(yamlContent, recipeName);
+                    logger.debug("Resolved recipe '{}' from registry", recipeName);
+                    return Optional.of(recipe);
+                }
+            }
+            logger.debug("Recipe '{}' not found in registry", recipeName);
+        } catch (Exception e) {
+            logger.error("Failed to resolve recipe '{}' from registry: {}", recipeName, e.getMessage());
+        }
+
+        return Optional.empty();
+    }
+
+    @Override
+    public int size() {
+        ensureInitialized();
+        try {
+            File[] files = registryPath.toFile()
+                    .listFiles((dir, name) -> name.endsWith(".yml") || name.endsWith(".yaml"));
+            return files != null ? files.length : 0;
+        } catch (Exception e) {
+            logger.error("Failed to get registry size: {}", e.getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Store a recipe in the registry.
+     * This is called during installation to create an audit trail.
+     * 
+     * @param recipe      The recipe to store
+     * @param yamlContent The YAML content of the recipe
+     */
+    public void store(Recipe recipe, String yamlContent) {
+        ensureInitialized();
+
+        try {
+            String fileName = recipe.getName() + ".yml";
+            Path recipePath = registryPath.resolve(fileName);
+
+            Files.writeString(recipePath, yamlContent);
+            logger.info("Stored recipe '{}' in registry: {}", recipe.getName(), recipePath.toAbsolutePath());
+        } catch (IOException e) {
+            logger.error("Failed to store recipe '{}' in registry: {}", recipe.getName(), e.getMessage());
+            throw new RuntimeException("Cannot store recipe in registry: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Check if a recipe is installed (exists in the registry).
+     * 
+     * @param recipeName The name of the recipe
+     * @return true if the recipe is in the registry, false otherwise
+     */
+    public boolean isInstalled(String recipeName) {
+        ensureInitialized();
+
+        for (String extension : new String[] { ".yml", ".yaml" }) {
+            Path recipePath = registryPath.resolve(recipeName + extension);
+            if (Files.exists(recipePath)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Get the path to a recipe file in the registry.
+     * 
+     * @param recipeName The name of the recipe
+     * @return The path if found, or empty Optional
+     */
+    public Optional<Path> getRecipePath(String recipeName) {
+        ensureInitialized();
+
+        for (String extension : new String[] { ".yml", ".yaml" }) {
+            Path recipePath = registryPath.resolve(recipeName + extension);
+            if (Files.exists(recipePath)) {
+                return Optional.of(recipePath);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Remove a recipe from the registry.
+     * 
+     * @param recipeName The name of the recipe to remove
+     * @return true if removed, false if not found
+     */
+    public boolean remove(String recipeName) {
+        ensureInitialized();
+
+        for (String extension : new String[] { ".yml", ".yaml" }) {
+            Path recipePath = registryPath.resolve(recipeName + extension);
+            try {
+                if (Files.exists(recipePath)) {
+                    Files.delete(recipePath);
+                    logger.info("Removed recipe '{}' from registry", recipeName);
+                    return true;
+                }
+            } catch (IOException e) {
+                logger.error("Failed to remove recipe '{}' from registry: {}", recipeName, e.getMessage());
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Clear all recipes from the registry.
+     * Use with caution!
+     */
+    public void clear() {
+        ensureInitialized();
+
+        try {
+            File[] files = registryPath.toFile().listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.getName().endsWith(".yml") || file.getName().endsWith(".yaml")) {
+                        Files.delete(file.toPath());
+                    }
+                }
+            }
+            logger.info("Cleared all recipes from registry");
+        } catch (IOException e) {
+            logger.error("Failed to clear registry: {}", e.getMessage());
+            throw new RuntimeException("Cannot clear registry: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Get the absolute path to the registry directory.
+     * 
+     * @return The registry directory path
+     */
+    public Path getRegistryPath() {
+        return registryPath.toAbsolutePath();
+    }
+
+    /**
+     * Get the default registry location.
+     * 
+     * @return The default registry directory path
+     */
+    public static String getDefaultRegistryPath() {
+        return DEFAULT_REGISTRY_DIR;
+    }
+
+    private void ensureInitialized() {
+        if (!initialized) {
+            init();
+        }
+    }
+
+    private String extractRecipeName(String fileName) {
+        return fileName.replaceAll("\\.(yml|yaml)$", "");
+    }
+}
