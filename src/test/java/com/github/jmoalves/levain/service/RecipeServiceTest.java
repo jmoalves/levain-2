@@ -10,6 +10,8 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.github.jmoalves.levain.repository.RepositoryFactory;
+
 /**
  * Unit tests for RecipeService using JUnit 5.
  */
@@ -17,13 +19,17 @@ class RecipeServiceTest {
 
     private RecipeService recipeService;
     private RecipeLoader recipeLoader;
+    private ConfigService configService;
+    private RepositoryFactory repositoryFactory;
 
     @BeforeEach
     void setUp() {
         // Set test recipes directory for testing
         System.setProperty("levain.recipes.dir", "src/test/resources/recipes");
         recipeLoader = new RecipeLoader();
-        recipeService = new RecipeService(recipeLoader);
+        configService = new ConfigService();
+        repositoryFactory = new RepositoryFactory();
+        recipeService = new RecipeService(recipeLoader, configService, repositoryFactory);
     }
 
     @Test

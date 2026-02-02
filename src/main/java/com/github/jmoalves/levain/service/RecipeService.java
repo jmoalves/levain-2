@@ -9,9 +9,13 @@ import org.slf4j.LoggerFactory;
 
 import com.github.jmoalves.levain.model.Recipe;
 import com.github.jmoalves.levain.model.RecipeTree;
+import com.github.jmoalves.levain.model.RepositoryConfig;
 import com.github.jmoalves.levain.repository.RepositoryManager;
+import com.github.jmoalves.levain.repository.RepositoryFactory;
 import com.github.jmoalves.levain.repository.ResourceRepository;
 import com.github.jmoalves.levain.repository.DirectoryRepository;
+import com.github.jmoalves.levain.repository.Registry;
+import com.github.jmoalves.levain.repository.Repository;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -28,11 +32,15 @@ public class RecipeService {
 
     private final RecipeLoader recipeLoader;
     private final RepositoryManager repositoryManager;
+    private final ConfigService configService;
+    private final RepositoryFactory repositoryFactory;
     private RecipeTree recipeTree;
 
     @Inject
-    public RecipeService(RecipeLoader recipeLoader) {
+    public RecipeService(RecipeLoader recipeLoader, ConfigService configService, RepositoryFactory repositoryFactory) {
         this.recipeLoader = recipeLoader;
+        this.configService = configService;
+        this.repositoryFactory = repositoryFactory;
         this.repositoryManager = new RepositoryManager();
         initializeRepositories();
     }
@@ -40,12 +48,25 @@ public class RecipeService {
     /**
      * Initialize repositories in the manager.
      * Built-in recipes from ResourceRepository are loaded first,
-     * then external recipes from configured DirectoryRepository.
+     * then configured repositories from config.json,
+     * then external recipes from configured DirectoryRepository,
+     * then installed recipes from Registry.
      */
     private void initializeRepositories() {
         // Add built-in resource recipes
         ResourceRepository resourceRepo = new ResourceRepository();
         repositoryManager.addRepository(resourceRepo);
+
+        // Add configured repositories from config.json
+        for (RepositoryConfig repoConfig : configService.getRepositories()) {
+            try {
+                Repository repo = repositoryFactory.createRepository(repoConfig.getUri());
+                repositoryManager.addRepository(repo);
+                logger.info("Loaded configured repository: {} ({})", repoConfig.getName(), repoConfig.getUri());
+            } catch (Exception e) {
+                logger.warn("Failed to load configured repository {}: {}", repoConfig.getName(), e.getMessage());
+            }
+        }
 
         // Add external directory recipes if configured
         String recipesDir = RecipeLoader.getDefaultRecipesDirectory();
@@ -53,11 +74,14 @@ public class RecipeService {
             DirectoryRepository dirRepo = new DirectoryRepository("DirectoryRepository", recipesDir);
             repositoryManager.addRepository(dirRepo);
         } else {
-            logger.info(
-                    "No external recipes directory configured. Using only built-in recipes from ResourceRepository");
+            logger.debug("No external recipes directory configured.");
             logger.debug("To add external recipes, set LEVAIN_RECIPES_DIR or levain.recipes.dir");
-            logger.debug("Or clone https://github.com/jmoalves/levain-pkgs to ~/levain/levain-pkgs/recipes");
+            logger.debug("Or use 'levain config add-repo <uri>' to add a repository");
         }
+
+        // Add Registry (installed recipes) - searched last
+        Registry registry = new Registry();
+        repositoryManager.addRepository(registry);
 
         logger.debug(repositoryManager.describe());
     }

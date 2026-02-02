@@ -39,7 +39,30 @@ public class InstallService {
      * @throws RuntimeException         if installation fails
      */
     public void install(String packageName) {
-        logger.info("Installing package: {}", packageName);
+        install(packageName, false);
+    }
+
+    /**
+     * Install a package by name using the default repositories.
+     * If the package is already installed and force is false, it will be skipped.
+     *
+     * @param packageName Name of the package to install
+     * @param force       If true, reinstall even if already installed
+     * @throws IllegalArgumentException if recipe is not found
+     * @throws RuntimeException         if installation fails
+     */
+    public void install(String packageName, boolean force) {
+        logger.info("Installing package: {} (force={})", packageName, force);
+
+        // Check if already installed first
+        if (registry == null) {
+            registry = new Registry();
+            registry.init();
+        }
+        if (!force && registry.isInstalled(packageName)) {
+            logger.info("Package already installed (skipping): {}", packageName);
+            throw new AlreadyInstalledException(packageName + " is already installed (use --force to reinstall)");
+        }
 
         // Load recipe from default repositories
         Recipe recipe = recipeService.loadRecipe(packageName);
@@ -141,6 +164,20 @@ public class InstallService {
      * Get the registry for querying installed recipes.
      */
     public Registry getRegistry() {
+        if (registry == null) {
+            registry = new Registry();
+            registry.init();
+        }
         return registry;
+    }
+
+    /**
+     * Check if a recipe is already installed in the registry.
+     *
+     * @param recipeName Name of the recipe
+     * @return true if the recipe is installed, false otherwise
+     */
+    public boolean isInstalled(String recipeName) {
+        return getRegistry().isInstalled(recipeName);
     }
 }

@@ -98,7 +98,7 @@ public class Registry implements Repository {
 
         try {
             File[] files = registryPath.toFile()
-                    .listFiles((dir, name) -> name.endsWith(".yml") || name.endsWith(".yaml"));
+                    .listFiles((dir, name) -> name.endsWith(".levain.yaml"));
 
             if (files != null) {
                 for (File file : files) {
@@ -244,13 +244,8 @@ public class Registry implements Repository {
     public boolean isInstalled(String recipeName) {
         ensureInitialized();
 
-        for (String extension : new String[] { ".yml", ".yaml" }) {
-            Path recipePath = registryPath.resolve(recipeName + extension);
-            if (Files.exists(recipePath)) {
-                return true;
-            }
-        }
-        return false;
+        Path recipePath = registryPath.resolve(recipeName + ".levain.yaml");
+        return Files.exists(recipePath);
     }
 
     /**

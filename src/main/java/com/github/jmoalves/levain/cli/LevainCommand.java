@@ -3,6 +3,7 @@ package com.github.jmoalves.levain.cli;
 import com.github.jmoalves.levain.cli.commands.InstallCommand;
 import com.github.jmoalves.levain.cli.commands.ListCommand;
 import com.github.jmoalves.levain.cli.commands.ShellCommand;
+import com.github.jmoalves.levain.cli.commands.ConfigCommand;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +24,8 @@ import java.util.concurrent.Callable;
 @Command(name = "levain", description = "Something to help you make your software grow", version = "2.0.0-SNAPSHOT", mixinStandardHelpOptions = true, subcommands = {
         ListCommand.class,
         InstallCommand.class,
-        ShellCommand.class
+        ShellCommand.class,
+        ConfigCommand.class
 })
 public class LevainCommand implements Callable<Integer> {
     private static final Logger logger = LoggerFactory.getLogger(LevainCommand.class);
@@ -42,14 +44,6 @@ public class LevainCommand implements Callable<Integer> {
 
     @Option(names = { "--verbose", "-v" }, description = "Enable verbose output")
     private boolean verbose;
-
-    public String[] getAddRepo() {
-        return addRepo;
-    }
-
-    public String[] getTempRepo() {
-        return tempRepo;
-    }
 
     @Override
     public Integer call() {
