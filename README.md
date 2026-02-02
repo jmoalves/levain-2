@@ -179,6 +179,56 @@ The project can be imported into any Java IDE that supports Maven:
 - Follow standard Java naming conventions
 - Use SLF4J for logging
 
+## Architecture
+
+### Repository System
+
+Levain 2 uses a flexible repository system for loading recipes from multiple sources:
+
+#### Repository Types
+
+1. **ResourceRepository**: Loads built-in recipes packaged inside the JAR file
+   - Contains the core `levain` recipe for the Levain runtime
+   - Available in all installations
+   - Located in `src/main/resources/recipes/`
+
+2. **DirectoryRepository**: Loads recipes from a file system directory
+   - Supports external recipe repositories (e.g., cloned from levain-pkgs)
+   - Configured via:
+     - Environment variable: `LEVAIN_RECIPES_DIR`
+     - System property: `levain.recipes.dir`
+     - Standard location: `~/levain/levain-pkgs/recipes`
+
+3. **RepositoryManager**: Orchestrates multiple repositories
+   - Searches repositories in order
+   - Deduplicates recipes (first found wins)
+   - Combines recipes from all sources
+
+#### Recipe Loading Flow
+
+```
+RecipeService
+├── RepositoryManager
+    ├── ResourceRepository (built-in recipes from JAR)
+    └── DirectoryRepository (external recipes from filesystem)
+```
+
+#### Using External Recipes
+
+To use recipes from an external repository:
+
+```bash
+# Clone the levain-pkgs repository
+git clone https://github.com/jmoalves/levain-pkgs.git ~/levain/levain-pkgs
+
+# Or set environment variable
+export LEVAIN_RECIPES_DIR=/path/to/recipes
+java -jar levain.jar list
+
+# Or use system property
+java -Dlevain.recipes.dir=/path/to/recipes -jar levain.jar list
+```
+
 ## License
 
 See [LICENSE](LICENSE) file for details.
@@ -200,10 +250,12 @@ This version aims to be a drop-in replacement for the original levain, supportin
 
 ## Roadmap
 
-- [ ] Full recipe YAML parsing
-- [ ] Recipe repository management
-- [ ] Package download and extraction
-- [ ] Environment variable management
+- [x] Full recipe YAML parsing
+- [x] Recipe repository management with multiple sources
+- [x] Built-in recipes (ResourceRepository)
+- [x] External recipe repositories (DirectoryRepository)
+- [ ] Git repository support (GitRepository)
+- [ ] ZIP archive support (ZipRepository)
 - [ ] Windows registry integration
 - [ ] Complete levain-pkgs compatibility
 - [ ] Shell integration improvements

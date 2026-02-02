@@ -8,42 +8,68 @@ import org.slf4j.LoggerFactory;
 
 import com.github.jmoalves.levain.model.Recipe;
 import com.github.jmoalves.levain.model.RecipeTree;
+import com.github.jmoalves.levain.repository.RepositoryManager;
+import com.github.jmoalves.levain.repository.ResourceRepository;
+import com.github.jmoalves.levain.repository.DirectoryRepository;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 /**
  * Service for managing and listing recipes.
+ * Uses a RepositoryManager to load recipes from multiple sources:
+ * - Built-in recipes from JAR resources
+ * - External recipes from configured directories
  */
 @ApplicationScoped
 public class RecipeService {
     private static final Logger logger = LoggerFactory.getLogger(RecipeService.class);
 
     private final RecipeLoader recipeLoader;
+    private final RepositoryManager repositoryManager;
     private RecipeTree recipeTree;
 
     @Inject
     public RecipeService(RecipeLoader recipeLoader) {
         this.recipeLoader = recipeLoader;
+        this.repositoryManager = new RepositoryManager();
+        initializeRepositories();
+    }
+
+    /**
+     * Initialize repositories in the manager.
+     * Built-in recipes from ResourceRepository are loaded first,
+     * then external recipes from configured DirectoryRepository.
+     */
+    private void initializeRepositories() {
+        // Add built-in resource recipes
+        ResourceRepository resourceRepo = new ResourceRepository();
+        repositoryManager.addRepository(resourceRepo);
+
+        // Add external directory recipes if configured
+        String recipesDir = RecipeLoader.getDefaultRecipesDirectory();
+        if (recipesDir != null) {
+            DirectoryRepository dirRepo = new DirectoryRepository("DirectoryRepository", recipesDir);
+            repositoryManager.addRepository(dirRepo);
+        } else {
+            logger.info(
+                    "No external recipes directory configured. Using only built-in recipes from ResourceRepository");
+            logger.debug("To add external recipes, set LEVAIN_RECIPES_DIR or levain.recipes.dir");
+            logger.debug("Or clone https://github.com/jmoalves/levain-pkgs to ~/levain/levain-pkgs/recipes");
+        }
+
+        logger.debug(repositoryManager.describe());
     }
 
     private RecipeTree initializeRecipeTree() {
         if (recipeTree == null) {
-            java.util.Map<String, Recipe> recipeMap = loadAllRecipes();
+            java.util.Map<String, Recipe> recipeMap = new java.util.LinkedHashMap<>();
+            for (Recipe recipe : repositoryManager.listRecipes()) {
+                recipeMap.put(recipe.getName(), recipe);
+            }
             recipeTree = new RecipeTree(recipeMap);
         }
         return recipeTree;
-    }
-
-    private java.util.Map<String, Recipe> loadAllRecipes() {
-        String recipesDir = RecipeLoader.getDefaultRecipesDirectory();
-        if (recipesDir == null) {
-            logger.warn("No recipes directory configured. Set LEVAIN_RECIPES_DIR or levain.recipes.dir");
-            logger.info("Recipes should be cloned from https://github.com/jmoalves/levain-pkgs");
-            return new java.util.LinkedHashMap<>();
-        }
-        logger.info("Loading recipes from directory: {}", recipesDir);
-        return recipeLoader.loadRecipesFromDirectory(recipesDir);
     }
 
     /**
