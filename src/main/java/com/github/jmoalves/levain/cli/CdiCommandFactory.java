@@ -13,6 +13,18 @@ import picocli.CommandLine;
  */
 public class CdiCommandFactory implements CommandLine.IFactory {
     private static final Logger logger = LoggerFactory.getLogger(CdiCommandFactory.class);
+    private boolean logErrors = true;
+
+    public CdiCommandFactory() {
+    }
+
+    /**
+     * Constructor for testing - allows suppressing error logs for expected
+     * failures.
+     */
+    public CdiCommandFactory(boolean logErrors) {
+        this.logErrors = logErrors;
+    }
 
     @Override
     public <K> K create(Class<K> cls) throws Exception {
@@ -22,7 +34,9 @@ public class CdiCommandFactory implements CommandLine.IFactory {
             logger.debug("Created bean of type {} from CDI", cls.getName());
             return instance;
         } catch (Exception e) {
-            logger.error("Failed to create bean of type {} from CDI", cls.getName(), e);
+            if (logErrors) {
+                logger.error("Failed to create bean of type {} from CDI", cls.getName(), e);
+            }
             throw new CommandLine.ExecutionException(
                     new CommandLine(new Object()),
                     "Cannot instantiate " + cls.getName() + " from CDI: " + e.getMessage(), e);

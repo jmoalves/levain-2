@@ -71,8 +71,11 @@ class CdiCommandFactoryTest {
         class UnknownClass {
         }
 
+        // Use factory that suppresses error logging for this expected failure
+        CdiCommandFactory testFactory = new CdiCommandFactory(false);
+
         // Act & Assert - expect an exception to be thrown
-        assertThrows(Exception.class, () -> factory.create(UnknownClass.class),
+        assertThrows(Exception.class, () -> testFactory.create(UnknownClass.class),
                 "Factory should throw an exception for unknown CDI beans");
     }
 }

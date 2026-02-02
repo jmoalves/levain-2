@@ -12,6 +12,7 @@ import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -126,6 +127,33 @@ public class RecipeLoader {
             }
         }
         return fileName;
+    }
+
+    /**
+     * Parse a recipe from YAML string.
+     * Static method for use by remote repositories and other sources.
+     *
+     * @param yamlContent the YAML content as string
+     * @param recipeName  the recipe name to assign
+     * @return the Recipe object
+     */
+    public static Recipe parseRecipeYaml(String yamlContent, String recipeName) {
+        try {
+            ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
+            Recipe recipe = mapper.readValue(yamlContent, Recipe.class);
+            recipe.setName(recipeName);
+
+            // Normalize dependencies
+            if (recipe.getDependencies() == null) {
+                recipe.setDependencies(new ArrayList<>());
+            }
+
+            return recipe;
+        } catch (Exception e) {
+            LogManager.getLogger(RecipeLoader.class)
+                    .error("Failed to parse recipe YAML: {}", e.getMessage());
+            throw new RuntimeException("Failed to parse recipe: " + e.getMessage(), e);
+        }
     }
 
     /**
