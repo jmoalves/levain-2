@@ -50,6 +50,16 @@ public class NullRepository implements Repository {
     }
 
     @Override
+    public Optional<String> getRecipeYamlContent(String recipeName) {
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<String> getRecipeFileName(String recipeName) {
+        return Optional.empty();
+    }
+
+    @Override
     public int size() {
         return 0;
     }

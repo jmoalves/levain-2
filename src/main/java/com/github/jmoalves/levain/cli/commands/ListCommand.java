@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 
 import com.github.jmoalves.levain.service.RecipeService;
 
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
@@ -16,7 +15,6 @@ import picocli.CommandLine.Parameters;
 /**
  * Command to list available packages/recipes.
  */
-@ApplicationScoped
 @Command(name = "list", description = "List available packages/recipes", mixinStandardHelpOptions = true)
 public class ListCommand implements Callable<Integer> {
     private static final Logger logger = LoggerFactory.getLogger(ListCommand.class);

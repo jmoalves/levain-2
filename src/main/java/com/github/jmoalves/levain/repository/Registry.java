@@ -145,11 +145,47 @@ public class Registry implements Repository {
     }
 
     @Override
+    public Optional<String> getRecipeYamlContent(String recipeName) {
+        ensureInitialized();
+
+        try {
+            // Recipe files are always stored as .levain.yaml
+            Path recipePath = registryPath.resolve(recipeName + ".levain.yaml");
+            if (Files.exists(recipePath)) {
+                return Optional.of(Files.readString(recipePath));
+            }
+        } catch (IOException e) {
+            logger.error("Failed to read YAML content for '{}' from registry: {}", recipeName, e.getMessage());
+        }
+
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<String> getRecipeFileName(String recipeName) {
+        ensureInitialized();
+
+        // All recipes in registry use .levain.yaml extension
+        // Check for malformed names
+        if (recipeName.contains(".levain.yaml")) {
+            logger.warn("Recipe name contains .levain.yaml: {}", recipeName);
+            return Optional.empty();
+        }
+
+        Path recipePath = registryPath.resolve(recipeName + ".levain.yaml");
+        if (Files.exists(recipePath)) {
+            return Optional.of(recipeName + ".levain.yaml");
+        }
+
+        return Optional.empty();
+    }
+
+    @Override
     public int size() {
         ensureInitialized();
         try {
             File[] files = registryPath.toFile()
-                    .listFiles((dir, name) -> name.endsWith(".yml") || name.endsWith(".yaml"));
+                    .listFiles((dir, name) -> name.endsWith(".levain.yaml"));
             return files != null ? files.length : 0;
         } catch (Exception e) {
             logger.error("Failed to get registry size: {}", e.getMessage());
@@ -159,24 +195,44 @@ public class Registry implements Repository {
 
     /**
      * Store a recipe in the registry.
-     * This is called during installation to create an audit trail.
+     * All recipes are stored with the .levain.yaml extension.
+     * 
+     * @param recipe      The recipe to store
+     * @param yamlContent The YAML content of the recipe
+     * @param fileName    The original filename (ignored, always uses .levain.yaml)
+     */
+    public void store(Recipe recipe, String yamlContent, String fileName) {
+        ensureInitialized();
+
+        // Validate recipe name doesn't already contain .levain.yaml
+        String recipeName = recipe.getName();
+        if (recipeName.contains(".levain.yaml")) {
+            throw new IllegalArgumentException(
+                    "Recipe name contains invalid extension: " + recipeName +
+                            " (recipe names should not contain .levain.yaml)");
+        }
+
+        try {
+            // All recipes stored with standardized .levain.yaml extension
+            String standardizedFileName = recipeName + ".levain.yaml";
+            Path recipePath = registryPath.resolve(standardizedFileName);
+
+            Files.writeString(recipePath, yamlContent);
+            logger.info("Stored recipe '{}' in registry: {}", recipeName, recipePath.toAbsolutePath());
+        } catch (IOException e) {
+            logger.error("Failed to store recipe '{}' in registry: {}", recipeName, e.getMessage());
+            throw new RuntimeException("Cannot store recipe in registry: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Store a recipe in the registry with standardized .levain.yaml extension.
      * 
      * @param recipe      The recipe to store
      * @param yamlContent The YAML content of the recipe
      */
     public void store(Recipe recipe, String yamlContent) {
-        ensureInitialized();
-
-        try {
-            String fileName = recipe.getName() + ".yml";
-            Path recipePath = registryPath.resolve(fileName);
-
-            Files.writeString(recipePath, yamlContent);
-            logger.info("Stored recipe '{}' in registry: {}", recipe.getName(), recipePath.toAbsolutePath());
-        } catch (IOException e) {
-            logger.error("Failed to store recipe '{}' in registry: {}", recipe.getName(), e.getMessage());
-            throw new RuntimeException("Cannot store recipe in registry: " + e.getMessage(), e);
-        }
+        store(recipe, yamlContent, null);
     }
 
     /**

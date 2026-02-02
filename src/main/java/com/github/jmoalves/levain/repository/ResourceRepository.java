@@ -57,6 +57,19 @@ public class ResourceRepository extends AbstractRepository {
         return Optional.ofNullable(recipes.get(recipeName));
     }
 
+    @Override
+    public Optional<String> getRecipeYamlContent(String recipeName) {
+        // For resource repository, we'd need to read from JAR resources
+        // For now, return empty as this is mainly for built-in recipes
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<String> getRecipeFileName(String recipeName) {
+        // For resource repository, return empty for now
+        return Optional.empty();
+    }
+
     /**
      * Load recipes from JAR resources.
      * Looks for .levain, .levain.yaml, .levain.yml files in the resources

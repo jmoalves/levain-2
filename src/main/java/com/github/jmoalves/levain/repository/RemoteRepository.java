@@ -71,6 +71,19 @@ public class RemoteRepository extends AbstractRepository {
         return Optional.ofNullable(recipes.get(recipeName));
     }
 
+    @Override
+    public Optional<String> getRecipeYamlContent(String recipeName) {
+        // RemoteRepository doesn't cache files locally yet
+        // TODO: Implement caching to preserve original YAML content
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<String> getRecipeFileName(String recipeName) {
+        // RemoteRepository doesn't cache files locally yet
+        return Optional.empty();
+    }
+
     /**
      * Download and load recipes from the remote source.
      * 

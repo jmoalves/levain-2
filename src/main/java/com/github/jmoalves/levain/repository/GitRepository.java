@@ -74,20 +74,46 @@ public class GitRepository extends AbstractRepository {
         return Optional.ofNullable(recipes.get(recipeName));
     }
 
+    @Override
+    public Optional<String> getRecipeYamlContent(String recipeName) {
+        // Delegate to the local directory repository
+        if (localRepository != null) {
+            return localRepository.getRecipeYamlContent(recipeName);
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<String> getRecipeFileName(String recipeName) {
+        // All recipes use standardized .levain.yaml extension
+        // Validate recipe name doesn't contain .levain.yaml
+        if (recipeName.contains(".levain.yaml")) {
+            logger.warn("Recipe name contains .levain.yaml: {}", recipeName);
+            return Optional.empty();
+        }
+        return Optional.of(recipeName + ".levain.yaml");
+    }
+
     /**
      * Ensure we have a local copy of the git repository.
      * Clones if not present, otherwise pulls latest changes.
      */
     private void ensureLocalCopy() throws IOException, InterruptedException {
         File localDir = new File(localCachePath);
+        File gitDir = new File(localCachePath, ".git");
 
-        if (!localDir.exists()) {
+        if (!localDir.exists() || !gitDir.exists()) {
+            // Delete incomplete directory if it exists
+            if (localDir.exists()) {
+                logger.debug("Deleting incomplete repository at {}", localCachePath);
+                deleteDirectory(localDir);
+            }
             logger.debug("Cloning git repository from {} to {}", gitUrl, localCachePath);
-            executeGitCommand("clone", gitUrl, localCachePath);
+            executeGitCommand(null, "clone", gitUrl, localCachePath);
             logger.debug("Successfully cloned repository");
         } else {
             logger.debug("Updating existing repository at {}", localCachePath);
-            executeGitCommand("pull", "-C", localCachePath);
+            executeGitCommand(localCachePath, "pull");
             logger.debug("Successfully pulled latest changes");
         }
 
@@ -96,27 +122,66 @@ public class GitRepository extends AbstractRepository {
     }
 
     /**
-     * Execute a git command and check for success.
+     * Recursively delete a directory.
      */
-    private void executeGitCommand(String... args) throws IOException, InterruptedException {
+    private void deleteDirectory(File dir) {
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    deleteDirectory(file);
+                } else {
+                    file.delete();
+                }
+            }
+        }
+        dir.delete();
+    }
+
+    /**
+     * Execute a git command and check for success.
+     * 
+     * @param workingDirectory Optional working directory for the git command (null
+     *                         for current directory)
+     * @param args             The git command arguments (excluding 'git')
+     */
+    private void executeGitCommand(String workingDirectory, String... args) throws IOException, InterruptedException {
         String[] command = new String[args.length + 1];
         command[0] = "git";
         System.arraycopy(args, 0, command, 1, args.length);
 
+        logger.debug("Executing git command: {}", String.join(" ", command));
+        if (workingDirectory != null) {
+            logger.debug("Working directory: {}", workingDirectory);
+        }
+
         ProcessBuilder pb = new ProcessBuilder(command);
-        pb.redirectErrorStream(true);
+        if (workingDirectory != null) {
+            pb.directory(new File(workingDirectory));
+        }
+        // Ensure git can find its config
+        Map<String, String> env = pb.environment();
+        if (!env.containsKey("HOME")) {
+            env.put("HOME", System.getProperty("user.home"));
+        }
+
         Process process = pb.start();
 
+        StringBuilder output = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 logger.debug("git: {}", line);
+                output.append(line).append("\n");
             }
         }
 
         int exitCode = process.waitFor();
         if (exitCode != 0) {
-            throw new IOException("Git command failed with exit code: " + exitCode);
+            String errorMessage = String.format("Git command failed with exit code: %d\nCommand: %s\nOutput: %s",
+                    exitCode, String.join(" ", command), output.toString());
+            logger.error(errorMessage);
+            throw new IOException(errorMessage);
         }
     }
 

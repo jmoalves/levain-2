@@ -41,6 +41,18 @@ public interface Repository {
     Optional<Recipe> resolveRecipe(String recipeName);
 
     /**
+     * Get the original YAML content for a recipe.
+     * Returns the raw YAML file content to preserve all fields.
+     */
+    Optional<String> getRecipeYamlContent(String recipeName);
+
+    /**
+     * Get the original filename for a recipe (with extension).
+     * Example: "jdk-25-ibm.levain.yaml"
+     */
+    Optional<String> getRecipeFileName(String recipeName);
+
+    /**
      * Get the number of recipes in this repository.
      */
     int size();

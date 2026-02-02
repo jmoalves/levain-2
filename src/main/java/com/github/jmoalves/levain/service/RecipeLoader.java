@@ -22,12 +22,14 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 /**
  * Loads recipes from YAML files in a recipes directory.
- * Supports .levain, .levain.yaml, and .levain.yml extensions.
+ * Only accepts .levain.yaml extension. Files with other extensions are
+ * rejected.
  */
 @ApplicationScoped
 public class RecipeLoader {
     private static final Logger logger = LoggerFactory.getLogger(RecipeLoader.class);
-    private static final String[] RECIPE_EXTENSIONS = { ".levain.yaml", ".levain.yml", ".levain" };
+    private static final String RECIPE_EXTENSION = ".levain.yaml";
+    private static final String[] REJECTED_EXTENSIONS = { ".levain.yml", ".levain", ".yml", ".yaml" };
 
     private final ObjectMapper yamlMapper;
 
@@ -99,32 +101,47 @@ public class RecipeLoader {
 
     /**
      * Check if a file is a valid recipe file based on extension.
+     * Only .levain.yaml files are accepted.
      *
      * @param path the file path
-     * @return true if it's a recipe file
+     * @return true if it's a valid recipe file (.levain.yaml), false otherwise
      */
     private boolean isRecipeFile(Path path) {
         String fileName = path.getFileName().toString();
-        for (String ext : RECIPE_EXTENSIONS) {
-            if (fileName.endsWith(ext)) {
+
+        // Accept only .levain.yaml
+        if (fileName.endsWith(RECIPE_EXTENSION)) {
+            // Validate no double extensions
+            if (!fileName.contains(RECIPE_EXTENSION + RECIPE_EXTENSION)) {
                 return true;
+            } else {
+                logger.warn("Rejected recipe file with invalid name (multiple .levain.yaml): {}", fileName);
+                return false;
             }
         }
+
+        // Reject files with other recipe-like extensions
+        for (String rejected : REJECTED_EXTENSIONS) {
+            if (fileName.endsWith(rejected)) {
+                logger.warn("Rejected recipe file with wrong extension (expected .levain.yaml, got {}): {}", rejected,
+                        fileName);
+                return false;
+            }
+        }
+
         return false;
     }
 
     /**
      * Extract recipe name from filename.
-     * Removes .levain, .levain.yaml, or .levain.yml extension.
+     * Removes the .levain.yaml extension.
      *
      * @param fileName the file name
-     * @return the recipe name
+     * @return the recipe name (without .levain.yaml)
      */
     private String extractRecipeName(String fileName) {
-        for (String ext : RECIPE_EXTENSIONS) {
-            if (fileName.endsWith(ext)) {
-                return fileName.substring(0, fileName.length() - ext.length());
-            }
+        if (fileName.endsWith(RECIPE_EXTENSION)) {
+            return fileName.substring(0, fileName.length() - RECIPE_EXTENSION.length());
         }
         return fileName;
     }

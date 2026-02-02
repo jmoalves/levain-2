@@ -90,6 +90,18 @@ public class MockRepository implements Repository {
     }
 
     @Override
+    public Optional<String> getRecipeYamlContent(String recipeName) {
+        // Mock repository doesn't have YAML content
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<String> getRecipeFileName(String recipeName) {
+        // Mock repository doesn't have file names
+        return Optional.empty();
+    }
+
+    @Override
     public int size() {
         return recipes.size();
     }

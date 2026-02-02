@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 
 import com.github.jmoalves.levain.service.ShellService;
 
-import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Parameters;
@@ -16,7 +15,6 @@ import picocli.CommandLine.Parameters;
 /**
  * Command to open a configured shell with specified packages.
  */
-@ApplicationScoped
 @Command(name = "shell", description = "Open a configured shell with specified packages", mixinStandardHelpOptions = true)
 public class ShellCommand implements Callable<Integer> {
     private static final Logger logger = LoggerFactory.getLogger(ShellCommand.class);

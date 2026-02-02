@@ -72,6 +72,26 @@ public class ZipRepository extends AbstractRepository {
         return Optional.ofNullable(recipes.get(recipeName));
     }
 
+    @Override
+    public Optional<String> getRecipeYamlContent(String recipeName) {
+        // Delegate to the local directory repository
+        if (localRepository != null) {
+            return localRepository.getRecipeYamlContent(recipeName);
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<String> getRecipeFileName(String recipeName) {
+        // All recipes use standardized .levain.yaml extension
+        // Validate recipe name doesn't contain .levain.yaml
+        if (recipeName.contains(".levain.yaml")) {
+            logger.warn("Recipe name contains .levain.yaml: {}", recipeName);
+            return Optional.empty();
+        }
+        return Optional.of(recipeName + ".levain.yaml");
+    }
+
     /**
      * Extract the ZIP archive to a local cache directory.
      * Only extracts if not already present.

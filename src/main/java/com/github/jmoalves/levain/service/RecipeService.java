@@ -2,6 +2,7 @@ package com.github.jmoalves.levain.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -138,5 +139,29 @@ public class RecipeService {
         logger.debug("Getting dependencies for recipe: {}", recipeName);
         RecipeTree tree = initializeRecipeTree();
         return tree.getDependencies(recipeName);
+    }
+
+    /**
+     * Get the original YAML content for a recipe.
+     * This preserves all fields including custom ones.
+     *
+     * @param recipeName Name of the recipe
+     * @return Optional containing the YAML content if found
+     */
+    public Optional<String> getRecipeYamlContent(String recipeName) {
+        logger.debug("Getting YAML content for recipe: {}", recipeName);
+        return repositoryManager.getRecipeYamlContent(recipeName);
+    }
+
+    /**
+     * Get the original filename for a recipe.
+     * This preserves the original extension (.levain.yaml, .levain.yml, etc.)
+     *
+     * @param recipeName Name of the recipe
+     * @return Optional containing the filename if found
+     */
+    public Optional<String> getRecipeFileName(String recipeName) {
+        logger.debug("Getting filename for recipe: {}", recipeName);
+        return repositoryManager.getRecipeFileName(recipeName);
     }
 }

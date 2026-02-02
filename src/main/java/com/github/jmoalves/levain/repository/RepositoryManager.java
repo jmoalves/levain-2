@@ -78,6 +78,36 @@ public class RepositoryManager {
     }
 
     /**
+     * Get the original YAML content for a recipe by searching all repositories.
+     */
+    public Optional<String> getRecipeYamlContent(String recipeName) {
+        for (Repository repository : repositories) {
+            Optional<String> yaml = repository.getRecipeYamlContent(recipeName);
+            if (yaml.isPresent()) {
+                logger.debug("Found YAML content for '{}' from {}", recipeName, repository.describe());
+                return yaml;
+            }
+        }
+        logger.warn("YAML content for '{}' not found in any repository", recipeName);
+        return Optional.empty();
+    }
+
+    /**
+     * Get the original filename for a recipe by searching all repositories.
+     */
+    public Optional<String> getRecipeFileName(String recipeName) {
+        for (Repository repository : repositories) {
+            Optional<String> fileName = repository.getRecipeFileName(recipeName);
+            if (fileName.isPresent()) {
+                logger.debug("Found filename for '{}' from {}", recipeName, repository.describe());
+                return fileName;
+            }
+        }
+        logger.warn("Filename for '{}' not found in any repository", recipeName);
+        return Optional.empty();
+    }
+
+    /**
      * Get the number of repositories.
      */
     public int getRepositoryCount() {

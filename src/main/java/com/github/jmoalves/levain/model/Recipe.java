@@ -1,11 +1,13 @@
 package com.github.jmoalves.levain.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import java.util.Map;
 
 /**
  * Represents a Levain recipe for package installation.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Recipe {
     private String version;
     private String description;

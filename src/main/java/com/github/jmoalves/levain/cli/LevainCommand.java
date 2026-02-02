@@ -43,6 +43,14 @@ public class LevainCommand implements Callable<Integer> {
     @Option(names = { "--verbose", "-v" }, description = "Enable verbose output")
     private boolean verbose;
 
+    public String[] getAddRepo() {
+        return addRepo;
+    }
+
+    public String[] getTempRepo() {
+        return tempRepo;
+    }
+
     @Override
     public Integer call() {
         // When no subcommand is specified, show usage
