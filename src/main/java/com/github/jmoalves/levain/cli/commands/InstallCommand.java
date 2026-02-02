@@ -41,8 +41,6 @@ public class InstallCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        logger.info("Installing packages: {}", (Object[]) packages);
-
         if (packages == null || packages.length == 0) {
             console.error("At least one package name is required");
             return 1;
@@ -63,17 +61,17 @@ public class InstallCommand implements Callable<Integer> {
             addRepos = parent.getAddRepo();
         }
 
-        logger.info("AddRepos: {}", (Object[]) addRepos);
+        logger.debug("Installing {} packages", packages.length);
 
         for (String pkg : packages) {
             console.info("Installing package: {}", pkg);
             try {
                 // If --addRepo was specified, use the first repository
                 if (addRepos != null && addRepos.length > 0) {
-                    logger.info("Using repository: {}", addRepos[0]);
+                    logger.debug("Using repository: {}", addRepos[0]);
                     installService.install(pkg, addRepos[0]);
                 } else {
-                    logger.info("Using default repositories");
+                    logger.debug("Using default repositories");
                     installService.install(pkg);
                 }
                 console.info("  ✓ {} installed successfully", pkg);

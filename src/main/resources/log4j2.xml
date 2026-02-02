@@ -47,6 +47,15 @@
         </Logger>
 
         <!-- 
+        Suppress verbose debug messages about rejected recipe files from console
+        These go to file for troubleshooting but not to user console
+        -->
+        <Logger name="com.github.jmoalves.levain.service.RecipeLoader" level="DEBUG"
+            additivity="false">
+            <AppenderRef ref="FILE" />
+        </Logger>
+
+        <!-- 
         Root logger for internal debug/audit messages
         - Only WARN+ to console (for unexpected errors)
         - All INFO+ to file

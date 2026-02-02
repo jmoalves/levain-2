@@ -115,15 +115,16 @@ public class RecipeLoader {
             if (!fileName.contains(RECIPE_EXTENSION + RECIPE_EXTENSION)) {
                 return true;
             } else {
-                logger.warn("Rejected recipe file with invalid name (multiple .levain.yaml): {}", fileName);
+                logger.debug("Rejected recipe file with invalid name (multiple .levain.yaml): {}", fileName);
                 return false;
             }
         }
 
-        // Reject files with other recipe-like extensions
+        // Reject files with other recipe-like extensions (debug level - this is
+        // expected)
         for (String rejected : REJECTED_EXTENSIONS) {
             if (fileName.endsWith(rejected)) {
-                logger.warn("Rejected recipe file with wrong extension (expected .levain.yaml, got {}): {}", rejected,
+                logger.debug("Rejected recipe file with wrong extension (expected .levain.yaml, got {}): {}", rejected,
                         fileName);
                 return false;
             }
