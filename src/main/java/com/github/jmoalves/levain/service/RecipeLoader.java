@@ -1,0 +1,160 @@
+package com.github.jmoalves.levain.service;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.github.jmoalves.levain.model.Recipe;
+
+import jakarta.enterprise.context.ApplicationScoped;
+
+/**
+ * Loads recipes from YAML files in a recipes directory.
+ * Supports .levain, .levain.yaml, and .levain.yml extensions.
+ */
+@ApplicationScoped
+public class RecipeLoader {
+    private static final Logger logger = LoggerFactory.getLogger(RecipeLoader.class);
+    private static final String[] RECIPE_EXTENSIONS = { ".levain.yaml", ".levain.yml", ".levain" };
+
+    private final ObjectMapper yamlMapper;
+
+    public RecipeLoader() {
+        this.yamlMapper = new ObjectMapper(new YAMLFactory());
+    }
+
+    /**
+     * Load all recipes from a directory.
+     *
+     * @param recipesDir the directory containing recipe files
+     * @return a map of recipe name to Recipe object
+     */
+    public Map<String, Recipe> loadRecipesFromDirectory(String recipesDir) {
+        Map<String, Recipe> recipes = new LinkedHashMap<>();
+
+        File dir = new File(recipesDir);
+        if (!dir.exists() || !dir.isDirectory()) {
+            logger.warn("Recipes directory does not exist: {}", recipesDir);
+            return recipes;
+        }
+
+        try (Stream<Path> paths = Files.walk(dir.toPath())) {
+            paths.filter(Files::isRegularFile)
+                    .filter(this::isRecipeFile)
+                    .forEach(path -> {
+                        try {
+                            Recipe recipe = loadRecipe(path.toFile());
+                            if (recipe != null) {
+                                recipes.put(recipe.getName(), recipe);
+                            }
+                        } catch (IOException e) {
+                            logger.error("Failed to load recipe from {}: {}", path, e.getMessage());
+                        }
+                    });
+        } catch (IOException e) {
+            logger.error("Failed to read recipes directory {}: {}", recipesDir, e.getMessage());
+        }
+
+        logger.info("Loaded {} recipes from {}", recipes.size(), recipesDir);
+        return recipes;
+    }
+
+    /**
+     * Load a single recipe from a file.
+     *
+     * @param file the recipe file
+     * @return the Recipe object
+     * @throws IOException if reading or parsing fails
+     */
+    public Recipe loadRecipe(File file) throws IOException {
+        logger.debug("Loading recipe from: {}", file.getAbsolutePath());
+
+        Recipe recipe = yamlMapper.readValue(file, Recipe.class);
+
+        // Extract recipe name from filename
+        String fileName = file.getName();
+        String recipeName = extractRecipeName(fileName);
+        recipe.setName(recipeName);
+
+        // Normalize dependencies to ensure no nulls
+        if (recipe.getDependencies() == null) {
+            recipe.setDependencies(new ArrayList<>());
+        }
+
+        logger.debug("Loaded recipe: {} version {}", recipe.getName(), recipe.getVersion());
+        return recipe;
+    }
+
+    /**
+     * Check if a file is a valid recipe file based on extension.
+     *
+     * @param path the file path
+     * @return true if it's a recipe file
+     */
+    private boolean isRecipeFile(Path path) {
+        String fileName = path.getFileName().toString();
+        for (String ext : RECIPE_EXTENSIONS) {
+            if (fileName.endsWith(ext)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Extract recipe name from filename.
+     * Removes .levain, .levain.yaml, or .levain.yml extension.
+     *
+     * @param fileName the file name
+     * @return the recipe name
+     */
+    private String extractRecipeName(String fileName) {
+        for (String ext : RECIPE_EXTENSIONS) {
+            if (fileName.endsWith(ext)) {
+                return fileName.substring(0, fileName.length() - ext.length());
+            }
+        }
+        return fileName;
+    }
+
+    /**
+     * Get the default recipes directory location.
+     * In production, recipes should come from external repositories (git, zip,
+     * etc).
+     * For example: https://github.com/jmoalves/levain-pkgs
+     *
+     * @return the recipes directory path, or null if not configured
+     */
+    public static String getDefaultRecipesDirectory() {
+        // Check for system property or environment variable
+        String recipesDir = System.getProperty("levain.recipes.dir");
+        if (recipesDir == null) {
+            recipesDir = System.getenv("LEVAIN_RECIPES_DIR");
+        }
+
+        // Check standard locations
+        if (recipesDir == null) {
+            String userHome = System.getProperty("user.home");
+            String levainHome = userHome + File.separator + "levain";
+            String standardRecipesDir = levainHome + File.separator + "levain-pkgs" + File.separator + "recipes";
+
+            File dir = new File(standardRecipesDir);
+            if (dir.exists() && dir.isDirectory()) {
+                recipesDir = standardRecipesDir;
+            }
+        }
+
+        return recipesDir;
+    }
+}

@@ -16,10 +16,14 @@ import org.junit.jupiter.api.Test;
 class RecipeServiceTest {
 
     private RecipeService recipeService;
+    private RecipeLoader recipeLoader;
 
     @BeforeEach
     void setUp() {
-        recipeService = new RecipeService();
+        // Set test recipes directory for testing
+        System.setProperty("levain.recipes.dir", "src/test/resources/recipes");
+        recipeLoader = new RecipeLoader();
+        recipeService = new RecipeService(recipeLoader);
     }
 
     @Test
@@ -56,6 +60,6 @@ class RecipeServiceTest {
 
         assertNotNull(recipe);
         assertEquals("jdk-21", recipe.getName());
-        assertEquals("21.0.0", recipe.getVersion());
+        assertEquals("21.0.5", recipe.getVersion());
     }
 }

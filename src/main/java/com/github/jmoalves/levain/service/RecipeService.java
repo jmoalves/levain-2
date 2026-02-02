@@ -10,6 +10,7 @@ import com.github.jmoalves.levain.model.Recipe;
 import com.github.jmoalves.levain.model.RecipeTree;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 /**
  * Service for managing and listing recipes.
@@ -18,7 +19,13 @@ import jakarta.enterprise.context.ApplicationScoped;
 public class RecipeService {
     private static final Logger logger = LoggerFactory.getLogger(RecipeService.class);
 
+    private final RecipeLoader recipeLoader;
     private RecipeTree recipeTree;
+
+    @Inject
+    public RecipeService(RecipeLoader recipeLoader) {
+        this.recipeLoader = recipeLoader;
+    }
 
     private RecipeTree initializeRecipeTree() {
         if (recipeTree == null) {
@@ -29,52 +36,14 @@ public class RecipeService {
     }
 
     private java.util.Map<String, Recipe> loadAllRecipes() {
-        // TODO: Implement recipe discovery from recipe repositories
-        java.util.Map<String, Recipe> recipes = new java.util.LinkedHashMap<>();
-
-        // Sample recipes
-        Recipe levainRecipe = new Recipe();
-        levainRecipe.setName("levain");
-        levainRecipe.setVersion("1.0.0");
-        levainRecipe.setDescription("Levain base runtime");
-        recipes.put("levain", levainRecipe);
-
-        Recipe jdkRecipe = new Recipe();
-        jdkRecipe.setName("jdk-21");
-        jdkRecipe.setVersion("21.0.0");
-        jdkRecipe.setDescription("OpenJDK 21");
-        jdkRecipe.setDependencies(new ArrayList<>());
-        recipes.put("jdk-21", jdkRecipe);
-
-        Recipe gitRecipe = new Recipe();
-        gitRecipe.setName("git");
-        gitRecipe.setVersion("2.40.0");
-        gitRecipe.setDescription("Git version control");
-        gitRecipe.setDependencies(new ArrayList<>());
-        recipes.put("git", gitRecipe);
-
-        Recipe mavenRecipe = new Recipe();
-        mavenRecipe.setName("maven");
-        mavenRecipe.setVersion("3.9.0");
-        mavenRecipe.setDescription("Apache Maven");
-        mavenRecipe.setDependencies(new ArrayList<>(java.util.List.of("jdk-21")));
-        recipes.put("maven", mavenRecipe);
-
-        Recipe gradleRecipe = new Recipe();
-        gradleRecipe.setName("gradle");
-        gradleRecipe.setVersion("8.0.0");
-        gradleRecipe.setDescription("Gradle build tool");
-        gradleRecipe.setDependencies(new ArrayList<>(java.util.List.of("jdk-21")));
-        recipes.put("gradle", gradleRecipe);
-
-        Recipe nodejsRecipe = new Recipe();
-        nodejsRecipe.setName("nodejs");
-        nodejsRecipe.setVersion("20.0.0");
-        nodejsRecipe.setDescription("Node.js runtime");
-        nodejsRecipe.setDependencies(new ArrayList<>());
-        recipes.put("nodejs", nodejsRecipe);
-
-        return recipes;
+        String recipesDir = RecipeLoader.getDefaultRecipesDirectory();
+        if (recipesDir == null) {
+            logger.warn("No recipes directory configured. Set LEVAIN_RECIPES_DIR or levain.recipes.dir");
+            logger.info("Recipes should be cloned from https://github.com/jmoalves/levain-pkgs");
+            return new java.util.LinkedHashMap<>();
+        }
+        logger.info("Loading recipes from directory: {}", recipesDir);
+        return recipeLoader.loadRecipesFromDirectory(recipesDir);
     }
 
     /**

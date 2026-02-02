@@ -1,0 +1,9 @@
+version: "11.0.25"
+description: "Eclipse Temurin JDK 11 LTS"
+commands:
+  install:
+    - echo "Downloading Eclipse Temurin JDK 11..."
+    - extract https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.25%2B9/OpenJDK11U-jdk_x64_linux_hotspot_11.0.25_9.tar.gz ${levainHome}/jdk-11
+  shell:
+    - setenv JAVA_HOME ${levainHome}/jdk-11
+    - addPath ${JAVA_HOME}/bin
