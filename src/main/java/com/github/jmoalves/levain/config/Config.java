@@ -1,20 +1,22 @@
 package com.github.jmoalves.levain.config;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.enterprise.context.ApplicationScoped;
 
 /**
  * Levain configuration management.
@@ -237,6 +239,7 @@ public class Config {
      * Configuration data structure (matches config.json format).
      * This is a simple POJO that can be serialized/deserialized by Jackson.
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ConfigData {
         @JsonProperty("levainHome")
         public String levainHome;
@@ -256,8 +259,12 @@ public class Config {
         @JsonProperty("variables")
         public Map<String, String> variables;
 
+        @JsonProperty("repositories")
+        public List<RepositoryConfig> repositories;
+
         public ConfigData() {
             this.variables = new HashMap<>();
+            this.repositories = new ArrayList<>();
         }
 
         @Override
@@ -269,6 +276,35 @@ public class Config {
                     ", shellPath='" + shellPath + '\'' +
                     ", defaultPackage='" + defaultPackage + '\'' +
                     ", variables=" + variables +
+                    ", repositories=" + repositories +
+                    '}';
+        }
+    }
+
+    /**
+     * Repository configuration.
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class RepositoryConfig {
+        @JsonProperty("name")
+        public String name;
+
+        @JsonProperty("uri")
+        public String uri;
+
+        public RepositoryConfig() {
+        }
+
+        public RepositoryConfig(String name, String uri) {
+            this.name = name;
+            this.uri = uri;
+        }
+
+        @Override
+        public String toString() {
+            return "RepositoryConfig{" +
+                    "name='" + name + '\'' +
+                    ", uri='" + uri + '\'' +
                     '}';
         }
     }
