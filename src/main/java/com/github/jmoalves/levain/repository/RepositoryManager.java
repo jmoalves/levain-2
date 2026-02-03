@@ -44,17 +44,44 @@ public class RepositoryManager {
 
     /**
      * List all recipes from all repositories.
-     * Recipes are deduplicated by name (first found wins).
+     * JAR recipes (ResourceRepository) are always included and take priority.
+     * Recipes from other sources are only included if not present in JAR.
+     * Recipes are deduplicated by name (JAR recipes win).
      */
     public List<Recipe> listRecipes() {
         List<Recipe> allRecipes = new ArrayList<>();
         List<String> seenNames = new ArrayList<>();
 
+        // First, collect all JAR recipes (from ResourceRepository) - these have
+        // absolute priority
+        Optional<ResourceRepository> jarRepo = repositories.stream()
+                .filter(repo -> repo instanceof ResourceRepository)
+                .map(repo -> (ResourceRepository) repo)
+                .findFirst();
+
+        if (jarRepo.isPresent()) {
+            for (Recipe recipe : jarRepo.get().listRecipes()) {
+                allRecipes.add(recipe);
+                seenNames.add(recipe.getName());
+                logger.debug("Added JAR recipe: {}", recipe.getName());
+            }
+        }
+
+        // Then, add recipes from other repositories, but only if not already in JAR
         for (Repository repository : repositories) {
+            // Skip ResourceRepository as we already processed it
+            if (repository instanceof ResourceRepository) {
+                continue;
+            }
+
             for (Recipe recipe : repository.listRecipes()) {
                 if (!seenNames.contains(recipe.getName())) {
                     allRecipes.add(recipe);
                     seenNames.add(recipe.getName());
+                    logger.debug("Added recipe from {}: {}", repository.describe(), recipe.getName());
+                } else {
+                    logger.debug("Skipping recipe '{}' from {} - already exists in JAR",
+                            recipe.getName(), repository.describe());
                 }
             }
         }
@@ -64,27 +91,69 @@ public class RepositoryManager {
 
     /**
      * Resolve a recipe by searching all repositories in order.
+     * JAR recipes (ResourceRepository) are always checked first and have priority.
      */
     public Optional<Recipe> resolveRecipe(String recipeName) {
+        // Always try JAR recipes first
+        Optional<ResourceRepository> jarRepo = repositories.stream()
+                .filter(repo -> repo instanceof ResourceRepository)
+                .map(repo -> (ResourceRepository) repo)
+                .findFirst();
+
+        if (jarRepo.isPresent()) {
+            Optional<Recipe> recipe = jarRepo.get().resolveRecipe(recipeName);
+            if (recipe.isPresent()) {
+                logger.debug("Resolved recipe '{}' from JAR (ResourceRepository)", recipeName);
+                return recipe;
+            }
+        }
+
+        // If not in JAR, search other repositories
         for (Repository repository : repositories) {
+            // Skip ResourceRepository as we already checked it
+            if (repository instanceof ResourceRepository) {
+                continue;
+            }
+
             Optional<Recipe> recipe = repository.resolveRecipe(recipeName);
             if (recipe.isPresent()) {
                 logger.debug("Resolved recipe '{}' from {}", recipeName, repository.describe());
                 return recipe;
             }
         }
+
         logger.warn("Recipe '{}' not found in any repository", recipeName);
         return Optional.empty();
     }
 
     /**
      * Find the repository that provides a given recipe.
+     * JAR recipes (ResourceRepository) are always checked first and have priority.
      * 
      * @param recipeName The recipe name
      * @return Optional containing the repository if found
      */
     public Optional<Repository> findRepositoryForRecipe(String recipeName) {
+        // Always try JAR recipes first
+        Optional<ResourceRepository> jarRepo = repositories.stream()
+                .filter(repo -> repo instanceof ResourceRepository)
+                .map(repo -> (ResourceRepository) repo)
+                .findFirst();
+
+        if (jarRepo.isPresent()) {
+            Optional<Recipe> recipe = jarRepo.get().resolveRecipe(recipeName);
+            if (recipe.isPresent()) {
+                return Optional.of(jarRepo.get());
+            }
+        }
+
+        // If not in JAR, search other repositories
         for (Repository repository : repositories) {
+            // Skip ResourceRepository as we already checked it
+            if (repository instanceof ResourceRepository) {
+                continue;
+            }
+
             Optional<Recipe> recipe = repository.resolveRecipe(recipeName);
             if (recipe.isPresent()) {
                 return Optional.of(repository);

@@ -10,12 +10,15 @@ import org.apache.logging.log4j.Logger;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 /**
  * Repository that loads recipes from JAR resources.
@@ -77,7 +80,7 @@ public class ResourceRepository extends AbstractRepository {
      */
     private Map<String, Recipe> loadRecipesFromResources() throws IOException {
         Enumeration<URL> resources = getClass().getClassLoader().getResources("recipes");
-        Map<String, Recipe> loadedRecipes = Collections.emptyMap();
+        Map<String, Recipe> loadedRecipes = new java.util.LinkedHashMap<>();
 
         while (resources.hasMoreElements()) {
             URL resourceURL = resources.nextElement();
@@ -85,11 +88,14 @@ public class ResourceRepository extends AbstractRepository {
 
             try {
                 List<URL> recipeFiles = listRecipeFilesInResource(resourceURL);
-                loadedRecipes = recipeFiles.stream()
-                        .map(this::loadRecipeFromResource)
-                        .filter(Optional::isPresent)
-                        .map(Optional::get)
-                        .collect(Collectors.toMap(Recipe::getName, r -> r));
+                for (URL recipeURL : recipeFiles) {
+                    Optional<Recipe> recipe = loadRecipeFromResource(recipeURL);
+                    if (recipe.isPresent()) {
+                        Recipe r = recipe.get();
+                        // Only add if not already present (avoid duplicates from multiple sources)
+                        loadedRecipes.putIfAbsent(r.getName(), r);
+                    }
+                }
             } catch (Exception e) {
                 logger.warn("Error loading recipes from resource {}: {}", resourceURL, e.getMessage());
             }
@@ -102,19 +108,74 @@ public class ResourceRepository extends AbstractRepository {
      * List recipe files in the resources directory.
      */
     private List<URL> listRecipeFilesInResource(URL resourceURL) {
-        // For JAR resources, we need to handle this carefully
-        // This is a simplified approach that works with standard JAR layouts
         ClassLoader classLoader = getClass().getClassLoader();
-        List<URL> recipeFiles = Collections.emptyList();
+        List<URL> recipeFiles = new ArrayList<>();
 
         try {
-            Enumeration<URL> allResources = classLoader.getResources("recipes");
-            recipeFiles = Collections.list(allResources);
+            // Get all URLs in the recipes package
+            Enumeration<URL> resources = classLoader.getResources("recipes");
+            while (resources.hasMoreElements()) {
+                URL url = resources.nextElement();
+                // Try to list recipe files from this URL
+                if ("jar".equals(url.getProtocol())) {
+                    recipeFiles.addAll(listRecipesFromJar(url));
+                } else if ("file".equals(url.getProtocol())) {
+                    recipeFiles.addAll(listRecipesFromDirectory(url));
+                }
+            }
         } catch (IOException e) {
             logger.warn("Failed to list recipe files in resources: {}", e.getMessage());
         }
 
         return recipeFiles;
+    }
+
+    /**
+     * List recipes from a file-based resource directory.
+     */
+    private List<URL> listRecipesFromDirectory(URL url) {
+        List<URL> recipes = new ArrayList<>();
+        try {
+            java.io.File dir = new java.io.File(url.toURI());
+            java.io.File[] files = dir.listFiles((d, name) -> isRecipeFile(name));
+            if (files != null) {
+                for (java.io.File file : files) {
+                    recipes.add(file.toURI().toURL());
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("Failed to list recipes from directory {}: {}", url, e.getMessage());
+        }
+        return recipes;
+    }
+
+    /**
+     * List recipes from a JAR file.
+     */
+    private List<URL> listRecipesFromJar(URL jarUrl) {
+        List<URL> recipes = new ArrayList<>();
+        try {
+            String jarPath = jarUrl.getPath();
+            if (jarPath.contains("!")) {
+                jarPath = jarPath.substring(0, jarPath.indexOf("!"));
+            }
+            java.util.jar.JarFile jarFile = new java.util.jar.JarFile(new java.io.File(new java.net.URI(jarPath)));
+            Enumeration<java.util.jar.JarEntry> entries = jarFile.entries();
+            while (entries.hasMoreElements()) {
+                java.util.jar.JarEntry entry = entries.nextElement();
+                if (entry.getName().startsWith("recipes/") && !entry.isDirectory() && isRecipeFile(entry.getName())) {
+                    try {
+                        recipes.add(new URL("jar:" + jarPath + "!/" + entry.getName()));
+                    } catch (java.net.MalformedURLException e) {
+                        logger.debug("Failed to create URL for jar entry {}: {}", entry.getName(), e.getMessage());
+                    }
+                }
+            }
+            jarFile.close();
+        } catch (Exception e) {
+            logger.debug("Failed to list recipes from JAR {}: {}", jarUrl, e.getMessage());
+        }
+        return recipes;
     }
 
     /**
