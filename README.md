@@ -107,6 +107,17 @@ mvn test -Dtest=RunCucumberTest
 mvn test jacoco:report
 ```
 
+## Documentation
+
+Additional documentation is available in the [docs](docs/) directory:
+
+- **[Installation](docs/installation/)** - How to install and set up Levain 2
+- **[Build & Releases](docs/build/)** - Building and releasing the application
+- **[Configuration](docs/configuration/)** - Configuration implementation details
+- **[Registry](docs/registry/)** - Package registry implementation
+- **[Setup & Integration](docs/setup/)** - Nexus repository setup and integration
+- **[Implementation](docs/implementation/)** - Implementation details and analysis
+
 ## Usage
 
 ### Available Commands
