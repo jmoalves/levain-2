@@ -189,6 +189,19 @@ public class RecipeLoader {
             recipesDir = System.getenv("LEVAIN_RECIPES_DIR");
         }
 
+        // Convert to absolute path if set
+        if (recipesDir != null) {
+            File dir = new File(recipesDir);
+            if (!dir.isAbsolute()) {
+                dir = dir.getAbsoluteFile();
+            }
+            if (dir.exists() && dir.isDirectory()) {
+                recipesDir = dir.getAbsolutePath();
+            } else {
+                recipesDir = null;
+            }
+        }
+
         // Check standard locations
         if (recipesDir == null) {
             String userHome = System.getProperty("user.home");
