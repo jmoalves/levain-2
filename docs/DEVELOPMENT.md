@@ -266,37 +266,7 @@ Installation order: `levain` → `jdk-21` → `maven` → `springboot`
 
 ## Building from Source
 
-### Prerequisites
-
-- JDK 25 (Java 25)
-- Maven 3.9 or later
-- (Optional) GraalVM for native executable builds
-
-### Build Commands
-
-**Clean build and run all tests:**
-```bash
-mvn clean test
-```
-
-**Build with code coverage analysis:**
-```bash
-mvn clean verify
-```
-
-The coverage report will be generated at `target/site/jacoco/index.html`.
-
-**Package the application (JAR file):**
-```bash
-mvn clean package
-```
-
-**Build native executable (requires GraalVM):**
-```bash
-mvn clean package -Pnative
-```
-
-See [Build & Releases](build/BUILD_RELEASES.md) for more details.
+Build instructions and release packaging are maintained in [Build & Releases](build/BUILD_RELEASES.md).
 
 ## Testing
 

@@ -57,7 +57,7 @@ Start here based on your role:
 
 ### For Developers
 
-👉 **[Developer Guide](docs/DEVELOPMENT.md)** - Building from source, architecture, implementation details, testing, and debugging
+👉 **[Developer Guide](docs/DEVELOPMENT.md)** - Architecture, implementation details, testing, and debugging
 
 ### Additional Resources
 
@@ -68,65 +68,9 @@ Start here based on your role:
 - **[Setup & Integration](docs/setup/)** - Nexus repository setup and integration
 - **[Implementation](docs/implementation/)** - Implementation details and analysis
 
-## Building from Source
+## Build & Releases
 
-### Prerequisites
-
-- JDK 25 (Java 25)
-- Maven 3.9 or later
-- (Optional) GraalVM for native executable builds
-
-### Build Commands
-
-**Clean build and run all tests:**
-```bash
-mvn clean test
-```
-
-**Build with code coverage analysis:**
-```bash
-mvn clean verify
-```
-
-The coverage report will be generated at `target/site/jacoco/index.html`.
-
-**Package the application (JAR file):**
-```bash
-mvn clean package
-```
-
-This creates:
-- `target/levain-2.0.0-SNAPSHOT.jar` - Regular JAR with dependencies
-- `target/levain.jar` - Standalone executable JAR
-
-**Build native executable (requires GraalVM):**
-```bash
-mvn clean package -Pnative
-```
-
-This creates platform-specific native executables in the `target/` directory.
-
-### Run Tests
-
-**All tests (unit + integration + Cucumber):**
-```bash
-mvn test
-```
-
-**Only unit tests:**
-```bash
-mvn test -Dtest=*Test
-```
-
-**Only Cucumber acceptance tests:**
-```bash
-mvn test -Dtest=RunCucumberTest
-```
-
-**With coverage report:**
-```bash
-mvn test jacoco:report
-```
+See [Build & Releases](docs/build/BUILD_RELEASES.md) for build targets, packaging, and release workflows.
 
 ## Usage
 
