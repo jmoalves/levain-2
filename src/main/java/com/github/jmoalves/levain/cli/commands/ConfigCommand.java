@@ -46,7 +46,7 @@ public class ConfigCommand implements Callable<Integer> {
         /**
          * Subcommand to add a repository to the configuration.
          */
-        @Command(name = "add", description = "Add a repository to the configuration")
+        @Command(name = "add", description = "Add a repository to the configuration", mixinStandardHelpOptions = true)
         public static class AddCommand implements Callable<Integer> {
             private static final Logger logger = LoggerFactory.getLogger(AddCommand.class);
             private static final Logger console = LoggerFactory.getLogger("CONSOLE");
@@ -85,7 +85,7 @@ public class ConfigCommand implements Callable<Integer> {
         /**
          * Subcommand to list configured repositories.
          */
-        @Command(name = "list", description = "List configured repositories")
+        @Command(name = "list", description = "List configured repositories", mixinStandardHelpOptions = true)
         public static class ListCommand implements Callable<Integer> {
             private static final Logger logger = LoggerFactory.getLogger(ListCommand.class);
             private static final Logger console = LoggerFactory.getLogger("CONSOLE");
@@ -122,7 +122,7 @@ public class ConfigCommand implements Callable<Integer> {
         /**
          * Subcommand to remove a repository from the configuration.
          */
-        @Command(name = "remove", description = "Remove a repository from the configuration")
+        @Command(name = "remove", description = "Remove a repository from the configuration", mixinStandardHelpOptions = true)
         public static class RemoveCommand implements Callable<Integer> {
             private static final Logger logger = LoggerFactory.getLogger(RemoveCommand.class);
             private static final Logger console = LoggerFactory.getLogger("CONSOLE");
