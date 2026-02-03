@@ -411,14 +411,26 @@ Multiple repository types support different sources:
 
 See [Additional Repositories Analysis](../implementation/ADDITIONAL_REPOSITORIES_ANALYSIS.md) for technical details.
 
+## Roadmap
+
+For a complete list of planned features, missing functionality from the original levain, and development priorities, see [ROADMAP.md](../ROADMAP.md).
+
+**Key Focus Areas:**
+- Recipe action system (addPath, setEnv, levainShell, etc.)
+- Additional CLI commands (clean, info, explain, update)
+- Windows integration features
+- GitHub Actions improvements
+- Package update management
+
 ## Contributing
 
 Before submitting changes:
 
-1. Ensure all tests pass: `mvn clean verify`
-2. Follow the project's code style (see above)
-3. Add tests for new functionality
-4. Update documentation as needed
+1. Check the [ROADMAP.md](../ROADMAP.md) for planned features
+2. Ensure all tests pass: `mvn clean verify`
+3. Follow the project's code style (see above)
+4. Add tests for new functionality
+5. Update documentation as needed
 
 ### Development Workflow
 

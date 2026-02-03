@@ -169,6 +169,10 @@ For full command reference, see [User Guide](docs/USER_GUIDE.md).
 
 See [LICENSE](LICENSE) file for details.
 
+## Roadmap
+
+For planned features and development priorities, see [ROADMAP.md](ROADMAP.md).
+
 ## Contributing
 
 For contributing guidelines and developer setup, see [Developer Guide](docs/DEVELOPMENT.md#contributing).
