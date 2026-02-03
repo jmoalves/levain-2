@@ -25,7 +25,7 @@ public class RepositoryFactory {
      */
     public Repository createRepository(String uri) {
         if (uri == null || uri.isEmpty()) {
-            logger.warn("Repository URI is null or empty");
+            logger.debug("Repository URI is null or empty");
             return null;
         }
 
