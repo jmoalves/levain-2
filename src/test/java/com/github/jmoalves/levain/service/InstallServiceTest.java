@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.isNull;
 
 import java.lang.reflect.Field;
 import java.util.Optional;
@@ -94,10 +95,13 @@ class InstallServiceTest {
         when(recipeService.loadRecipe("test-package")).thenReturn(mockRecipe);
         when(recipeService.getRecipeYamlContent("test-package"))
                 .thenReturn(Optional.of("name: test-package\nversion: 1.0.0\n"));
+        when(recipeService.findSourceRepository("test-package")).thenReturn(Optional.empty());
 
         installService.install("test-package", true);
 
-        verify(registry).store(mockRecipe, "name: test-package\nversion: 1.0.0\n");
+        verify(registry).store(org.mockito.Mockito.eq(mockRecipe),
+                org.mockito.Mockito.eq("name: test-package\nversion: 1.0.0\n"),
+                isNull(), isNull());
     }
 
     @Test
@@ -108,11 +112,12 @@ class InstallServiceTest {
 
         when(recipeService.loadRecipe("test-package")).thenReturn(mockRecipe);
         when(recipeService.getRecipeYamlContent("test-package")).thenReturn(Optional.empty());
+        when(recipeService.findSourceRepository("test-package")).thenReturn(Optional.empty());
 
         installService.install("test-package", false);
 
         ArgumentCaptor<String> yamlCaptor = ArgumentCaptor.forClass(String.class);
-        verify(registry).store(org.mockito.Mockito.eq(mockRecipe), yamlCaptor.capture());
+        verify(registry).store(org.mockito.Mockito.eq(mockRecipe), yamlCaptor.capture(), isNull(), isNull());
         assertTrue(yamlCaptor.getValue().contains("test-package"));
     }
 
@@ -130,7 +135,9 @@ class InstallServiceTest {
         installService.install("test-package", "dir:/tmp");
 
         verify(repository).init();
-        verify(registry).store(mockRecipe, "name: test-package\nversion: 1.0.0\n");
+        verify(registry).store(org.mockito.Mockito.eq(mockRecipe),
+                org.mockito.Mockito.eq("name: test-package\nversion: 1.0.0\n"),
+                isNull(), isNull());
     }
 
     @Test

@@ -87,9 +87,10 @@ class RegistryTest {
     @Test
     @DisplayName("Migration: legacy install without metadata should still work")
     void migrationLegacyInstallWithoutMetadataShouldWork() throws Exception {
-        String yamlContent = "name: legacy
-version: 1.0.0
-";
+        String yamlContent = """
+                name: legacy
+                version: 1.0.0
+                """;
         Files.writeString(tempDir.resolve("legacy.levain.yaml"), yamlContent);
 
         assertTrue(registry.isInstalled("legacy"));
@@ -100,9 +101,10 @@ version: 1.0.0
     @Test
     @DisplayName("Migration: should read metadata when present")
     void migrationShouldReadMetadataWhenPresent() throws Exception {
-        String yamlContent = "name: git
-version: 2.45.0
-";
+        String yamlContent = """
+                name: git
+                version: 2.45.0
+                """;
         Files.writeString(tempDir.resolve("git.levain.yaml"), yamlContent);
 
         String metadataJson = """
