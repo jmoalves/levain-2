@@ -31,6 +31,7 @@ class InstallServiceTest {
     @BeforeEach
     void setUp() {
         mockRecipe = new Recipe();
+        mockRecipe.setName("test-package");
         mockRecipe.setVersion("1.0.0");
         mockRecipe.setDescription("Test recipe");
     }

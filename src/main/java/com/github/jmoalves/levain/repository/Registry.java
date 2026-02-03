@@ -126,15 +126,12 @@ public class Registry implements Repository {
         ensureInitialized();
 
         try {
-            // Try both .yml and .yaml extensions
-            for (String extension : new String[] { ".yml", ".yaml" }) {
-                Path recipePath = registryPath.resolve(recipeName + extension);
-                if (Files.exists(recipePath)) {
-                    String yamlContent = Files.readString(recipePath);
-                    Recipe recipe = RecipeLoader.parseRecipeYaml(yamlContent, recipeName);
-                    logger.debug("Resolved recipe '{}' from registry", recipeName);
-                    return Optional.of(recipe);
-                }
+            Path recipePath = registryPath.resolve(recipeName + ".levain.yaml");
+            if (Files.exists(recipePath)) {
+                String yamlContent = Files.readString(recipePath);
+                Recipe recipe = RecipeLoader.parseRecipeYaml(yamlContent, recipeName);
+                logger.debug("Resolved recipe '{}' from registry", recipeName);
+                return Optional.of(recipe);
             }
             logger.debug("Recipe '{}' not found in registry", recipeName);
         } catch (Exception e) {
@@ -257,11 +254,9 @@ public class Registry implements Repository {
     public Optional<Path> getRecipePath(String recipeName) {
         ensureInitialized();
 
-        for (String extension : new String[] { ".yml", ".yaml" }) {
-            Path recipePath = registryPath.resolve(recipeName + extension);
-            if (Files.exists(recipePath)) {
-                return Optional.of(recipePath);
-            }
+        Path recipePath = registryPath.resolve(recipeName + ".levain.yaml");
+        if (Files.exists(recipePath)) {
+            return Optional.of(recipePath);
         }
         return Optional.empty();
     }
@@ -275,17 +270,15 @@ public class Registry implements Repository {
     public boolean remove(String recipeName) {
         ensureInitialized();
 
-        for (String extension : new String[] { ".yml", ".yaml" }) {
-            Path recipePath = registryPath.resolve(recipeName + extension);
-            try {
-                if (Files.exists(recipePath)) {
-                    Files.delete(recipePath);
-                    logger.info("Removed recipe '{}' from registry", recipeName);
-                    return true;
-                }
-            } catch (IOException e) {
-                logger.error("Failed to remove recipe '{}' from registry: {}", recipeName, e.getMessage());
+        Path recipePath = registryPath.resolve(recipeName + ".levain.yaml");
+        try {
+            if (Files.exists(recipePath)) {
+                Files.delete(recipePath);
+                logger.info("Removed recipe '{}' from registry", recipeName);
+                return true;
             }
+        } catch (IOException e) {
+            logger.error("Failed to remove recipe '{}' from registry: {}", recipeName, e.getMessage());
         }
         return false;
     }
@@ -301,7 +294,7 @@ public class Registry implements Repository {
             File[] files = registryPath.toFile().listFiles();
             if (files != null) {
                 for (File file : files) {
-                    if (file.getName().endsWith(".yml") || file.getName().endsWith(".yaml")) {
+                    if (file.getName().endsWith(".levain.yaml")) {
                         Files.delete(file.toPath());
                     }
                 }
@@ -338,6 +331,6 @@ public class Registry implements Repository {
     }
 
     private String extractRecipeName(String fileName) {
-        return fileName.replaceAll("\\.(yml|yaml)$", "");
+        return fileName.replaceAll("\\.levain\\.yaml$", "");
     }
 }

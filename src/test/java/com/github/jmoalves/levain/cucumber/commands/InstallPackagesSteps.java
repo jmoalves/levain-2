@@ -3,6 +3,7 @@ package com.github.jmoalves.levain.cucumber.commands;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.jmoalves.levain.service.InstallService;
+import com.github.jmoalves.levain.repository.Registry;
 
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
@@ -28,6 +29,11 @@ public class InstallPackagesSteps {
 
     @Given("the install service is available")
     public void theInstallServiceIsAvailable() {
+        // Clean registry before each test
+        Registry registry = new Registry();
+        registry.init();
+        registry.clear();
+
         installSuccessful = false;
         installException = null;
     }

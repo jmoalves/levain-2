@@ -80,7 +80,7 @@ class RegistryTest {
         registry.store(recipe, yamlContent);
 
         assertTrue(registry.isInstalled("jdk-21"), "Recipe should be installed");
-        assertTrue(Files.exists(tempDir.resolve("jdk-21.yml")), "Recipe file should exist");
+        assertTrue(Files.exists(tempDir.resolve("jdk-21.levain.yaml")), "Recipe file should exist");
     }
 
     @Test
@@ -182,14 +182,14 @@ class RegistryTest {
     }
 
     @Test
-    @DisplayName("Should support .yaml extension")
+    @DisplayName("Should support .levain.yaml extension")
     void shouldSupportYamlExtension() {
         Recipe recipe = createRecipe("maven", "3.9.0");
         String yamlContent = "name: maven\nversion: 3.9.0\n";
 
-        // Manually create .yaml file
+        // Manually create .levain.yaml file
         try {
-            Files.writeString(tempDir.resolve("maven.yaml"), yamlContent);
+            Files.writeString(tempDir.resolve("maven.levain.yaml"), yamlContent);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
