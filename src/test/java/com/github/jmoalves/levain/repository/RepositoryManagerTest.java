@@ -103,4 +103,42 @@ class RepositoryManagerTest {
         assertTrue(description.contains("ResourceRepository"));
         assertTrue(description.contains("DirRepo"));
     }
+
+    @Test
+    void shouldGetRecipeYamlContent() {
+        DirectoryRepository dirRepo = new DirectoryRepository("DirRepo", "src/test/resources/recipes");
+        manager.addRepository(dirRepo);
+
+        Optional<String> yamlContent = manager.getRecipeYamlContent("jdk-21");
+        assertTrue(yamlContent.isPresent());
+    }
+
+    @Test
+    void shouldReturnEmptyYamlForNonExistent() {
+        DirectoryRepository dirRepo = new DirectoryRepository("DirRepo", "src/test/resources/recipes");
+        manager.addRepository(dirRepo);
+
+        Optional<String> yamlContent = manager.getRecipeYamlContent("nonexistent-recipe");
+        assertTrue(yamlContent.isEmpty());
+    }
+
+    @Test
+    void shouldHandleEmptyRepositoryList() {
+        List<Recipe> recipes = manager.listRecipes();
+        assertNotNull(recipes);
+        assertTrue(recipes.isEmpty());
+    }
+
+    @Test
+    void shouldResolveFromFirstMatchingRepository() {
+        // Add multiple repositories - first match wins
+        ResourceRepository resourceRepo = new ResourceRepository();
+        DirectoryRepository dirRepo = new DirectoryRepository("DirRepo", "src/test/resources/recipes");
+
+        manager.addRepository(resourceRepo);
+        manager.addRepository(dirRepo);
+
+        Optional<Recipe> recipe = manager.resolveRecipe("jdk-21");
+        assertTrue(recipe.isPresent());
+    }
 }

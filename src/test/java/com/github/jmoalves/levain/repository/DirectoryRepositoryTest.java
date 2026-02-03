@@ -59,4 +59,56 @@ class DirectoryRepositoryTest {
         assertTrue(description.contains("TestDirRepo"));
         assertTrue(description.contains("src/test/resources/recipes"));
     }
+
+    @Test
+    void shouldGetRecipeYamlContent() {
+        repository.init();
+        Optional<String> yamlContent = repository.getRecipeYamlContent("jdk-21");
+
+        assertTrue(yamlContent.isPresent());
+        assertTrue(yamlContent.get().contains("name:") || yamlContent.get().contains("version:"));
+    }
+
+    @Test
+    void shouldReturnEmptyForNonExistentYaml() {
+        repository.init();
+        Optional<String> yamlContent = repository.getRecipeYamlContent("nonexistent-recipe");
+
+        assertTrue(yamlContent.isEmpty());
+    }
+
+    @Test
+    void shouldGetRecipeFileName() {
+        repository.init();
+        Optional<String> fileName = repository.getRecipeFileName("jdk-21");
+
+        assertTrue(fileName.isPresent());
+        assertEquals("jdk-21.levain.yaml", fileName.get());
+    }
+
+    @Test
+    void shouldRejectInvalidRecipeName() {
+        repository.init();
+        Optional<String> fileName = repository.getRecipeFileName("test.levain.yaml");
+
+        assertTrue(fileName.isEmpty());
+    }
+
+    @Test
+    void shouldHandleInvalidDirectory() {
+        DirectoryRepository invalidRepo = new DirectoryRepository("InvalidRepo", "nonexistent-dir-12345");
+        invalidRepo.init();
+
+        assertTrue(invalidRepo.isInitialized());
+        List<Recipe> recipes = invalidRepo.listRecipes();
+        assertTrue(recipes.isEmpty());
+    }
+
+    @Test
+    void shouldReturnCorrectSize() {
+        repository.init();
+        int size = repository.size();
+        assertTrue(size > 0);
+        assertEquals(repository.listRecipes().size(), size);
+    }
 }

@@ -208,4 +208,44 @@ class ConfigTest {
         config.setVariable("key", "value2");
         assertEquals("value2", config.getVariable("key"));
     }
+
+    @Test
+    @DisplayName("Should save and reload configuration")
+    void shouldSaveAndReloadConfiguration() throws Exception {
+        String originalHome = System.getProperty("user.home");
+        System.setProperty("user.home", tempDir.toString());
+        try {
+            Config localConfig = new Config();
+            localConfig.setLevainHome(tempDir.resolve("levain-home").toString());
+            localConfig.setRegistryDir(tempDir.resolve("registry").toString());
+            localConfig.setCacheDir(tempDir.resolve("cache").toString());
+            localConfig.setShellPath("/bin/zsh");
+            localConfig.setDefaultPackage("jdk-21");
+            localConfig.setVariable("FOO", "BAR");
+            localConfig.save();
+
+            assertTrue(Files.exists(localConfig.getConfigPath()));
+
+            Config reloaded = new Config();
+            assertEquals(localConfig.getLevainHome(), reloaded.getLevainHome());
+            assertEquals(localConfig.getRegistryDir(), reloaded.getRegistryDir());
+            assertEquals(localConfig.getCacheDir(), reloaded.getCacheDir());
+            assertEquals("/bin/zsh", reloaded.getShellPath());
+            assertEquals("jdk-21", reloaded.getDefaultPackage());
+            assertEquals("BAR", reloaded.getVariable("FOO"));
+        } finally {
+            if (originalHome != null) {
+                System.setProperty("user.home", originalHome);
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("Should expose repository config string")
+    void shouldExposeRepositoryConfigString() {
+        Config.RepositoryConfig repo = new Config.RepositoryConfig("local", "dir:/tmp");
+        String repoString = repo.toString();
+        assertTrue(repoString.contains("local"));
+        assertTrue(repoString.contains("dir:/tmp"));
+    }
 }

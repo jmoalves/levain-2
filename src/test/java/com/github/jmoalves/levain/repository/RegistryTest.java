@@ -3,6 +3,7 @@ package com.github.jmoalves.levain.repository;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.jmoalves.levain.model.Recipe;
@@ -197,6 +198,84 @@ class RegistryTest {
         assertTrue(registry.isInstalled("maven"));
         var result = registry.resolveRecipe("maven");
         assertTrue(result.isPresent());
+    }
+
+    @Test
+    @DisplayName("Should return YAML content for stored recipe")
+    void shouldReturnYamlContentForStoredRecipe() {
+        Recipe recipe = createRecipe("gradle", "8.5");
+        String yamlContent = "name: gradle\nversion: 8.5\n";
+
+        registry.store(recipe, yamlContent);
+
+        var content = registry.getRecipeYamlContent("gradle");
+        assertTrue(content.isPresent());
+        assertTrue(content.get().contains("name: gradle"));
+    }
+
+    @Test
+    @DisplayName("Should return empty YAML content for missing recipe")
+    void shouldReturnEmptyYamlContentForMissingRecipe() {
+        var content = registry.getRecipeYamlContent("missing-recipe");
+        assertTrue(content.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should return empty filename when recipe name includes extension")
+    void shouldReturnEmptyFileNameWhenNameIncludesExtension() {
+        var fileName = registry.getRecipeFileName("bad.levain.yaml");
+        assertTrue(fileName.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should store with standardized extension even when filename provided")
+    void shouldStoreWithStandardExtensionWhenFilenameProvided() {
+        Recipe recipe = createRecipe("node", "20.11.0");
+        String yamlContent = "name: node\nversion: 20.11.0\n";
+
+        registry.store(recipe, yamlContent, "node.yaml");
+
+        assertTrue(Files.exists(tempDir.resolve("node.levain.yaml")));
+    }
+
+    @Test
+    @DisplayName("Should reject recipe name containing .levain.yaml")
+    void shouldRejectRecipeNameWithExtension() {
+        Recipe recipe = createRecipe("bad.levain.yaml", "1.0.0");
+        String yamlContent = "name: bad\nversion: 1.0.0\n";
+
+        assertThrows(IllegalArgumentException.class, () -> registry.store(recipe, yamlContent));
+    }
+
+    @Test
+    @DisplayName("Should skip invalid YAML when listing recipes")
+    void shouldSkipInvalidYamlWhenListingRecipes() throws Exception {
+        Recipe recipe = createRecipe("jdk-21", "21.0.0");
+        registry.store(recipe, "name: jdk-21\nversion: 21.0.0\n");
+
+        Files.writeString(tempDir.resolve("broken.levain.yaml"), "invalid: [");
+
+        var recipes = registry.listRecipes();
+        assertEquals(1, recipes.size());
+        assertTrue(recipes.stream().anyMatch(r -> r.getName().equals("jdk-21")));
+    }
+
+    @Test
+    @DisplayName("Should return zero size when registry path is a file")
+    void shouldReturnZeroSizeWhenRegistryPathIsFile() throws Exception {
+        Path filePath = tempDir.resolve("not-a-dir");
+        Files.writeString(filePath, "content");
+
+        Registry fileRegistry = new Registry(filePath.toString());
+        assertEquals(0, fileRegistry.size());
+    }
+
+    @Test
+    @DisplayName("Should expose default registry path")
+    void shouldExposeDefaultRegistryPath() {
+        String defaultPath = Registry.getDefaultRegistryPath();
+        assertNotNull(defaultPath);
+        assertTrue(defaultPath.endsWith("/.levain/registry"));
     }
 
     @Test

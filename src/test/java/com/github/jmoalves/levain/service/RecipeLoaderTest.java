@@ -1,6 +1,7 @@
 package com.github.jmoalves.levain.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -72,5 +73,50 @@ class RecipeLoaderTest {
 
         assertNotNull(recipes);
         assertTrue(recipes.isEmpty(), "Should return empty map for non-existent directory");
+    }
+
+    @Test
+    void shouldRejectWrongExtensions() throws IOException {
+        // Test that files with wrong extensions are properly rejected
+        File tempDir = new File("target/test-recipes-rejection");
+        tempDir.mkdirs();
+
+        // These should be rejected
+        new File(tempDir, "test.levain.yml").createNewFile();
+        new File(tempDir, "test.yml").createNewFile();
+        new File(tempDir, "test.yaml").createNewFile();
+        new File(tempDir, "test.levain").createNewFile();
+
+        Map<String, Recipe> recipes = recipeLoader.loadRecipesFromDirectory(tempDir.getAbsolutePath());
+
+        assertEquals(0, recipes.size(), "Should not load recipes with wrong extensions");
+    }
+
+    @Test
+    void shouldLoadRecipeWithNullDependencies() throws IOException {
+        File recipeFile = new File("src/test/resources/recipes/nodejs.levain.yaml");
+        if (recipeFile.exists()) {
+            Recipe recipe = recipeLoader.loadRecipe(recipeFile);
+
+            assertNotNull(recipe);
+            assertNotNull(recipe.getDependencies(), "Dependencies should be initialized even if null in file");
+        }
+    }
+
+    @Test
+    void shouldExtractRecipeNameCorrectly() throws IOException {
+        File recipeFile = new File("src/test/resources/recipes/gradle.levain.yaml");
+        Recipe recipe = recipeLoader.loadRecipe(recipeFile);
+
+        assertEquals("gradle", recipe.getName());
+        assertTrue(recipe.getName().length() > 0);
+        assertFalse(recipe.getName().contains(".levain.yaml"), "Recipe name should not contain extension");
+    }
+
+    @Test
+    void shouldGetDefaultRecipesDirectory() {
+        String defaultDir = RecipeLoader.getDefaultRecipesDirectory();
+        // Should return null or a valid directory path
+        assertTrue(defaultDir == null || new File(defaultDir).isAbsolute());
     }
 }
