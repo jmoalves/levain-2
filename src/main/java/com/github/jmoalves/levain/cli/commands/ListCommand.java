@@ -84,6 +84,11 @@ public class ListCommand implements Callable<Integer> {
                     .toList();
         }
 
+        // Sort by recipe name
+        filteredRecipes = filteredRecipes.stream()
+                .sorted((r1, r2) -> r1.name().compareTo(r2.name()))
+                .toList();
+
         // Display results
         if (filteredRecipes.isEmpty()) {
             if (installedOnly) {
