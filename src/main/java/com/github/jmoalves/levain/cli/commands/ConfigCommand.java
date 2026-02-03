@@ -101,13 +101,19 @@ public class ConfigCommand implements Callable<Integer> {
             public Integer call() {
                 try {
                     var repos = configService.getRepositories();
+
+                    // Show repository search order
+                    console.info("Repository search order (by priority):");
+                    console.info("  1. Built-in recipes (levain.jar) - cannot be overridden");
+
                     if (repos.isEmpty()) {
-                        console.info("No repositories configured.");
+                        console.info("  2. No additional repositories configured.");
+                        console.info("");
                         console.info("Use 'levain config repo add <uri>' to add a repository.");
                     } else {
-                        console.info("Configured repositories:");
-                        for (var repo : repos) {
-                            console.info("  • {} ({})", repo.getName(), repo.getUri());
+                        for (int i = 0; i < repos.size(); i++) {
+                            var repo = repos.get(i);
+                            console.info("  {}. {} ({})", i + 2, repo.getName(), repo.getUri());
                         }
                     }
                     return 0;
