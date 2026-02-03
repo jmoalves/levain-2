@@ -151,8 +151,8 @@ levain shell
 
 **Manage repositories:**
 ```bash
-levain config add-repo local dir:/path/to/recipes
-levain config list-repo
+levain config repo add dir:/path/to/recipes local
+levain config repo list
 ```
 
 ### Global Options

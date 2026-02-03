@@ -76,7 +76,7 @@ public class RecipeService {
         } else {
             logger.debug("No external recipes directory configured.");
             logger.debug("To add external recipes, set LEVAIN_RECIPES_DIR or levain.recipes.dir");
-            logger.debug("Or use 'levain config add-repo <uri>' to add a repository");
+            logger.debug("Or use 'levain config repo add <uri>' to add a repository");
         }
 
         // Add Registry (installed recipes) - searched last

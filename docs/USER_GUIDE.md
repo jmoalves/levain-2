@@ -48,13 +48,13 @@ Manage your repositories and settings:
 
 ```bash
 # Add a custom recipe repository
-levain config add-repo my-recipes https://github.com/user/my-recipes
+levain config repo add https://github.com/user/my-recipes my-recipes
 
 # List all configured repositories
-levain config list-repo
+levain config repo list
 
 # Remove a repository
-levain config remove-repo my-recipes
+levain config repo remove my-recipes
 ```
 
 See [Configuration](configuration/CONFIG_IMPLEMENTATION.md) for more details.
@@ -74,7 +74,7 @@ If you encounter issues:
 
 1. Check that your system meets the [installation prerequisites](installation/INSTALLATION.md)
 2. Verify you have the correct Java version installed
-3. Check your repository configuration with `levain config list-repo`
+3. Check your repository configuration with `levain config repo list`
 
 ## Support
 
