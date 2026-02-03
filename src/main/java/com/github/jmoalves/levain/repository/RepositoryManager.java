@@ -78,6 +78,22 @@ public class RepositoryManager {
     }
 
     /**
+     * Find the repository that provides a given recipe.
+     * 
+     * @param recipeName The recipe name
+     * @return Optional containing the repository if found
+     */
+    public Optional<Repository> findRepositoryForRecipe(String recipeName) {
+        for (Repository repository : repositories) {
+            Optional<Recipe> recipe = repository.resolveRecipe(recipeName);
+            if (recipe.isPresent()) {
+                return Optional.of(repository);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
      * Get the original YAML content for a recipe by searching all repositories.
      */
     public Optional<String> getRecipeYamlContent(String recipeName) {

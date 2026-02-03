@@ -40,6 +40,15 @@ levain list --available      # Show recipes that are not yet installed
 levain list jdk --available  # Show uninstalled JDK recipes
 ```
 
+**Show repository source for each recipe:**
+```bash
+levain list --source         # Show source repository for each recipe
+levain list jdk --source     # Show source repositories for JDK recipes
+```
+
+Note: source information is tracked for new installations. Existing installs
+from older versions will show `unknown` until reinstalled.
+
 #### Install Packages
 
 ```bash

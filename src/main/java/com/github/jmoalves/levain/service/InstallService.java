@@ -77,12 +77,18 @@ public class InstallService {
         if (yamlContent.isEmpty()) {
             logger.warn("Could not get YAML content for {}, using serialized version", packageName);
             try {
-                installRecipe(recipe, serializeRecipeToYaml(recipe));
+                var sourceRepo = recipeService.findSourceRepository(packageName).orElse(null);
+                installRecipe(recipe, serializeRecipeToYaml(recipe),
+                        sourceRepo != null ? sourceRepo.getName() : null,
+                        sourceRepo != null ? sourceRepo.getUri() : null);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to serialize recipe: " + e.getMessage(), e);
             }
         } else {
-            installRecipe(recipe, yamlContent.get());
+            var sourceRepo = recipeService.findSourceRepository(packageName).orElse(null);
+            installRecipe(recipe, yamlContent.get(),
+                    sourceRepo != null ? sourceRepo.getName() : null,
+                    sourceRepo != null ? sourceRepo.getUri() : null);
         }
     }
 
@@ -115,7 +121,7 @@ public class InstallService {
         }
 
         // Install with original YAML content (filename is always .levain.yaml)
-        installRecipe(recipe.get(), yamlContent.get());
+        installRecipe(recipe.get(), yamlContent.get(), repository.getName(), repository.getUri());
     }
 
     /**
@@ -126,7 +132,7 @@ public class InstallService {
      * @param recipe       The recipe to install
      * @param originalYaml The original YAML content to preserve
      */
-    private void installRecipe(Recipe recipe, String originalYaml) {
+    private void installRecipe(Recipe recipe, String originalYaml, String sourceRepo, String sourceRepoUri) {
         try {
             logger.info("Processing recipe: {}", recipe.getName());
 
@@ -144,7 +150,7 @@ public class InstallService {
 
             // For now: Store recipe in registry with original YAML content
             // Registry stores all recipes as {name}.levain.yaml
-            registry.store(recipe, originalYaml);
+            registry.store(recipe, originalYaml, sourceRepo, sourceRepoUri);
 
             logger.info("Recipe {} stored in registry", recipe.getName());
         } catch (Exception e) {

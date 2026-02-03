@@ -140,7 +140,11 @@ levain list                  # List all available recipes with installation stat
 levain list jdk              # Filter recipes by pattern
 levain list --installed      # Show only installed recipes
 levain list --available      # Show only recipes that are not installed
+levain list --source         # Show the source repository for each recipe
 ```
+
+Note: source information is tracked for new installations. Existing installs
+from older versions will show `unknown` until reinstalled.
 
 **Install packages:**
 ```bash

@@ -1,5 +1,7 @@
 package com.github.jmoalves.levain.repository;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.github.jmoalves.levain.model.Recipe;
 import com.github.jmoalves.levain.service.RecipeLoader;
 import org.apache.logging.log4j.LogManager;
@@ -194,11 +196,14 @@ public class Registry implements Repository {
      * Store a recipe in the registry.
      * All recipes are stored with the .levain.yaml extension.
      * 
-     * @param recipe      The recipe to store
-     * @param yamlContent The YAML content of the recipe
-     * @param fileName    The original filename (ignored, always uses .levain.yaml)
+     * @param recipe        The recipe to store
+     * @param yamlContent   The YAML content of the recipe
+     * @param fileName      The original filename (ignored, always uses
+     *                      .levain.yaml)
+     * @param sourceRepo    The source repository name (optional)
+     * @param sourceRepoUri The source repository URI (optional)
      */
-    public void store(Recipe recipe, String yamlContent, String fileName) {
+    public void store(Recipe recipe, String yamlContent, String fileName, String sourceRepo, String sourceRepoUri) {
         ensureInitialized();
 
         // Validate recipe name doesn't already contain .levain.yaml
@@ -216,6 +221,10 @@ public class Registry implements Repository {
 
             Files.writeString(recipePath, yamlContent);
             logger.info("Stored recipe '{}' in registry: {}", recipeName, recipePath.toAbsolutePath());
+
+            if (sourceRepo != null || sourceRepoUri != null) {
+                storeMetadata(recipeName, sourceRepo, sourceRepoUri, recipe.getVersion());
+            }
         } catch (IOException e) {
             logger.error("Failed to store recipe '{}' in registry: {}", recipeName, e.getMessage());
             throw new RuntimeException("Cannot store recipe in registry: " + e.getMessage(), e);
@@ -229,7 +238,30 @@ public class Registry implements Repository {
      * @param yamlContent The YAML content of the recipe
      */
     public void store(Recipe recipe, String yamlContent) {
-        store(recipe, yamlContent, null);
+        store(recipe, yamlContent, null, null, null);
+    }
+
+    /**
+     * Store a recipe in the registry with standardized .levain.yaml extension.
+     * 
+     * @param recipe      The recipe to store
+     * @param yamlContent The YAML content of the recipe
+     * @param fileName    The original filename (ignored, always uses .levain.yaml)
+     */
+    public void store(Recipe recipe, String yamlContent, String fileName) {
+        store(recipe, yamlContent, fileName, null, null);
+    }
+
+    /**
+     * Store a recipe in the registry with metadata about its source.
+     * 
+     * @param recipe        The recipe to store
+     * @param yamlContent   The YAML content of the recipe
+     * @param sourceRepo    The source repository name (optional)
+     * @param sourceRepoUri The source repository URI (optional)
+     */
+    public void store(Recipe recipe, String yamlContent, String sourceRepo, String sourceRepoUri) {
+        store(recipe, yamlContent, null, sourceRepo, sourceRepoUri);
     }
 
     /**
@@ -271,9 +303,13 @@ public class Registry implements Repository {
         ensureInitialized();
 
         Path recipePath = registryPath.resolve(recipeName + ".levain.yaml");
+        Path metadataPath = registryPath.resolve(recipeName + ".levain.meta");
         try {
             if (Files.exists(recipePath)) {
                 Files.delete(recipePath);
+                if (Files.exists(metadataPath)) {
+                    Files.delete(metadataPath);
+                }
                 logger.info("Removed recipe '{}' from registry", recipeName);
                 return true;
             }
@@ -291,12 +327,11 @@ public class Registry implements Repository {
         ensureInitialized();
 
         try {
-            File[] files = registryPath.toFile().listFiles();
+            File[] files = registryPath.toFile()
+                    .listFiles((dir, name) -> name.endsWith(".levain.yaml") || name.endsWith(".levain.meta"));
             if (files != null) {
                 for (File file : files) {
-                    if (file.getName().endsWith(".levain.yaml")) {
-                        Files.delete(file.toPath());
-                    }
+                    Files.delete(file.toPath());
                 }
             }
             logger.info("Cleared all recipes from registry");
@@ -332,5 +367,53 @@ public class Registry implements Repository {
 
     private String extractRecipeName(String fileName) {
         return fileName.replaceAll("\\.levain\\.yaml$", "");
+    }
+
+    /**
+     * Store metadata about an installed recipe.
+     * 
+     * @param recipeName    The name of the recipe
+     * @param sourceRepo    The source repository name
+     * @param sourceRepoUri The source repository URI
+     * @param version       The recipe version
+     */
+    private void storeMetadata(String recipeName, String sourceRepo, String sourceRepoUri, String version) {
+        try {
+            RecipeMetadata metadata = new RecipeMetadata(recipeName, sourceRepo, sourceRepoUri);
+            metadata.setInstalledVersion(version);
+
+            Path metadataPath = registryPath.resolve(recipeName + ".levain.meta");
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.writerWithDefaultPrettyPrinter().writeValue(metadataPath.toFile(), metadata);
+
+            logger.debug("Stored metadata for recipe '{}': source={}, uri={}",
+                    recipeName, sourceRepo, sourceRepoUri);
+        } catch (IOException e) {
+            logger.warn("Failed to store metadata for recipe '{}': {}", recipeName, e.getMessage());
+            // Don't fail the installation if metadata storage fails
+        }
+    }
+
+    /**
+     * Load metadata about an installed recipe.
+     * 
+     * @param recipeName The name of the recipe
+     * @return Optional containing the metadata if found
+     */
+    public Optional<RecipeMetadata> getMetadata(String recipeName) {
+        ensureInitialized();
+
+        try {
+            Path metadataPath = registryPath.resolve(recipeName + ".levain.meta");
+            if (Files.exists(metadataPath)) {
+                ObjectMapper mapper = new ObjectMapper();
+                RecipeMetadata metadata = mapper.readValue(metadataPath.toFile(), RecipeMetadata.class);
+                return Optional.of(metadata);
+            }
+        } catch (IOException e) {
+            logger.warn("Failed to load metadata for recipe '{}': {}", recipeName, e.getMessage());
+        }
+
+        return Optional.empty();
     }
 }

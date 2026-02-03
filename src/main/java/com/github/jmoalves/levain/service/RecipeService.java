@@ -16,6 +16,7 @@ import com.github.jmoalves.levain.repository.ResourceRepository;
 import com.github.jmoalves.levain.repository.DirectoryRepository;
 import com.github.jmoalves.levain.repository.Registry;
 import com.github.jmoalves.levain.repository.Repository;
+import com.github.jmoalves.levain.repository.RecipeMetadata;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -187,6 +188,26 @@ public class RecipeService {
     public Optional<String> getRecipeFileName(String recipeName) {
         logger.debug("Getting filename for recipe: {}", recipeName);
         return repositoryManager.getRecipeFileName(recipeName);
+    }
+
+    /**
+     * Find the repository that provides a given recipe.
+     *
+     * @param recipeName Name of the recipe
+     * @return Optional containing the repository if found
+     */
+    public Optional<Repository> findSourceRepository(String recipeName) {
+        return repositoryManager.findRepositoryForRecipe(recipeName);
+    }
+
+    /**
+     * Get installation metadata for a recipe from the registry.
+     *
+     * @param recipeName Name of the recipe
+     * @return Optional containing metadata if available
+     */
+    public Optional<RecipeMetadata> getInstalledMetadata(String recipeName) {
+        return repositoryManager.getRegistry().flatMap(registry -> registry.getMetadata(recipeName));
     }
 
     /**

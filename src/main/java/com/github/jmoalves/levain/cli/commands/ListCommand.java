@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.jmoalves.levain.service.RecipeService;
+import com.github.jmoalves.levain.repository.RecipeMetadata;
 
 import jakarta.inject.Inject;
 import picocli.CommandLine.Command;
@@ -33,6 +34,9 @@ public class ListCommand implements Callable<Integer> {
 
     @Option(names = { "--available" }, description = "Show only recipes that are not installed")
     private boolean availableOnly;
+
+    @Option(names = { "--source" }, description = "Show the source repository for each recipe")
+    private boolean showSource;
 
     private final RecipeService recipeService;
 
@@ -65,7 +69,7 @@ public class ListCommand implements Callable<Integer> {
 
         // Get installation status for each recipe
         List<RecipeStatus> recipeStatuses = recipes.stream()
-                .map(name -> new RecipeStatus(name, recipeService.isInstalled(name)))
+                .map(this::buildRecipeStatus)
                 .toList();
 
         // Apply filters based on options
@@ -83,10 +87,17 @@ public class ListCommand implements Callable<Integer> {
         // Display results
         if (filteredRecipes.isEmpty()) {
             if (installedOnly) {
-                console.info("No installed recipes found" + (filter != null ? " matching '" + filter + "'" : ""));
+                if (filter != null) {
+                    console.info("No installed recipes found matching '{}'", filter);
+                } else {
+                    console.info("No installed recipes found");
+                }
             } else if (availableOnly) {
-                console.info("No available (not installed) recipes found"
-                        + (filter != null ? " matching '" + filter + "'" : ""));
+                if (filter != null) {
+                    console.info("No available (not installed) recipes found matching '{}'", filter);
+                } else {
+                    console.info("No available (not installed) recipes found");
+                }
             }
         } else {
             // Display header
@@ -101,23 +112,71 @@ public class ListCommand implements Callable<Integer> {
 
             // Display recipes
             for (RecipeStatus status : filteredRecipes) {
-                if (installedOnly || availableOnly) {
-                    // No indicator needed when filtering by status
-                    console.info("  - {}", status.name());
-                } else {
-                    // Show indicator when displaying all recipes
-                    String indicator = status.isInstalled() ? "[installed]" : "";
-                    console.info("  - {} {}", status.name(), indicator);
-                }
+                String indicator = (!installedOnly && !availableOnly && status.isInstalled()) ? "[installed]" : "";
+                String sourceInfo = showSource ? formatSource(status) : "";
+                String suffix = buildSuffix(indicator, sourceInfo);
+                console.info("  - {}{}", status.name(), suffix);
             }
         }
 
         return 0;
     }
 
+    private RecipeStatus buildRecipeStatus(String recipeName) {
+        boolean installed = recipeService.isInstalled(recipeName);
+
+        String sourceName = null;
+        String sourceUri = null;
+        if (showSource) {
+            if (installed) {
+                RecipeMetadata metadata = recipeService.getInstalledMetadata(recipeName).orElse(null);
+                if (metadata != null) {
+                    sourceName = metadata.getSourceRepository();
+                    sourceUri = metadata.getSourceRepositoryUri();
+                }
+            } else {
+                var repo = recipeService.findSourceRepository(recipeName).orElse(null);
+                if (repo != null) {
+                    sourceName = repo.getName();
+                    sourceUri = repo.getUri();
+                }
+            }
+
+            if (sourceName == null && sourceUri == null) {
+                sourceName = "unknown";
+            }
+        }
+
+        return new RecipeStatus(recipeName, installed, sourceName, sourceUri);
+    }
+
+    private String formatSource(RecipeStatus status) {
+        if (status.sourceName() == null && status.sourceUri() == null) {
+            return "";
+        }
+
+        if (status.sourceUri() == null || status.sourceUri().isBlank()) {
+            return "(source: " + status.sourceName() + ")";
+        }
+
+        String sourceName = status.sourceName() != null ? status.sourceName() : "unknown";
+        return "(source: " + sourceName + " | " + status.sourceUri() + ")";
+    }
+
+    private String buildSuffix(String indicator, String sourceInfo) {
+        StringBuilder sb = new StringBuilder();
+        if (indicator != null && !indicator.isBlank()) {
+            sb.append(" ").append(indicator);
+        }
+        if (sourceInfo != null && !sourceInfo.isBlank()) {
+            sb.append(" ").append(sourceInfo);
+        }
+        return sb.toString();
+    }
+
     /**
      * Record representing a recipe with its installation status.
      */
-    private record RecipeStatus(String name, boolean isInstalled) {
+    private record RecipeStatus(String name, boolean isInstalled, String sourceName, String sourceUri) {
     }
 }
