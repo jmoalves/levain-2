@@ -47,6 +47,27 @@ levain.exe [command] [options]
 ./levain [command] [options]
 ```
 
+## Documentation
+
+Start here based on your role:
+
+### For Users
+
+👉 **[User Guide](docs/USER_GUIDE.md)** - Getting started, installation, common tasks, configuration, and troubleshooting
+
+### For Developers
+
+👉 **[Developer Guide](docs/DEVELOPMENT.md)** - Building from source, architecture, implementation details, testing, and debugging
+
+### Additional Resources
+
+- **[Installation](docs/installation/)** - Detailed installation procedures
+- **[Build & Releases](docs/build/)** - Building and releasing the application
+- **[Configuration](docs/configuration/)** - Configuration implementation details
+- **[Registry](docs/registry/)** - Package registry implementation
+- **[Setup & Integration](docs/setup/)** - Nexus repository setup and integration
+- **[Implementation](docs/implementation/)** - Implementation details and analysis
+
 ## Building from Source
 
 ### Prerequisites
@@ -76,7 +97,7 @@ mvn clean package
 
 This creates:
 - `target/levain-2.0.0-SNAPSHOT.jar` - Regular JAR with dependencies
-- `target/levain-standalone-2.0.0-SNAPSHOT.jar` - Standalone executable JAR
+- `target/levain.jar` - Standalone executable JAR
 
 **Build native executable (requires GraalVM):**
 ```bash
@@ -106,17 +127,6 @@ mvn test -Dtest=RunCucumberTest
 ```bash
 mvn test jacoco:report
 ```
-
-## Documentation
-
-Additional documentation is available in the [docs](docs/) directory:
-
-- **[Installation](docs/installation/)** - How to install and set up Levain 2
-- **[Build & Releases](docs/build/)** - Building and releasing the application
-- **[Configuration](docs/configuration/)** - Configuration implementation details
-- **[Registry](docs/registry/)** - Package registry implementation
-- **[Setup & Integration](docs/setup/)** - Nexus repository setup and integration
-- **[Implementation](docs/implementation/)** - Implementation details and analysis
 
 ## Usage
 
