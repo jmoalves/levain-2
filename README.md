@@ -136,7 +136,10 @@ For detailed usage examples and common workflows, see [User Guide - Getting Star
 
 **List recipes:**
 ```bash
-levain list
+levain list                  # List all available recipes with installation status
+levain list jdk              # Filter recipes by pattern
+levain list --installed      # Show only installed recipes
+levain list --available      # Show only recipes that are not installed
 ```
 
 **Install packages:**

@@ -15,13 +15,29 @@ Once installed, here are the most common tasks:
 
 #### List Available Recipes
 
+**Show all recipes with installation status:**
 ```bash
 levain list
 ```
 
-Filter by name:
+This displays all available recipes with `[installed]` indicators next to installed ones.
+
+**Filter by name pattern:**
 ```bash
-levain list jdk
+levain list jdk              # Show JDK recipes
+levain list node             # Show Node.js recipes
+```
+
+**Show only installed recipes:**
+```bash
+levain list --installed      # List all installed recipes
+levain list jdk --installed  # List only installed JDK recipes
+```
+
+**Show only available (not installed) recipes:**
+```bash
+levain list --available      # Show recipes that are not yet installed
+levain list jdk --available  # Show uninstalled JDK recipes
 ```
 
 #### Install Packages

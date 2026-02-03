@@ -115,6 +115,30 @@ public class RepositoryManager {
     }
 
     /**
+     * Get the Registry repository if it exists.
+     * 
+     * @return Optional containing the Registry if found
+     */
+    public Optional<Registry> getRegistry() {
+        return repositories.stream()
+                .filter(repo -> repo instanceof Registry)
+                .map(repo -> (Registry) repo)
+                .findFirst();
+    }
+
+    /**
+     * Check if a recipe is installed (exists in the Registry).
+     * 
+     * @param recipeName The name of the recipe
+     * @return true if the recipe is installed, false otherwise
+     */
+    public boolean isInstalled(String recipeName) {
+        return getRegistry()
+                .map(registry -> registry.isInstalled(recipeName))
+                .orElse(false);
+    }
+
+    /**
      * Describe all repositories.
      */
     public String describe() {

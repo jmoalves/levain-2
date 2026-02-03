@@ -188,4 +188,14 @@ public class RecipeService {
         logger.debug("Getting filename for recipe: {}", recipeName);
         return repositoryManager.getRecipeFileName(recipeName);
     }
+
+    /**
+     * Check if a recipe is installed (exists in the Registry).
+     *
+     * @param recipeName Name of the recipe
+     * @return true if the recipe is installed, false otherwise
+     */
+    public boolean isInstalled(String recipeName) {
+        return repositoryManager.isInstalled(recipeName);
+    }
 }
