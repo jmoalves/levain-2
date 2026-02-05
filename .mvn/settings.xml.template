@@ -4,18 +4,17 @@
   
   Copy this file to ~/.m2/settings.xml and replace placeholders with your values:
   - your-username: Your Nexus username
-  - your-password: Your Nexus password (use `mvn --encrypt-password` for encryption)
+  - your-password: Your Nexus password (use `mvn - -encrypt-password` for encryption)
   - nexus.example.com: Your Nexus server hostname
   
   For encrypted passwords:
-  1. Run: mvn --encrypt-password your-password
+  1. Run: mvn - -encrypt-password your-password
   2. Copy the encrypted password and replace the plaintext one
   3. Uncomment the master password section if needed
 -->
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 
-                              http://maven.apache.org/xsd/settings-1.0.0.xsd">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
 
     <!-- Server credentials for Nexus repositories -->
     <servers>

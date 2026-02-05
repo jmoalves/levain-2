@@ -48,9 +48,11 @@ jobs:
       uses: codecov/test-results-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./target/surefire-reports/TEST-*.xml
+        file: ./target/surefire-reports/*.xml
         flags: unittests
+        name: JUnit Test Results
         fail_ci_if_error: false
+        verbose: true
 
     - name: Upload JaCoCo coverage report
       uses: actions/upload-artifact@v4
