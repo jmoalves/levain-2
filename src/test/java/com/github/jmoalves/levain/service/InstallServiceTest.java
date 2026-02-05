@@ -69,27 +69,28 @@ class InstallServiceTest {
     void testInstallPackageNotFound() {
         String packageName = "nonexistent-package";
 
-        when(recipeService.loadRecipe(packageName)).thenReturn(null);
+        when(dependencyResolver.resolveAndSort(packageName))
+                .thenThrow(new IllegalArgumentException("Recipe not found: " + packageName));
 
         assertThrows(IllegalArgumentException.class, () -> {
             installService.install(packageName);
         });
 
-        verify(recipeService).loadRecipe(packageName);
+        verify(dependencyResolver).resolveAndSort(packageName);
     }
 
     @Test
     void testInstallPackageWithRecipeServiceException() {
         String packageName = "failing-package";
 
-        when(recipeService.loadRecipe(packageName))
+        when(dependencyResolver.resolveAndSort(packageName))
                 .thenThrow(new RuntimeException("Recipe not found"));
 
         assertThrows(RuntimeException.class, () -> {
             installService.install(packageName);
         });
 
-        verify(recipeService).loadRecipe(packageName);
+        verify(dependencyResolver).resolveAndSort(packageName);
     }
 
     @Test
@@ -98,16 +99,24 @@ class InstallServiceTest {
         when(registry.isInstalled("test-package")).thenReturn(true);
         setRegistry(installService, registry);
 
-        assertThrows(AlreadyInstalledException.class, () -> installService.install("test-package", false));
+        when(dependencyResolver.resolveAndSort("test-package"))
+                .thenReturn(java.util.List.of(mockRecipe));
+
+        // When already installed and force=false, install completes without exception
+        installService.install("test-package", false);
+        
         verify(registry).isInstalled("test-package");
-        verifyNoInteractions(recipeService);
+        verify(dependencyResolver).resolveAndSort("test-package");
     }
 
     @Test
     void testInstallForceInstallsWhenAlreadyInstalled() throws Exception {
         Registry registry = org.mockito.Mockito.mock(Registry.class);
+        lenient().when(registry.isInstalled("test-package")).thenReturn(true);
         setRegistry(installService, registry);
 
+        when(dependencyResolver.resolveAndSort("test-package"))
+                .thenReturn(java.util.List.of(mockRecipe));
         when(recipeService.loadRecipe("test-package")).thenReturn(mockRecipe);
         when(recipeService.getRecipeYamlContent("test-package"))
                 .thenReturn(Optional.of("name: test-package\nversion: 1.0.0\n"));
@@ -126,6 +135,8 @@ class InstallServiceTest {
         when(registry.isInstalled("test-package")).thenReturn(false);
         setRegistry(installService, registry);
 
+        when(dependencyResolver.resolveAndSort("test-package"))
+                .thenReturn(java.util.List.of(mockRecipe));
         when(recipeService.loadRecipe("test-package")).thenReturn(mockRecipe);
         when(recipeService.getRecipeYamlContent("test-package")).thenReturn(Optional.empty());
         when(recipeService.findSourceRepository("test-package")).thenReturn(Optional.empty());
