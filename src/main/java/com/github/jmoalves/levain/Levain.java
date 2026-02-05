@@ -63,7 +63,16 @@ public class Levain {
      */
     private static int executeCommand(WeldContainer container, String[] args) {
         LevainCommand command = container.select(LevainCommand.class).get();
-        return new CommandLine(command, new CdiCommandFactory()).execute(args);
+        CommandLine cmd = new CommandLine(command, new CdiCommandFactory());
+        CommandLine.IExecutionStrategy executionStrategy = parseResult -> {
+            Object root = parseResult.commandSpec().root().userObject();
+            if (root instanceof LevainCommand levainCommand) {
+                levainCommand.applyOverrides();
+            }
+            return new CommandLine.RunLast().execute(parseResult);
+        };
+        cmd.setExecutionStrategy(executionStrategy);
+        return cmd.execute(args);
     }
 
     /**

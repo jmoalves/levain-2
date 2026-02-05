@@ -32,8 +32,10 @@ import java.util.concurrent.Callable;
 public class LevainCommand implements Callable<Integer> {
     private static final Logger logger = LoggerFactory.getLogger(LevainCommand.class);
 
+    @Option(names = { "--levainHome" }, description = "Levain home directory")
     private String levainHome;
 
+    @Option(names = { "--levainCache" }, description = "Levain cache directory")
     private String levainCache;
 
     @Option(names = { "--addRepo" }, description = "Add a recipe repository")
@@ -48,18 +50,14 @@ public class LevainCommand implements Callable<Integer> {
     @Inject
     private Config config;
 
-    @Option(names = { "--levainHome" }, description = "Levain home directory")
-    public void setLevainHome(String levainHome) {
-        this.levainHome = levainHome;
-        if (config != null && levainHome != null && !levainHome.isBlank()) {
+    public void applyOverrides() {
+        if (config == null) {
+            return;
+        }
+        if (levainHome != null && !levainHome.isBlank()) {
             config.setLevainHome(levainHome);
         }
-    }
-
-    @Option(names = { "--levainCache" }, description = "Levain cache directory")
-    public void setLevainCache(String levainCache) {
-        this.levainCache = levainCache;
-        if (config != null && levainCache != null && !levainCache.isBlank()) {
+        if (levainCache != null && !levainCache.isBlank()) {
             config.setCacheDir(levainCache);
         }
     }

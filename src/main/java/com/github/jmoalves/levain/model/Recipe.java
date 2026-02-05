@@ -1,8 +1,11 @@
 package com.github.jmoalves.levain.model;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 /**
  * Represents a Levain recipe for package installation.
@@ -15,6 +18,7 @@ public class Recipe {
     private Map<String, List<String>> commands;
     private String name;
     private List<String> dependencies;
+    private Map<String, Object> customAttributes = new HashMap<>();
 
     public Recipe() {
     }
@@ -67,6 +71,23 @@ public class Recipe {
         this.dependencies = dependencies;
     }
 
+    @JsonAnySetter
+    public void addCustomAttribute(String key, Object value) {
+        if (customAttributes == null) {
+            customAttributes = new HashMap<>();
+        }
+        customAttributes.put(key, value);
+    }
+
+    @JsonAnyGetter
+    public Map<String, Object> getCustomAttributes() {
+        return customAttributes;
+    }
+
+    public void setCustomAttributes(Map<String, Object> customAttributes) {
+        this.customAttributes = customAttributes;
+    }
+
     @Override
     public String toString() {
         return "Recipe{" +
@@ -76,6 +97,7 @@ public class Recipe {
                 ", commands=" + commands +
                 ", name='" + name + '\'' +
                 ", dependencies=" + dependencies +
+                ", customAttributes=" + customAttributes +
                 '}';
     }
 }

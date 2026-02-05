@@ -135,6 +135,18 @@ public class VariableSubstitutionService {
             if (recipe.getRecipesDir() != null) {
                 variables.put("recipesDir", recipe.getRecipesDir());
             }
+            if (recipe.getCustomAttributes() != null) {
+                for (Map.Entry<String, Object> entry : recipe.getCustomAttributes().entrySet()) {
+                    String key = entry.getKey();
+                    if (key == null || key.startsWith("cmd.")) {
+                        continue;
+                    }
+                    Object value = entry.getValue();
+                    if (value instanceof String || value instanceof Number || value instanceof Boolean) {
+                        variables.put(key, value.toString());
+                    }
+                }
+            }
         }
 
         return variables;

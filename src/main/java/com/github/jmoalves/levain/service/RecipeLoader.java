@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.logging.log4j.LogManager;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.github.jmoalves.levain.model.Recipe;
@@ -82,8 +83,8 @@ public class RecipeLoader {
      */
     public Recipe loadRecipe(File file) throws IOException {
         logger.debug("Loading recipe from: {}", file.getAbsolutePath());
-
-        Recipe recipe = yamlMapper.readValue(file, Recipe.class);
+        String yamlContent = Files.readString(file.toPath());
+        Recipe recipe = yamlMapper.readValue(yamlContent, Recipe.class);
 
         // Extract recipe name from filename
         String fileName = file.getName();
@@ -94,6 +95,8 @@ public class RecipeLoader {
         if (recipe.getDependencies() == null) {
             recipe.setDependencies(new ArrayList<>());
         }
+
+        applyCommandsFromYaml(yamlContent, recipe);
 
         logger.debug("Loaded recipe: {} version {}", recipe.getName(), recipe.getVersion());
         return recipe;
@@ -166,6 +169,8 @@ public class RecipeLoader {
                 recipe.setDependencies(new ArrayList<>());
             }
 
+            applyCommandsFromYaml(mapper, yamlContent, recipe);
+
             return recipe;
         } catch (Exception e) {
             LogManager.getLogger(RecipeLoader.class)
@@ -215,5 +220,58 @@ public class RecipeLoader {
         }
 
         return recipesDir;
+    }
+
+    private void applyCommandsFromYaml(String yamlContent, Recipe recipe) throws IOException {
+        applyCommandsFromYaml(this.yamlMapper, yamlContent, recipe);
+    }
+
+    private static void applyCommandsFromYaml(ObjectMapper mapper, String yamlContent, Recipe recipe)
+            throws IOException {
+        if (yamlContent == null || yamlContent.isBlank() || recipe == null) {
+            return;
+        }
+
+        Map<String, Object> raw = mapper.readValue(yamlContent, new TypeReference<Map<String, Object>>() {
+        });
+        if (raw == null || raw.isEmpty()) {
+            return;
+        }
+
+        Map<String, List<String>> commands = recipe.getCommands() != null
+                ? new LinkedHashMap<>(recipe.getCommands())
+                : new LinkedHashMap<>();
+
+        for (Map.Entry<String, Object> entry : raw.entrySet()) {
+            String key = entry.getKey();
+            if (key == null || !key.startsWith("cmd.")) {
+                continue;
+            }
+            String commandName = key.substring("cmd.".length());
+            List<String> commandList = toStringList(entry.getValue());
+            if (commandList != null) {
+                commands.put(commandName, commandList);
+            }
+        }
+
+        if (!commands.isEmpty()) {
+            recipe.setCommands(commands);
+        }
+    }
+
+    private static List<String> toStringList(Object value) {
+        if (value instanceof List<?> list) {
+            List<String> result = new ArrayList<>();
+            for (Object item : list) {
+                if (item != null) {
+                    result.add(item.toString());
+                }
+            }
+            return result;
+        }
+        if (value instanceof String str) {
+            return List.of(str);
+        }
+        return null;
     }
 }

@@ -48,10 +48,11 @@ public class ExtractAction implements Action {
         String srcArg = parsed.positionals.get(0);
         String dstArg = parsed.positionals.get(1);
 
-        Path srcResolved = FileUtils.resolve(context.getRecipeDir(), srcArg);
+        boolean isLocalSource = FileUtils.isFileSystemUrl(srcArg);
+        Path srcResolved = isLocalSource ? FileUtils.resolve(context.getRecipeDir(), srcArg) : null;
         Path dstResolved = FileUtils.resolve(context.getBaseDir(), dstArg);
 
-        if (FileUtils.isFileSystemUrl(srcArg)) {
+        if (isLocalSource) {
             FileUtils.throwIfNotExists(srcResolved);
         }
 
@@ -63,9 +64,10 @@ public class ExtractAction implements Action {
             throw new IllegalArgumentException("Unknown type '" + parsed.type + "'");
         }
 
-        logger.debug("EXTRACT {} => {}", srcResolved, dstResolved);
+        logger.debug("EXTRACT {} => {}", isLocalSource ? srcResolved : srcArg, dstResolved);
 
-        Path cachedSrc = fileCache.get(srcResolved.toString());
+        String cacheKey = isLocalSource ? srcResolved.toString() : srcArg;
+        Path cachedSrc = fileCache.get(cacheKey);
         Extractor extractor = extractorFactory.createExtractor(cachedSrc, parsed.type);
         extractor.extract(parsed.strip, cachedSrc, dstResolved);
     }

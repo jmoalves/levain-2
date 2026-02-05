@@ -1,9 +1,7 @@
 {
   "name": "Levain 2 - Java 25",
   "image": "mcr.microsoft.com/devcontainers/base:bookworm",
-  
   "initializeCommand": "docker context use default || true",
-  
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "username": "vscode",
@@ -20,7 +18,6 @@
       "version": "latest"
     }
   },
-
   "customizations": {
     "vscode": {
       "extensions": [
@@ -50,27 +47,25 @@
       }
     }
   },
-
   "containerEnv": {
     "MAVEN_OPTS": "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
   },
-
+  "runArgs": [
+    "--network=host"
+  ],
   "postCreateCommand": "mvn clean install -DskipTests",
-
-  "forwardPorts": [8080],
-
+  "forwardPorts": [
+    8080
+  ],
   "portsAttributes": {
     "8080": {
       "label": "Application",
       "onAutoForward": "notify"
     }
   },
-
   "mounts": [
     "source=${localEnv:HOME}/.m2,target=/home/vscode/.m2,type=bind,consistency=cached"
   ],
-
   "onCreateCommand": "bash .devcontainer/setup.sh",
-
   "remoteUser": "vscode"
 }
