@@ -34,10 +34,34 @@ class ResourceRepositoryTest {
     }
 
     @Test
+    void shouldLoadRecipesFromResources() {
+        repository.init();
+        List<Recipe> recipes = repository.listRecipes();
+        assertNotNull(recipes);
+        assertFalse(recipes.isEmpty(), "Expected recipes to be loaded from test resources");
+        assertTrue(recipes.stream().anyMatch(r -> "jdk-21".equals(r.getName())));
+    }
+
+    @Test
+    void shouldResolveKnownRecipeFromResources() {
+        repository.init();
+        Optional<Recipe> recipe = repository.resolveRecipe("jdk-21");
+        assertTrue(recipe.isPresent());
+        assertEquals("jdk-21", recipe.get().getName());
+    }
+
+    @Test
     void shouldReturnEmptyForUnknownRecipe() {
         repository.init();
         Optional<Recipe> recipe = repository.resolveRecipe("unknown-recipe");
         assertTrue(recipe.isEmpty());
+    }
+
+    @Test
+    void shouldReturnEmptyYamlAndFileName() {
+        repository.init();
+        assertTrue(repository.getRecipeYamlContent("jdk-21").isEmpty());
+        assertTrue(repository.getRecipeFileName("jdk-21").isEmpty());
     }
 
     @Test

@@ -40,15 +40,21 @@ public class ShellService {
         }
 
         // TODO: Set up environment variables from packages
-        ProcessBuilder pb = new ProcessBuilder(command);
-        pb.inheritIO();
-
         try {
-            Process process = pb.start();
-            process.waitFor();
+            runProcess(command);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Shell process interrupted", e);
         }
+    }
+
+    /**
+     * Execute the shell process. Extracted for testability.
+     */
+    protected void runProcess(List<String> command) throws IOException, InterruptedException {
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.inheritIO();
+        Process process = pb.start();
+        process.waitFor();
     }
 }
