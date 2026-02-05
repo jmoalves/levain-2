@@ -13,6 +13,7 @@ import java.net.Proxy;
 import java.net.ProxySelector;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
@@ -25,6 +26,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @ApplicationScoped
 public class FileCache {
@@ -207,7 +209,7 @@ public class FileCache {
     private void downloadTo(String src, Path cachedFile) throws IOException, InterruptedException {
         try {
             downloadUsingHttpClient(src, cachedFile);
-        } catch (java.net.http.HttpConnectTimeoutException e) {
+        } catch (HttpConnectTimeoutException e) {
             // Fallback to curl if HttpClient times out (known issue with Java 25 and some servers)
             logger.debug("HttpClient timeout, falling back to curl: {}", e.getMessage());
             downloadUsingCurl(src, cachedFile);
@@ -242,7 +244,7 @@ public class FileCache {
         int exitCode;
         try {
             // Allow curl up to 10 minutes for very large files
-            if (!process.waitFor(10, java.util.concurrent.TimeUnit.MINUTES)) {
+            if (!process.waitFor(10, TimeUnit.MINUTES)) {
                 process.destroy();
                 throw new IOException("curl download timed out after 10 minutes");
             }

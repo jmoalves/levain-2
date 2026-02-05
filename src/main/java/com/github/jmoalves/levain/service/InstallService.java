@@ -15,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * Service for installing packages.
@@ -157,8 +159,8 @@ public class InstallService {
 
             // Execute install commands (Levain DSL actions)
             var baseDir = config.getLevainHome().resolve(recipe.getName());
-            java.nio.file.Files.createDirectories(baseDir);
-            var recipeDir = recipe.getRecipesDir() != null ? java.nio.file.Path.of(recipe.getRecipesDir()) : null;
+            Files.createDirectories(baseDir);
+            var recipeDir = recipe.getRecipesDir() != null ? Path.of(recipe.getRecipesDir()) : null;
             variableSubstitutionService.substituteRecipeCommands(recipe, baseDir);
             actionExecutor.executeCommands(
                     recipe.getCommands() != null ? recipe.getCommands().get("install") : null,
