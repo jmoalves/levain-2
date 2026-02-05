@@ -9,7 +9,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 
 /**
@@ -24,6 +28,76 @@ public class EnvironmentUtils {
     public static boolean isWindows() {
         String os = System.getProperty("os.name");
         return os != null && os.toLowerCase().contains("win");
+    }
+
+    public static String pathSeparator() {
+        return java.io.File.pathSeparator;
+    }
+
+    public static List<String> splitPath(String pathValue) {
+        if (pathValue == null || pathValue.isBlank()) {
+            return new ArrayList<>();
+        }
+
+        String[] parts = pathValue.split(Pattern.quote(pathSeparator()));
+        List<String> result = new ArrayList<>();
+        for (String part : parts) {
+            if (part != null && !part.isBlank()) {
+                result.add(part);
+            }
+        }
+        return result;
+    }
+
+    public static String joinPath(List<String> parts) {
+        if (parts == null || parts.isEmpty()) {
+            return "";
+        }
+        return String.join(pathSeparator(), parts);
+    }
+
+    public static String updatePath(String currentPath, List<String> additions, boolean prepend) {
+        List<String> current = splitPath(currentPath);
+        List<String> cleanedAdditions = additions == null ? new ArrayList<>() : additions.stream()
+                .filter(it -> it != null && !it.isBlank())
+                .collect(Collectors.toList());
+
+        if (cleanedAdditions.isEmpty()) {
+            return joinPath(current);
+        }
+
+        Set<String> seen = new LinkedHashSet<>();
+        List<String> result = new ArrayList<>();
+
+        if (prepend) {
+            for (String add : cleanedAdditions) {
+                String norm = normalizeForCompare(add);
+                if (seen.add(norm)) {
+                    result.add(add);
+                }
+            }
+            for (String item : current) {
+                String norm = normalizeForCompare(item);
+                if (seen.add(norm)) {
+                    result.add(item);
+                }
+            }
+        } else {
+            for (String item : current) {
+                String norm = normalizeForCompare(item);
+                if (seen.add(norm)) {
+                    result.add(item);
+                }
+            }
+            for (String add : cleanedAdditions) {
+                String norm = normalizeForCompare(add);
+                if (seen.add(norm)) {
+                    result.add(add);
+                }
+            }
+        }
+
+        return joinPath(result);
     }
 
     public static Path resolveProfilePath() {
@@ -82,6 +156,16 @@ public class EnvironmentUtils {
 
         Files.write(profile, lines, StandardCharsets.UTF_8);
         logger.debug("Persisted env var {} to {}", key, profile);
+    }
+
+    private static String normalizeForCompare(String value) {
+        if (value == null) {
+            return "";
+        }
+        if (isWindows()) {
+            return value.toLowerCase(Locale.ROOT);
+        }
+        return value;
     }
 
     public static void persistWindowsEnv(String key, String value) throws IOException, InterruptedException {
