@@ -55,7 +55,7 @@ This document tracks features from the original [levain](https://github.com/jmoa
 | `jsonSet` | ✅ | ❌ | 📋 Medium |
 | `jsonRemove` | ✅ | ❌ | 📋 Low |
 | `killProcess` | ✅ | ❌ | 📋 Low |
-| `levainShell` | ✅ | ❌ | 📋 High |
+| `levainShell` | ✅ | ✅ | ✅ Done |
 | `mavenCopy` | ✅ | ❌ | 📋 Low |
 | `mkdir` | ✅ | ✅ | ✅ Done |
 | `propertyGet` | ✅ | ❌ | 📋 Medium |
@@ -101,7 +101,6 @@ This document tracks features from the original [levain](https://github.com/jmoa
 The original levain has a rich action system for recipes. Levain-2 needs:
 
 **High Priority Actions (remaining):**
-- `levainShell` - Execute commands in levain shell context (used in levain-pkgs)
 - `clone` - Git clone repositories
 - `echo` - Display messages during installation
 
@@ -204,7 +203,7 @@ Top actions in use (counted from cmd.install/cmd.env/cmd.shell entries):
 - `levainShell` (4)
 - `copy` (3)
 
-**Implication:** All common actions are implemented except `levainShell`. This is the next action to prioritize for production parity.
+**Implication:** All common actions used by levain-pkgs are implemented. Next priority is `clone` and `echo` for broader recipe coverage.
 
 ### incubation/bnd-levain-pkg (legacy recipes)
 Additional actions observed:
@@ -291,13 +290,13 @@ These features from the original levain are not planned for levain-2:
 ### Phase 1 (Next Release - v2.1.0) 🔄
 Focus: Core recipe actions and shell environment
 
-- [ ] Implement `addPath` action
-- [ ] Implement `setEnv` action  
-- [ ] Implement `levainShell` action
+- [x] Implement `addPath` action
+- [x] Implement `setEnv` action  
+- [x] Implement `levainShell` action
 - [ ] Implement `echo` action
-- [ ] Implement `copy` action
-- [ ] Implement `mkdir` action
-- [ ] Implement `extract` action
+- [x] Implement `copy` action
+- [x] Implement `mkdir` action
+- [x] Implement `extract` action
 - [ ] Add `clean` command
 - [ ] Add `info` command
 - [ ] Improve shell environment variable handling
@@ -306,11 +305,11 @@ Focus: Core recipe actions and shell environment
 Focus: Advanced recipe capabilities
 
 - [ ] Implement `template` action
-- [ ] Implement `setVar` action
+- [x] Implement `setVar` action
 - [ ] Implement `inspect` action
 - [ ] Add `explain` command
 - [ ] Add `update` command
-- [ ] Variable substitution in recipes (`${var}`)
+- [x] Variable substitution in recipes (`${var}`)
 - [ ] Recipe validation and linting
 
 ### Phase 3 (v2.3.0) 📋
