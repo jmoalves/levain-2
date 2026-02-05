@@ -20,6 +20,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Service for installing packages.
@@ -219,9 +221,26 @@ public class InstallService {
             
             var recipeDir = recipe.getRecipesDir() != null ? Path.of(recipe.getRecipesDir()) : null;
             variableSubstitutionService.substituteRecipeCommands(recipe, baseDir);
-            actionExecutor.executeCommands(
-                    recipe.getCommands() != null ? recipe.getCommands().get("install") : null,
-                    new ActionContext(config, recipe, baseDir, recipeDir));
+            
+            // Execute cmd.install and cmd.env actions during installation
+            // Following original Levain pattern: install.ts appends cmd.env after cmd.install
+            List<String> actions = new ArrayList<>();
+            if (recipe.getCommands() != null) {
+                List<String> installActions = recipe.getCommands().get("install");
+                if (installActions != null) {
+                    actions.addAll(installActions);
+                }
+                
+                // cmd.env contains environment setup actions that run both during
+                // installation (to configure the installed package) and during shell
+                // execution (to provide session-scoped environment)
+                List<String> envActions = recipe.getCommands().get("env");
+                if (envActions != null) {
+                    actions.addAll(envActions);
+                }
+            }
+            
+            actionExecutor.executeCommands(actions, new ActionContext(config, recipe, baseDir, recipeDir));
 
             // For now: Store recipe in registry with original YAML content
             // Registry stores all recipes as {name}.levain.yaml

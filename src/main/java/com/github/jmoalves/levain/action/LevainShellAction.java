@@ -104,14 +104,15 @@ public class LevainShellAction implements Action {
         }
 
         List<String> actions = new ArrayList<>();
-        List<String> envActions = recipe.getCommands().get("env");
+        // Original Levain order: cmd.shell first, then cmd.env appended
         List<String> shellActions = recipe.getCommands().get("shell");
+        List<String> envActions = recipe.getCommands().get("env");
 
-        if (envActions != null) {
-            actions.addAll(envActions);
-        }
         if (shellActions != null) {
             actions.addAll(shellActions);
+        }
+        if (envActions != null) {
+            actions.addAll(envActions);
         }
 
         if (actions.isEmpty()) {
