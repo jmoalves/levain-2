@@ -142,7 +142,12 @@ public class VariableSubstitutionService {
                         continue;
                     }
                     Object value = entry.getValue();
-                    if (value instanceof String || value instanceof Number || value instanceof Boolean) {
+                    if (value instanceof String) {
+                        // Substitute variables in custom attribute values (e.g., gitHome: ${baseDir})
+                        String stringValue = (String) value;
+                        String substitutedValue = substitute(stringValue, variables);
+                        variables.put(key, substitutedValue);
+                    } else if (value instanceof Number || value instanceof Boolean) {
                         variables.put(key, value.toString());
                     }
                 }

@@ -88,6 +88,33 @@ public class Recipe {
         this.customAttributes = customAttributes;
     }
 
+    /**
+     * Check if this recipe should skip automatic baseDir creation.
+     * Supports both 'levain.pkg.skipInstallDir' (Levain 1 compatibility) and 
+     * 'skipInstallDir' (Levain 2 shorthand).
+     */
+    public boolean shouldSkipInstallDir() {
+        // Check newer shorthand attribute first
+        Object skipValue = customAttributes.get("skipInstallDir");
+        if (skipValue instanceof Boolean) {
+            return (Boolean) skipValue;
+        }
+        if (skipValue instanceof String) {
+            return Boolean.parseBoolean((String) skipValue);
+        }
+        
+        // Check Levain 1 compatibility attribute
+        skipValue = customAttributes.get("levain.pkg.skipInstallDir");
+        if (skipValue instanceof Boolean) {
+            return (Boolean) skipValue;
+        }
+        if (skipValue instanceof String) {
+            return Boolean.parseBoolean((String) skipValue);
+        }
+        
+        return false;
+    }
+
     @Override
     public String toString() {
         return "Recipe{" +

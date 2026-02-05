@@ -191,9 +191,12 @@ public class InstallService {
                 registry.init();
             }
 
-            // Execute install commands (Levain DSL actions)
+            // Create baseDir only if recipe doesn't skip it
             var baseDir = config.getLevainHome().resolve(recipe.getName());
-            Files.createDirectories(baseDir);
+            if (!recipe.shouldSkipInstallDir()) {
+                Files.createDirectories(baseDir);
+            }
+            
             var recipeDir = recipe.getRecipesDir() != null ? Path.of(recipe.getRecipesDir()) : null;
             variableSubstitutionService.substituteRecipeCommands(recipe, baseDir);
             actionExecutor.executeCommands(

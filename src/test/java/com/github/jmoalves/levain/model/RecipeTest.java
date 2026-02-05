@@ -1,9 +1,11 @@
 package com.github.jmoalves.levain.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -40,4 +42,45 @@ class RecipeTest {
         assertTrue(output.contains("git"));
         assertTrue(output.contains("2.45.0"));
     }
+
+    @Test
+    void shouldDetectSkipInstallDirWithLevain1Attribute() {
+        Recipe recipe = new Recipe();
+        recipe.addCustomAttribute("levain.pkg.skipInstallDir", true);
+
+        assertTrue(recipe.shouldSkipInstallDir());
+    }
+
+    @Test
+    void shouldDetectSkipInstallDirWithLevain2Shorthand() {
+        Recipe recipe = new Recipe();
+        recipe.addCustomAttribute("skipInstallDir", true);
+
+        assertTrue(recipe.shouldSkipInstallDir());
+    }
+
+    @Test
+    void shouldDefaultToNotSkippingInstallDir() {
+        Recipe recipe = new Recipe();
+        assertFalse(recipe.shouldSkipInstallDir());
+    }
+
+    @Test
+    void shouldHandleStringBooleanValues() {
+        Recipe recipe = new Recipe();
+        recipe.addCustomAttribute("levain.pkg.skipInstallDir", "true");
+
+        assertTrue(recipe.shouldSkipInstallDir());
+    }
+
+    @Test
+    void shouldPreferShorthandOverLegacy() {
+        Recipe recipe = new Recipe();
+        recipe.addCustomAttribute("levain.pkg.skipInstallDir", true);
+        recipe.addCustomAttribute("skipInstallDir", false);
+
+        // Shorthand is checked first, so it should return false
+        assertFalse(recipe.shouldSkipInstallDir());
+    }
 }
+
