@@ -1,6 +1,9 @@
 package com.github.jmoalves.levain.service;
 
 import com.github.jmoalves.levain.model.Recipe;
+import com.github.jmoalves.levain.action.ActionContext;
+import com.github.jmoalves.levain.action.ActionExecutor;
+import com.github.jmoalves.levain.config.Config;
 import com.github.jmoalves.levain.repository.Repository;
 import com.github.jmoalves.levain.repository.RepositoryFactory;
 import com.github.jmoalves.levain.repository.Registry;
@@ -22,12 +25,22 @@ public class InstallService {
 
     private final RecipeService recipeService;
     private final RepositoryFactory repositoryFactory;
+    private final VariableSubstitutionService variableSubstitutionService;
+    private final ActionExecutor actionExecutor;
+    private final Config config;
     private Registry registry;
 
     @Inject
-    public InstallService(RecipeService recipeService, RepositoryFactory repositoryFactory) {
+    public InstallService(RecipeService recipeService,
+            RepositoryFactory repositoryFactory,
+            VariableSubstitutionService variableSubstitutionService,
+            ActionExecutor actionExecutor,
+            Config config) {
         this.recipeService = recipeService;
         this.repositoryFactory = repositoryFactory;
+        this.variableSubstitutionService = variableSubstitutionService;
+        this.actionExecutor = actionExecutor;
+        this.config = config;
         this.registry = null; // Lazy initialize in installRecipe
     }
 
@@ -142,11 +155,13 @@ public class InstallService {
                 registry.init();
             }
 
-            // TODO: In future phases:
-            // 1. Download package if needed
-            // 2. Extract/install to appropriate location
-            // 3. Execute install commands from recipe
-            // 4. Update environment
+            // Execute install commands (Levain DSL actions)
+            var baseDir = config.getLevainHome().resolve(recipe.getName());
+            var recipeDir = recipe.getRecipesDir() != null ? java.nio.file.Path.of(recipe.getRecipesDir()) : null;
+            variableSubstitutionService.substituteRecipeCommands(recipe, baseDir);
+            actionExecutor.executeCommands(
+                    recipe.getCommands() != null ? recipe.getCommands().get("install") : null,
+                    new ActionContext(config, recipe, baseDir, recipeDir));
 
             // For now: Store recipe in registry with original YAML content
             // Registry stores all recipes as {name}.levain.yaml

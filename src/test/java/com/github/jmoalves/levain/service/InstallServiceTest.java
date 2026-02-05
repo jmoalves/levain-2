@@ -4,12 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.isNull;
 
 import java.lang.reflect.Field;
+import java.nio.file.Path;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -36,12 +38,23 @@ class InstallServiceTest {
     @Mock
     private RepositoryFactory repositoryFactory;
 
+    @Mock
+    private VariableSubstitutionService variableSubstitutionService;
+
+    @Mock
+    private com.github.jmoalves.levain.action.ActionExecutor actionExecutor;
+
+    @Mock
+    private com.github.jmoalves.levain.config.Config config;
+
     private InstallService installService;
     private Recipe mockRecipe;
 
     @BeforeEach
     void setUp() {
-        installService = new InstallService(recipeService, repositoryFactory);
+        installService = new InstallService(recipeService, repositoryFactory, variableSubstitutionService,
+                actionExecutor, config);
+        lenient().when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain"));
 
         mockRecipe = new Recipe();
         mockRecipe.setName("test-package");
