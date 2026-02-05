@@ -47,13 +47,16 @@ class InstallServiceTest {
     @Mock
     private com.github.jmoalves.levain.config.Config config;
 
+    @Mock
+    private DependencyResolver dependencyResolver;
+
     private InstallService installService;
     private Recipe mockRecipe;
 
     @BeforeEach
     void setUp() {
         installService = new InstallService(recipeService, repositoryFactory, variableSubstitutionService,
-                actionExecutor, config);
+                actionExecutor, config, dependencyResolver);
         lenient().when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain"));
 
         mockRecipe = new Recipe();

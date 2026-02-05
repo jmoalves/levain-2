@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Service for installing packages.
@@ -30,6 +32,7 @@ public class InstallService {
     private final VariableSubstitutionService variableSubstitutionService;
     private final ActionExecutor actionExecutor;
     private final Config config;
+    private final DependencyResolver dependencyResolver;
     private Registry registry;
 
     @Inject
@@ -37,12 +40,14 @@ public class InstallService {
             RepositoryFactory repositoryFactory,
             VariableSubstitutionService variableSubstitutionService,
             ActionExecutor actionExecutor,
-            Config config) {
+            Config config,
+            DependencyResolver dependencyResolver) {
         this.recipeService = recipeService;
         this.repositoryFactory = repositoryFactory;
         this.variableSubstitutionService = variableSubstitutionService;
         this.actionExecutor = actionExecutor;
         this.config = config;
+        this.dependencyResolver = dependencyResolver;
         this.registry = null; // Lazy initialize in installRecipe
     }
 
@@ -67,17 +72,46 @@ public class InstallService {
      * @throws RuntimeException         if installation fails
      */
     public void install(String packageName, boolean force) {
-        logger.info("Installing package: {} (force={})", packageName, force);
+        logger.info("Analyzing installation for: {} (force={})", packageName, force);
 
-        // Check if already installed first
+        // Resolve all dependencies in topological order
+        List<Recipe> installationPlan = dependencyResolver.resolveAndSort(packageName);
+
+        // Filter out already installed packages (unless force=true)
         if (registry == null) {
             registry = new Registry();
             registry.init();
         }
-        if (!force && registry.isInstalled(packageName)) {
-            logger.info("Package already installed (skipping): {}", packageName);
-            throw new AlreadyInstalledException(packageName + " is already installed (use --force to reinstall)");
+
+        List<Recipe> toInstall = new ArrayList<>();
+        for (Recipe recipe : installationPlan) {
+            if (force || !registry.isInstalled(recipe.getName())) {
+                toInstall.add(recipe);
+            } else {
+                logger.info("Package already installed (skipping): {}", recipe.getName());
+            }
         }
+
+        if (toInstall.isEmpty()) {
+            logger.info("All packages already installed");
+            return;
+        }
+
+        // Show the installation plan to the user
+        System.out.println("\n" + dependencyResolver.formatInstallationPlan(toInstall));
+
+        // Install each recipe in order
+        for (Recipe recipe : toInstall) {
+            installSingleRecipe(recipe.getName());
+        }
+    }
+
+    /**
+     * Install a single recipe (internal method).
+     * Assumes all dependencies are already installed.
+     */
+    private void installSingleRecipe(String packageName) {
+        logger.info("Installing package: {}", packageName);
 
         // Load recipe from default repositories
         Recipe recipe = recipeService.loadRecipe(packageName);
