@@ -7,6 +7,7 @@ import com.github.jmoalves.levain.config.Config;
 import com.github.jmoalves.levain.repository.Repository;
 import com.github.jmoalves.levain.repository.RepositoryFactory;
 import com.github.jmoalves.levain.repository.Registry;
+import com.github.jmoalves.levain.util.VersionNumber;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -26,6 +27,7 @@ import java.util.List;
 @ApplicationScoped
 public class InstallService {
     private static final Logger logger = LoggerFactory.getLogger(InstallService.class);
+    private static final String LEVAIN_VERSION = "2.0.0";
 
     private final RecipeService recipeService;
     private final RepositoryFactory repositoryFactory;
@@ -184,6 +186,24 @@ public class InstallService {
     private void installRecipe(Recipe recipe, String originalYaml, String sourceRepo, String sourceRepoUri) {
         try {
             logger.info("Processing recipe: {}", recipe.getName());
+
+            // Check minVersion requirement (levain.minVersion attribute)
+            String minVersionStr = recipe.getMinVersion();
+            if (minVersionStr != null && !minVersionStr.isBlank()) {
+                VersionNumber minVersion = new VersionNumber(minVersionStr);
+                VersionNumber currentVersion = new VersionNumber(LEVAIN_VERSION);
+                
+                if (minVersion.isNewerThan(currentVersion)) {
+                    String msg = String.format(
+                        "Recipe '%s' requires Levain %s or newer (current: %s)",
+                        recipe.getName(),
+                        minVersion,
+                        currentVersion
+                    );
+                    logger.warn(msg);
+                    throw new RuntimeException(msg);
+                }
+            }
 
             // Lazy initialize registry
             if (registry == null) {

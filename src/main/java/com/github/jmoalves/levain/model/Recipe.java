@@ -127,4 +127,18 @@ public class Recipe {
                 ", customAttributes=" + customAttributes +
                 '}';
     }
+
+    /**
+     * Get the minVersion requirement from this recipe.
+     * Returns the value of 'levain.minVersion' attribute if present.
+     *
+     * @return minVersion string, or null if not specified
+     */
+    public String getMinVersion() {
+        Object minVersionObj = customAttributes.get("levain.minVersion");
+        if (minVersionObj instanceof String) {
+            return (String) minVersionObj;
+        }
+        return null;
+    }
 }

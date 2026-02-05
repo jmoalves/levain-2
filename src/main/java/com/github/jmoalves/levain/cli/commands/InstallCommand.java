@@ -27,6 +27,9 @@ public class InstallCommand implements Callable<Integer> {
     @Option(names = { "--force", "-f" }, description = "Reinstall package even if already installed")
     private boolean force = false;
 
+    @Option(names = { "--noUpdate" }, description = "Skip checking for updates to already installed packages")
+    private boolean noUpdate = false;
+
     private final InstallService installService;
 
     @Inject
