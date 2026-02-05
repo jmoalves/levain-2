@@ -25,27 +25,13 @@ A Java standalone console application for development environment installation a
 
 ## Installation Options
 
-### Option 1: Using the Standalone JAR
+For complete installation instructions (JAR, native executables, and bootstrap scripts), see:
 
-Download the standalone JAR and run it with your favorite JVM:
+- [docs/installation/INSTALLATION.md](docs/installation/INSTALLATION.md)
 
-```bash
-java -jar levain.jar [command] [options]
-```
+For build and release details, see:
 
-### Option 2: Using Native Executables
-
-Download the native executable for your platform:
-
-**Windows:**
-```cmd
-levain.exe [command] [options]
-```
-
-**Linux:**
-```bash
-./levain [command] [options]
-```
+- [docs/build/BUILD_RELEASES.md](docs/build/BUILD_RELEASES.md)
 
 ## Documentation
 

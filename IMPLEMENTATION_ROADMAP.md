@@ -15,87 +15,14 @@ This document provides a detailed roadmap for implementing Phase 1 actions that 
 - ✅ Required by most recipes
 - ✅ Good template for future actions
 
-### Implementation
+# Implementation Roadmap (Consolidated)
 
-#### File: `MkdirAction.java`
-```java
-package com.github.jmoalves.levain.action;
+This document has been consolidated to avoid duplication.
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
+Use these canonical references instead:
 
-/**
- * Create one or more directories recursively.
- * 
- * Usage:
- *   - mkdir ${baseDir}
- *   - mkdir ${home}/.m2 ${home}/.ssh
- */
-@ApplicationScoped
-public class MkdirAction implements Action {
-    
-    @Override
-    public String name() {
-        return "mkdir";
-    }
-    
-    @Override
-    public void execute(ActionContext context, List<String> args) throws Exception {
-        if (args.isEmpty()) {
-            throw new IllegalArgumentException("mkdir requires at least one directory path");
-        }
-        
-        for (String dirPath : args) {
-            Path dir = FileUtils.resolve(context.getBaseDir(), dirPath);
-            logger.debug("Creating directory: {}", dir);
-            Files.createDirectories(dir);
-        }
-    }
-}
-```
-
-#### File: `MkdirActionTest.java` (8 tests)
-```java
-class MkdirActionTest {
-    @TempDir Path tempDir;
-    
-    // Test 1: Create single directory
-    void testCreateSingleDirectory() throws Exception {
-        // Create: mkdir ${baseDir}/test
-        // Verify: ${baseDir}/test exists
-    }
-    
-    // Test 2: Create multiple directories
-    void testCreateMultipleDirectories() throws Exception {
-        // Create: mkdir ${baseDir}/dir1 ${baseDir}/dir2
-        // Verify: Both exist
-    }
-    
-    // Test 3: Nested directory creation (mkdir -p behavior)
-    void testCreateNestedDirectories() throws Exception {
-        // Create: mkdir ${baseDir}/a/b/c/d/e
-        // Verify: All levels created
-    }
-    
-    // Test 4: Already exists - idempotency
-    void testAlreadyExists() throws Exception {
-        // Create: Files.createDirectory(dir)
-        // Call: mkdir $dir
-        // Verify: No exception, succeeds silently
-    }
-    
-    // Test 5: Variable substitution
-    void testVariableSubstitution() throws Exception {
-        // Create: mkdir ${baseDir}/${name}
-        // Where: name = "test123"
-        // Verify: ${baseDir}/test123 exists
-    }
-    
-    // Test 6: Relative paths
-    void testRelativePaths() throws Exception {
-        // Create: mkdir subdir/nested/path
-        // Verify: Created relative to baseDir
+- [ROADMAP.md](ROADMAP.md) for overall feature tracking and priorities
+- [ACTION_IMPLEMENTATION_PLAN.md](ACTION_IMPLEMENTATION_PLAN.md) for action-specific planning and recipe analysis
     }
     
     // Test 7: Permissions

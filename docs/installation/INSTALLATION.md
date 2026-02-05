@@ -10,9 +10,8 @@ The standalone JAR file can run on any platform with a JVM installed.
 - Java 17 or later
 
 ### Building
-```bash
-mvn clean package
-```
+
+Build instructions are consolidated in [docs/build/BUILD_RELEASES.md](docs/build/BUILD_RELEASES.md).
 
 ### Running
 ```bash
@@ -39,17 +38,7 @@ Native executables provide faster startup times and don't require a JVM installa
 
 ### Building
 
-#### On Windows
-```cmd
-mvn clean package -Pnative
-```
-This creates `target\levain.exe`
-
-#### On Linux
-```bash
-mvn clean package -Pnative
-```
-This creates `target/levain`
+Native build instructions are consolidated in [docs/build/BUILD_RELEASES.md](docs/build/BUILD_RELEASES.md).
 
 ### Running
 

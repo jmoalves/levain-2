@@ -33,7 +33,7 @@ This document tracks features from the original [levain](https://github.com/jmoa
 
 | Action | levain (original) | levain-2 | Priority |
 |--------|------------------|----------|----------|
-| `addPath` | ✅ | ❌ | 📋 High |
+| `addPath` | ✅ | ✅ | ✅ Done |
 | `addToDesktop` | ✅ | ❌ | 📋 Medium |
 | `addToStartMenu` | ✅ | ❌ | 📋 Medium |
 | `addToStartup` | ✅ | ❌ | 📋 Low |
@@ -46,10 +46,10 @@ This document tracks features from the original [levain](https://github.com/jmoa
 | `clone` (git) | ✅ | ❌ | 📋 High |
 | `contextMenu` | ✅ | ❌ | 📋 Medium |
 | `contextMenuRemove` | ✅ | ❌ | 📋 Low |
-| `copy` | ✅ | ❌ | 📋 High |
+| `copy` | ✅ | ✅ | ✅ Done |
 | `defaultPackage` | ✅ | ❌ | 📋 Medium |
 | `echo` | ✅ | ❌ | 📋 High |
-| `extract` | ✅ | ❌ | 📋 High |
+| `extract` | ✅ | ✅ | ✅ Done |
 | `inspect` | ✅ | ❌ | 📋 Medium |
 | `jsonGet` | ✅ | ❌ | 📋 Medium |
 | `jsonSet` | ✅ | ❌ | 📋 Medium |
@@ -57,12 +57,12 @@ This document tracks features from the original [levain](https://github.com/jmoa
 | `killProcess` | ✅ | ❌ | 📋 Low |
 | `levainShell` | ✅ | ❌ | 📋 High |
 | `mavenCopy` | ✅ | ❌ | 📋 Low |
-| `mkdir` | ✅ | ❌ | 📋 High |
+| `mkdir` | ✅ | ✅ | ✅ Done |
 | `propertyGet` | ✅ | ❌ | 📋 Medium |
 | `propertySet` | ✅ | ❌ | 📋 Medium |
 | `removeFromRegistry` | ✅ | ❌ | 📋 Low |
-| `setEnv` | ✅ | ❌ | 📋 High |
-| `setVar` | ✅ | ❌ | 📋 Medium |
+| `setEnv` | ✅ | ✅ | ✅ Done |
+| `setVar` | ✅ | ✅ | ✅ Done |
 | `shellPath` | ✅ | ❌ | 📋 Medium |
 | `template` | ✅ | ❌ | 📋 Medium |
 
@@ -70,8 +70,8 @@ This document tracks features from the original [levain](https://github.com/jmoa
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Environment variable setting | ❌ | 📋 `setEnv` action needed |
-| PATH manipulation | ❌ | 📋 `addPath` action needed |
+| Environment variable setting | ✅ | `setEnv` action implemented |
+| PATH manipulation | ✅ | `addPath` action implemented |
 | Shell action execution | ✅ | Via `cmd.install` in recipes |
 | Interactive shell | ✅ | `levain shell` command |
 | Package environment isolation | ✅ | Each shell loads only specified packages |
@@ -100,18 +100,12 @@ This document tracks features from the original [levain](https://github.com/jmoa
 
 The original levain has a rich action system for recipes. Levain-2 needs:
 
-**High Priority Actions:**
-- `addPath` - Add directories to PATH environment variable
-- `setEnv` - Set environment variables permanently or for session
-- `levainShell` - Execute commands in levain shell context
-- `echo` - Display messages during installation
-- `copy` - Copy files/directories
-- `mkdir` - Create directories
-- `extract` - Extract archives (zip, tar.gz, etc.)
+**High Priority Actions (remaining):**
+- `levainShell` - Execute commands in levain shell context (used in levain-pkgs)
 - `clone` - Git clone repositories
+- `echo` - Display messages during installation
 
 **Medium Priority Actions:**
-- `setVar` - Set configuration variables
 - `template` - Template file generation with variable substitution
 - `inspect` - Inspect files for patterns
 - `jsonGet`/`jsonSet` - JSON manipulation
@@ -196,6 +190,41 @@ The original levain has a rich action system for recipes. Levain-2 needs:
 - **Dependency scanning** - Security vulnerability detection
 - **License compliance** - Verify dependency licenses
 - **Documentation checks** - Javadoc completeness
+
+---
+
+## Recipe Usage Analysis (levain-pkgs + incubation)
+
+### levain-pkgs (production recipes)
+Top actions in use (counted from cmd.install/cmd.env/cmd.shell entries):
+- `addPath` (411)
+- `setEnv` (378)
+- `extract` (267)
+- `setVar` (8)
+- `levainShell` (4)
+- `copy` (3)
+
+**Implication:** All common actions are implemented except `levainShell`. This is the next action to prioritize for production parity.
+
+### incubation/bnd-levain-pkg (legacy recipes)
+Additional actions observed:
+- `addToDesktop`, `addToStartMenu`, `addToStartup`
+- `assertContains`, `backupFile`, `checkChainDirExists`, `checkFileExists`
+- `clone`, `contextMenu`, `defaultPackage`, `jsonSet`, `mavenCopy`
+- `removeFromRegistry`, `template`
+
+**Implication:** These are legacy/experimental actions. Implement as needed based on target audience.
+
+---
+
+## Documentation Redundancy Check
+
+Potential overlaps to consolidate:
+- README installation section overlaps with docs/installation/INSTALLATION.md
+- DISTRIBUTION.md overlaps with docs/build/BUILD_RELEASES.md (build/release instructions)
+- IMPLEMENTATION_ROADMAP.md overlaps with ROADMAP.md (feature tracking)
+
+**Suggested cleanup:** choose a single canonical doc for each topic and link to it from README.
 
 ---
 
