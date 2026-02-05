@@ -1,2 +1,10 @@
-version: "1.0.0"
-description: "Levain base runtime and package manager"
+version: 2.0.0
+description: "Levain 2 - Package installer and manager"
+
+cmd.install:
+  - copy levain.jar ${baseDir}
+  - copy levain.sh ${baseDir}
+  - addPath ${baseDir}
+
+cmd.env:
+  - addPath ${baseDir}
