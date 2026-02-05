@@ -11,7 +11,7 @@ import java.nio.file.StandardOpenOption;
 public class SevenZipExtractor extends Extractor {
     @Override
     protected void extractImpl(Path src, Path dst) throws IOException {
-        try (SevenZFile sevenZFile = new SevenZFile(src.toFile())) {
+        try (SevenZFile sevenZFile = SevenZFile.builder().setPath(src).get()) {
             SevenZArchiveEntry entry;
             byte[] buffer = new byte[8192];
             while ((entry = sevenZFile.getNextEntry()) != null) {

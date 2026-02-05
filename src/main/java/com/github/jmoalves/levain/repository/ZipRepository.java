@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -163,7 +164,7 @@ public class ZipRepository extends AbstractRepository {
      * Download a ZIP file from a remote URL.
      */
     private File downloadZipFile() throws IOException {
-        URL url = new URL(zipPath);
+        URL url = URI.create(zipPath).toURL();
         String filename = new File(url.getPath()).getName();
         if (filename.isEmpty()) {
             filename = "archive.zip";

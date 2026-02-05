@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -165,7 +166,7 @@ public class ResourceRepository extends AbstractRepository {
                 java.util.jar.JarEntry entry = entries.nextElement();
                 if (entry.getName().startsWith("recipes/") && !entry.isDirectory() && isRecipeFile(entry.getName())) {
                     try {
-                        recipes.add(new URL("jar:" + jarPath + "!/" + entry.getName()));
+                        recipes.add(URI.create("jar:" + jarPath + "!/" + entry.getName()).toURL());
                     } catch (java.net.MalformedURLException e) {
                         logger.debug("Failed to create URL for jar entry {}: {}", entry.getName(), e.getMessage());
                     }

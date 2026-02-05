@@ -18,10 +18,14 @@ public class TarGzExtractor extends Extractor {
                 BufferedInputStream bis = new BufferedInputStream(fis);
                 GzipCompressorInputStream gzis = new GzipCompressorInputStream(bis);
                 TarArchiveInputStream tais = new TarArchiveInputStream(gzis)) {
-            TarArchiveEntry entry;
-            while ((entry = tais.getNextTarEntry()) != null) {
-                Path target = dst.resolve(entry.getName()).normalize();
-                if (entry.isDirectory()) {
+            while (true) {
+                var entry = tais.getNextEntry();
+                if (entry == null) {
+                    break;
+                }
+                TarArchiveEntry tarEntry = (TarArchiveEntry) entry;
+                Path target = dst.resolve(tarEntry.getName()).normalize();
+                if (tarEntry.isDirectory()) {
                     Files.createDirectories(target);
                 } else {
                     Files.createDirectories(target.getParent());
