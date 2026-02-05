@@ -4,7 +4,9 @@ import com.github.jmoalves.levain.cli.commands.InstallCommand;
 import com.github.jmoalves.levain.cli.commands.ListCommand;
 import com.github.jmoalves.levain.cli.commands.ShellCommand;
 import com.github.jmoalves.levain.cli.commands.ConfigCommand;
+import com.github.jmoalves.levain.config.Config;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -30,10 +32,8 @@ import java.util.concurrent.Callable;
 public class LevainCommand implements Callable<Integer> {
     private static final Logger logger = LoggerFactory.getLogger(LevainCommand.class);
 
-    @Option(names = { "--levainHome" }, description = "Levain home directory")
     private String levainHome;
 
-    @Option(names = { "--levainCache" }, description = "Levain cache directory")
     private String levainCache;
 
     @Option(names = { "--addRepo" }, description = "Add a recipe repository")
@@ -44,6 +44,25 @@ public class LevainCommand implements Callable<Integer> {
 
     @Option(names = { "--verbose", "-v" }, description = "Enable verbose output")
     private boolean verbose;
+
+    @Inject
+    private Config config;
+
+    @Option(names = { "--levainHome" }, description = "Levain home directory")
+    public void setLevainHome(String levainHome) {
+        this.levainHome = levainHome;
+        if (config != null && levainHome != null && !levainHome.isBlank()) {
+            config.setLevainHome(levainHome);
+        }
+    }
+
+    @Option(names = { "--levainCache" }, description = "Levain cache directory")
+    public void setLevainCache(String levainCache) {
+        this.levainCache = levainCache;
+        if (config != null && levainCache != null && !levainCache.isBlank()) {
+            config.setCacheDir(levainCache);
+        }
+    }
 
     @Override
     public Integer call() {
