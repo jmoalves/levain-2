@@ -6,11 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import com.github.jmoalves.levain.model.Recipe;
 import com.github.jmoalves.levain.repository.Repository;
@@ -22,6 +25,11 @@ import com.github.jmoalves.levain.repository.ResourceRepository;
  */
 class RecipeServiceTest {
 
+    @TempDir
+    Path tempDir;
+
+    private String originalUserHome;
+
     private RecipeService recipeService;
     private RecipeLoader recipeLoader;
     private ConfigService configService;
@@ -29,12 +37,23 @@ class RecipeServiceTest {
 
     @BeforeEach
     void setUp() {
+        originalUserHome = System.getProperty("user.home");
+        System.setProperty("user.home", tempDir.toString());
         // Set test recipes directory for testing
         System.setProperty("levain.recipes.dir", "src/test/resources/recipes");
         recipeLoader = new RecipeLoader();
         configService = new ConfigService();
         repositoryFactory = new RepositoryFactory();
         recipeService = new RecipeService(recipeLoader, configService, repositoryFactory);
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (originalUserHome != null) {
+            System.setProperty("user.home", originalUserHome);
+        } else {
+            System.clearProperty("user.home");
+        }
     }
 
     @Test
