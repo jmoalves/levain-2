@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import org.junit.jupiter.api.AfterEach;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -247,6 +248,29 @@ class LevainShellActionTest {
         action.execute(context, List.of("echo", "ok"));
 
         assertEquals("test-pkg;dep", action.capturedEnv.get("LEVAIN_PKG_NAMES"));
+    }
+
+    @Test
+    void shouldSkipPackageNamesWhenBlank() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setName(" ");
+
+        CapturingLevainShellAction action = new CapturingLevainShellAction(actionExecutor, recipeService, config);
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+        action.execute(context, List.of("echo", "ok"));
+
+        assertTrue(action.capturedEnv.get("LEVAIN_PKG_NAMES") == null);
+    }
+
+    @Test
+    void shouldHandleNullStripLineEnding() throws Exception {
+        LevainShellAction action = new LevainShellAction(actionExecutor, recipeService, config);
+
+        var method = LevainShellAction.class.getDeclaredMethod("stripLineEnding", String.class);
+        method.setAccessible(true);
+
+        Object result = method.invoke(action, new Object[] { null });
+        assertNull(result);
     }
 
     static class TestLevainShellAction extends LevainShellAction {

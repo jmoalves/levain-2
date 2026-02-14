@@ -162,6 +162,16 @@ class ResourceRepositoryTest {
         assertTrue(recipes.isEmpty());
     }
 
+    @Test
+    void shouldHandleFileInsteadOfDirectory() throws Exception {
+        Path file = tempDir.resolve("recipes.txt");
+        Files.writeString(file, "content");
+
+        List<java.net.URL> recipes = invokeListRecipesFromDirectory(file);
+
+        assertTrue(recipes.isEmpty());
+    }
+
     private boolean invokeIsRecipeFile(String filename) throws Exception {
         Method method = ResourceRepository.class.getDeclaredMethod("isRecipeFile", String.class);
         method.setAccessible(true);
