@@ -31,6 +31,14 @@ class EnvironmentUtilsTest {
     }
 
     @Test
+    void shouldHandleNullAndEmptyPathValues() {
+        assertEquals(List.of(), EnvironmentUtils.splitPath(null));
+        assertEquals(List.of(), EnvironmentUtils.splitPath(""));
+        assertEquals("", EnvironmentUtils.joinPath(null));
+        assertEquals("", EnvironmentUtils.joinPath(List.of()));
+    }
+
+    @Test
     void shouldUpdatePathWithPrependAndAppend() {
         String originalOs = System.getProperty("os.name");
         try {
@@ -42,9 +50,11 @@ class EnvironmentUtilsTest {
 
             String prepended = EnvironmentUtils.updatePath(current, additions, true);
             String appended = EnvironmentUtils.updatePath(current, additions, false);
+            String unchanged = EnvironmentUtils.updatePath(current, null, false);
 
             assertEquals(String.join(sep, List.of("b", "c", "a")), prepended);
             assertEquals(String.join(sep, List.of("a", "b", "c")), appended);
+            assertEquals(current, unchanged);
         } finally {
             restoreOsName(originalOs);
         }

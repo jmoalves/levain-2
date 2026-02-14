@@ -6,12 +6,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.lang.reflect.Field;
+import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+
+import com.sun.net.httpserver.HttpServer;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -79,6 +84,72 @@ class ZipRepositoryTest {
     }
 
     @Test
+    void shouldInitializeWhenCacheAlreadyExtracted() throws Exception {
+        Path zipFile = tempDir.resolve("recipes.zip");
+        createZipWithRecipe(zipFile, "ignored.txt", "data");
+
+        String originalCache = System.getProperty("levain.cache.dir");
+        System.setProperty("levain.cache.dir", tempDir.resolve("cache").toString());
+        try {
+            ZipRepository localRepo = new ZipRepository(zipFile.toString());
+            Path cacheDir = Path.of(getLocalCachePath(localRepo));
+            Files.createDirectories(cacheDir);
+            Files.writeString(cacheDir.resolve("jdk-21.levain.yaml"), "name: jdk-21\nversion: 21.0.0\n");
+
+            localRepo.init();
+
+            assertTrue(localRepo.listRecipes().stream().anyMatch(r -> r.getName().equals("jdk-21")));
+        } finally {
+            if (originalCache != null) {
+                System.setProperty("levain.cache.dir", originalCache);
+            } else {
+                System.clearProperty("levain.cache.dir");
+            }
+        }
+    }
+
+    @Test
+    void shouldDownloadRemoteZipFile() throws Exception {
+        Path zipFile = tempDir.resolve("remote.zip");
+        createZipWithRecipe(zipFile, "git.levain.yaml", "name: git\nversion: 2.0.0\n");
+
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/archive.zip", exchange -> {
+            byte[] content = Files.readAllBytes(zipFile);
+            exchange.sendResponseHeaders(200, content.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(content);
+            }
+        });
+        server.start();
+
+        String originalHome = System.getProperty("user.home");
+        String originalCache = System.getProperty("levain.cache.dir");
+        System.setProperty("user.home", tempDir.toString());
+        System.setProperty("levain.cache.dir", tempDir.resolve("cache-remote").toString());
+
+        try {
+            String url = "http://localhost:" + server.getAddress().getPort() + "/archive.zip";
+            ZipRepository remoteRepo = new ZipRepository(url);
+            remoteRepo.init();
+
+            assertTrue(remoteRepo.listRecipes().stream().anyMatch(r -> r.getName().equals("git")));
+        } finally {
+            server.stop(0);
+            if (originalHome != null) {
+                System.setProperty("user.home", originalHome);
+            } else {
+                System.clearProperty("user.home");
+            }
+            if (originalCache != null) {
+                System.setProperty("levain.cache.dir", originalCache);
+            } else {
+                System.clearProperty("levain.cache.dir");
+            }
+        }
+    }
+
+    @Test
     void shouldInitializeFromLocalZip() throws Exception {
         Path zipFile = tempDir.resolve("recipes.zip");
         createZipWithRecipe(zipFile, "jdk-21.levain.yaml", "name: jdk-21\nversion: 21.0.0\n");
@@ -128,5 +199,11 @@ class ZipRepositoryTest {
             zos.write(content.getBytes());
             zos.closeEntry();
         }
+    }
+
+    private static String getLocalCachePath(ZipRepository repository) throws Exception {
+        Field field = ZipRepository.class.getDeclaredField("localCachePath");
+        field.setAccessible(true);
+        return (String) field.get(repository);
     }
 }

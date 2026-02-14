@@ -269,6 +269,29 @@ class RegistryTest {
     }
 
     @Test
+    @DisplayName("Should return filename when recipe exists")
+    void shouldReturnFileNameWhenRecipeExists() {
+        Recipe recipe = createRecipe("node", "20.11.0");
+        registry.store(recipe, "name: node\nversion: 20.11.0\n");
+
+        var fileName = registry.getRecipeFileName("node");
+        assertTrue(fileName.isPresent());
+        assertEquals("node.levain.yaml", fileName.get());
+    }
+
+    @Test
+    @DisplayName("Should remove recipe and metadata")
+    void shouldRemoveRecipeAndMetadata() throws Exception {
+        Recipe recipe = createRecipe("demo", "1.0.0");
+        registry.store(recipe, "name: demo\nversion: 1.0.0\n", "Repo", "uri");
+
+        assertTrue(Files.exists(tempDir.resolve("demo.levain.meta")));
+        assertTrue(registry.remove("demo"));
+        assertTrue(Files.notExists(tempDir.resolve("demo.levain.yaml")));
+        assertTrue(Files.notExists(tempDir.resolve("demo.levain.meta")));
+    }
+
+    @Test
     @DisplayName("Should return empty metadata when JSON is invalid")
     void shouldReturnEmptyMetadataWhenJsonInvalid() throws Exception {
         Files.writeString(tempDir.resolve("bad.levain.meta"), "{bad json");
