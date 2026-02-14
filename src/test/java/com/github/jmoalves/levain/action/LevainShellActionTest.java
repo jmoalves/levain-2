@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.nio.file.Files;
 
 import org.junit.jupiter.api.AfterEach;
 
@@ -71,6 +72,17 @@ class LevainShellActionTest {
         ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
 
         assertThrows(IllegalArgumentException.class, () -> action.execute(context, List.of()));
+    }
+
+    @Test
+    void shouldRejectSaveVarWithoutName() {
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+
+        LevainShellAction action = new LevainShellAction(actionExecutor, recipeService, config);
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class, () -> action.execute(context, List.of("--saveVar")));
     }
 
     @Test
@@ -185,6 +197,24 @@ class LevainShellActionTest {
     }
 
     @Test
+    void shouldBuildUnixCommandWithDefaultShell() throws Exception {
+        System.setProperty("os.name", "Linux");
+        config.setShellPath(null);
+
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+        when(recipeService.resolveRecipe("test-pkg")).thenReturn(List.of(recipe));
+
+        CapturingLevainShellAction action = new CapturingLevainShellAction(actionExecutor, recipeService, config);
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+        action.execute(context, List.of("", "plain"));
+
+        String expectedShell = Files.exists(Path.of("/bin/bash")) ? "/bin/bash" : "/bin/sh";
+        assertEquals(expectedShell, action.capturedCommand.get(0));
+        assertTrue(action.capturedCommand.get(2).contains("''"));
+    }
+
+    @Test
     void shouldUseRecipeWhenResolveFails() throws Exception {
         Recipe recipe = new Recipe();
         recipe.setName("test-pkg");
@@ -197,6 +227,26 @@ class LevainShellActionTest {
 
         ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
         action.execute(context, List.of("echo", "ok"));
+    }
+
+    @Test
+    void shouldPopulatePackageNamesInEnvironment() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+
+        Recipe dep = new Recipe();
+        dep.setName("dep");
+
+        Recipe blank = new Recipe();
+        blank.setName(" ");
+
+        when(recipeService.resolveRecipe("test-pkg")).thenReturn(List.of(recipe, dep, blank));
+
+        CapturingLevainShellAction action = new CapturingLevainShellAction(actionExecutor, recipeService, config);
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+        action.execute(context, List.of("echo", "ok"));
+
+        assertEquals("test-pkg;dep", action.capturedEnv.get("LEVAIN_PKG_NAMES"));
     }
 
     static class TestLevainShellAction extends LevainShellAction {
@@ -214,6 +264,7 @@ class LevainShellActionTest {
 
     static class CapturingLevainShellAction extends LevainShellAction {
         List<String> capturedCommand;
+        Map<String, String> capturedEnv;
 
         CapturingLevainShellAction(ActionExecutor actionExecutor, RecipeService recipeService, Config config) {
             super(actionExecutor, recipeService, config);
@@ -222,6 +273,7 @@ class LevainShellActionTest {
         @Override
         protected ProcessResult runCommand(List<String> command, Map<String, String> env, boolean captureOutput) {
             this.capturedCommand = command;
+            this.capturedEnv = env;
             return new ProcessResult(0, "");
         }
     }
