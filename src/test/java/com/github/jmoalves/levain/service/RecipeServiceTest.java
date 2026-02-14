@@ -7,12 +7,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.github.jmoalves.levain.model.Recipe;
+import com.github.jmoalves.levain.repository.Repository;
 import com.github.jmoalves.levain.repository.RepositoryFactory;
+import com.github.jmoalves.levain.repository.ResourceRepository;
 
 /**
  * Unit tests for RecipeService using JUnit 5.
@@ -101,6 +104,37 @@ class RecipeServiceTest {
         assertNotNull(recipes);
         assertTrue(recipes.size() > 0);
         assertTrue(recipes.stream().anyMatch(r -> r.getName().equals("jdk-21")));
+    }
+
+    @Test
+    void testResolveRecipesMultiple() {
+        List<Recipe> recipes = recipeService.resolveRecipes(List.of("jdk-21", "git"));
+
+        assertNotNull(recipes);
+        assertTrue(recipes.stream().anyMatch(r -> "jdk-21".equals(r.getName())));
+        assertTrue(recipes.stream().anyMatch(r -> "git".equals(r.getName())));
+    }
+
+    @Test
+    void testGetRecipeFileName() {
+        Optional<String> fileName = recipeService.getRecipeFileName("jdk-21");
+
+        assertTrue(fileName.isPresent());
+        assertEquals("jdk-21.levain.yaml", fileName.get());
+    }
+
+    @Test
+    void testFindSourceRepository() {
+        Optional<Repository> repository = recipeService.findSourceRepository("jdk-21");
+
+        assertTrue(repository.isPresent());
+        assertTrue(repository.get() instanceof ResourceRepository);
+    }
+
+    @Test
+    void testInstalledMetadataDefaults() {
+        assertFalse(recipeService.isInstalled("jdk-21"));
+        assertTrue(recipeService.getInstalledMetadata("jdk-21").isEmpty());
     }
 
     @Test

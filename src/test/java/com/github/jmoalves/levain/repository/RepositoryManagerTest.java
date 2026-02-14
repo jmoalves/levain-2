@@ -3,13 +3,18 @@ package com.github.jmoalves.levain.repository;
 import com.github.jmoalves.levain.model.Recipe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class RepositoryManagerTest {
+    @TempDir
+    Path tempDir;
+
     private RepositoryManager manager;
 
     @BeforeEach
@@ -140,5 +145,55 @@ class RepositoryManagerTest {
 
         Optional<Recipe> recipe = manager.resolveRecipe("jdk-21");
         assertTrue(recipe.isPresent());
+    }
+
+    @Test
+    void shouldFindRepositoryForRecipe() {
+        ResourceRepository resourceRepo = new ResourceRepository();
+        MockRepository mockRepo = new MockRepository("mock", List.of(createRecipe("unique")));
+
+        manager.addRepository(resourceRepo);
+        manager.addRepository(mockRepo);
+
+        Optional<Repository> fromJar = manager.findRepositoryForRecipe("jdk-21");
+        Optional<Repository> fromMock = manager.findRepositoryForRecipe("unique");
+
+        assertTrue(fromJar.isPresent());
+        assertTrue(fromJar.get() instanceof ResourceRepository);
+        assertTrue(fromMock.isPresent());
+        assertTrue(fromMock.get() instanceof MockRepository);
+    }
+
+    @Test
+    void shouldGetRecipeFileNameFromRepository() {
+        DirectoryRepository dirRepo = new DirectoryRepository("DirRepo", "src/test/resources/recipes");
+        manager.addRepository(dirRepo);
+
+        Optional<String> fileName = manager.getRecipeFileName("jdk-21");
+        Optional<String> missing = manager.getRecipeFileName("missing");
+
+        assertTrue(fileName.isPresent());
+        assertEquals("jdk-21.levain.yaml", fileName.get());
+        assertTrue(missing.isEmpty());
+    }
+
+    @Test
+    void shouldExposeRegistryAndInstalledState() {
+        Registry registry = new Registry(tempDir.toString());
+        manager.addRepository(registry);
+
+        Recipe recipe = createRecipe("installed");
+        registry.store(recipe, "version: 1.0.0\n");
+
+        assertTrue(manager.getRegistry().isPresent());
+        assertTrue(manager.isInstalled("installed"));
+        assertFalse(manager.isInstalled("missing"));
+    }
+
+    private Recipe createRecipe(String name) {
+        Recipe recipe = new Recipe();
+        recipe.setName(name);
+        recipe.setVersion("1.0.0");
+        return recipe;
     }
 }
