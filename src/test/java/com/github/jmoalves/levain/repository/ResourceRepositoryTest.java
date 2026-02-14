@@ -101,6 +101,9 @@ class ResourceRepositoryTest {
 
         String nameShort = invokeExtractRecipeName("sample.levain");
         assertEquals("sample", nameShort);
+
+        String nameYml = invokeExtractRecipeName("sample.levain.yml");
+        assertEquals("sample", nameYml);
     }
 
     @Test

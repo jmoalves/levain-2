@@ -26,6 +26,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.eq;
 
 class LevainShellActionTest {
 
@@ -101,6 +102,26 @@ class LevainShellActionTest {
 
         assertThrows(IllegalStateException.class, () -> action.execute(context, List.of("echo", "ok")));
         verify(actionExecutor, never()).executeCommands(any(), any());
+    }
+
+    @Test
+    void shouldExecuteShellAndEnvActionsInOrder() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+        recipe.setCommands(Map.of(
+                "shell", List.of("echo shell"),
+                "env", List.of("echo env")
+        ));
+
+        when(recipeService.resolveRecipe("test-pkg")).thenReturn(List.of(recipe));
+
+        TestLevainShellAction action = new TestLevainShellAction(actionExecutor, recipeService, config);
+        action.nextResult = new LevainShellAction.ProcessResult(0, "ok");
+
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+        action.execute(context, List.of("echo", "ok"));
+
+        verify(actionExecutor).executeCommands(eq(List.of("echo shell", "echo env")), any());
     }
 
     @Test
