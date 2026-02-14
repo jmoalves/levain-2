@@ -84,10 +84,11 @@ class CdiCommandFactoryTest {
     @DisplayName("Should throw execution exception when CDI unavailable")
     void shouldFailWhenCdiUnavailable() {
         container.close();
+        container = null;
 
         CdiCommandFactory testFactory = new CdiCommandFactory(false);
 
-        assertThrows(CommandLine.ExecutionException.class,
+        assertThrows(CommandLine.InitializationException.class,
                 () -> testFactory.create(ListCommand.class));
     }
 }
