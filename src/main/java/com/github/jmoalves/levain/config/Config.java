@@ -106,6 +106,11 @@ public class Config {
      * Default: ~/levain
      */
     public Path getLevainHome() {
+        String envHome = System.getenv("LEVAIN_HOME");
+        if ((configData.levainHome == null || configData.levainHome.isEmpty())
+                && envHome != null && !envHome.isBlank()) {
+            return Paths.get(envHome);
+        }
         if (configData.levainHome == null || configData.levainHome.isEmpty()) {
             String userHome = System.getProperty("user.home");
             return Paths.get(userHome).resolve(DEFAULT_LEVAIN_HOME);
@@ -125,6 +130,11 @@ public class Config {
      * Default: ~/.levain/registry
      */
     public Path getRegistryDir() {
+        String envRegistry = System.getenv("LEVAIN_REGISTRY_DIR");
+        if ((configData.registryDir == null || configData.registryDir.isEmpty())
+                && envRegistry != null && !envRegistry.isBlank()) {
+            return Paths.get(envRegistry);
+        }
         if (configData.registryDir == null || configData.registryDir.isEmpty()) {
             String userHome = System.getProperty("user.home");
             return Paths.get(userHome).resolve(".levain/registry");
@@ -144,6 +154,11 @@ public class Config {
      * Default: ~/.levain/cache
      */
     public Path getCacheDir() {
+        String envCache = System.getenv("LEVAIN_CACHE_DIR");
+        if ((configData.cacheDir == null || configData.cacheDir.isEmpty())
+                && envCache != null && !envCache.isBlank()) {
+            return Paths.get(envCache);
+        }
         if (configData.cacheDir == null || configData.cacheDir.isEmpty()) {
             String userHome = System.getProperty("user.home");
             return Paths.get(userHome).resolve(".levain/cache");

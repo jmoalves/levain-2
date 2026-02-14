@@ -120,11 +120,28 @@ public class InstallService {
         for (Recipe recipe : resolution.recipes()) {
             if (force || !registry.isInstalled(recipe.getName())) {
                 toInstall.add(recipe);
-            } else {
-                logger.info("Package already installed (skipping): {}", recipe.getName());
-                if (requestedSet.contains(recipe.getName())) {
-                    alreadyInstalled.add(recipe.getName());
-                }
+                continue;
+            }
+
+            boolean baseDirExists = recipe.shouldSkipInstallDir()
+                    || Files.exists(config.getLevainHome().resolve(recipe.getName()));
+            boolean metadataExists = registry.getMetadata(recipe.getName()).isPresent();
+
+            if (!baseDirExists) {
+                logger.info("Base directory missing for {} (reinstalling)", recipe.getName());
+                toInstall.add(recipe);
+                continue;
+            }
+
+            if (!metadataExists) {
+                logger.info("Registry metadata missing for {} (reinstalling)", recipe.getName());
+                toInstall.add(recipe);
+                continue;
+            }
+
+            logger.info("Package already installed (skipping): {}", recipe.getName());
+            if (requestedSet.contains(recipe.getName())) {
+                alreadyInstalled.add(recipe.getName());
             }
         }
 

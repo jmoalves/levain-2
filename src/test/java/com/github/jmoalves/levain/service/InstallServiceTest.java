@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.isNull;
 
 import java.lang.reflect.Field;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
@@ -24,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.github.jmoalves.levain.model.Recipe;
 import com.github.jmoalves.levain.repository.Repository;
 import com.github.jmoalves.levain.repository.RepositoryFactory;
+import com.github.jmoalves.levain.repository.RecipeMetadata;
 import com.github.jmoalves.levain.repository.Registry;
 import com.github.jmoalves.levain.service.DependencyResolver.ResolutionResult;
 
@@ -98,7 +100,12 @@ class InstallServiceTest {
     void testInstallSkipsWhenAlreadyInstalled() throws Exception {
         Registry registry = org.mockito.Mockito.mock(Registry.class);
         when(registry.isInstalled("test-package")).thenReturn(true);
+        when(registry.getMetadata("test-package")).thenReturn(Optional.of(new RecipeMetadata()));
         setRegistry(installService, registry);
+
+        Path baseDir = Path.of("/tmp/levain-installed/test-package");
+        Files.createDirectories(baseDir);
+        when(config.getLevainHome()).thenReturn(baseDir.getParent());
 
         when(dependencyResolver.resolveAndSortWithMissing(java.util.List.of("test-package")))
             .thenReturn(new ResolutionResult(java.util.List.of(mockRecipe), java.util.List.of()));
@@ -205,6 +212,54 @@ class InstallServiceTest {
         String recipeName = "my-recipe";
         AlreadyInstalledException exception = new AlreadyInstalledException(recipeName + " is already installed");
         assertTrue(exception.getMessage().contains(recipeName));
+    }
+
+    @Test
+    void testInstallReinstallsWhenBaseDirMissing() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        when(registry.isInstalled("test-package")).thenReturn(true);
+        when(registry.getMetadata("test-package")).thenReturn(Optional.of(new RecipeMetadata()));
+        setRegistry(installService, registry);
+
+        when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain-missing"));
+
+        when(dependencyResolver.resolveAndSortWithMissing(java.util.List.of("test-package")))
+            .thenReturn(new ResolutionResult(java.util.List.of(mockRecipe), java.util.List.of()));
+        when(recipeService.loadRecipe("test-package")).thenReturn(mockRecipe);
+        when(recipeService.getRecipeYamlContent("test-package"))
+            .thenReturn(Optional.of("name: test-package\nversion: 1.0.0\n"));
+        when(recipeService.findSourceRepository("test-package")).thenReturn(Optional.empty());
+
+        installService.install("test-package", false);
+
+        verify(registry).store(org.mockito.Mockito.eq(mockRecipe),
+            org.mockito.Mockito.eq("name: test-package\nversion: 1.0.0\n"),
+            isNull(), isNull());
+    }
+
+    @Test
+    void testInstallReinstallsWhenMetadataMissing() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        when(registry.isInstalled("test-package")).thenReturn(true);
+        when(registry.getMetadata("test-package")).thenReturn(Optional.empty());
+        setRegistry(installService, registry);
+
+        Path baseDir = Path.of("/tmp/levain-meta/test-package");
+        Files.createDirectories(baseDir);
+        when(config.getLevainHome()).thenReturn(baseDir.getParent());
+
+        when(dependencyResolver.resolveAndSortWithMissing(java.util.List.of("test-package")))
+            .thenReturn(new ResolutionResult(java.util.List.of(mockRecipe), java.util.List.of()));
+        when(recipeService.loadRecipe("test-package")).thenReturn(mockRecipe);
+        when(recipeService.getRecipeYamlContent("test-package"))
+            .thenReturn(Optional.of("name: test-package\nversion: 1.0.0\n"));
+        when(recipeService.findSourceRepository("test-package")).thenReturn(Optional.empty());
+
+        installService.install("test-package", false);
+
+        verify(registry).store(org.mockito.Mockito.eq(mockRecipe),
+            org.mockito.Mockito.eq("name: test-package\nversion: 1.0.0\n"),
+            isNull(), isNull());
     }
 
     private static void setRegistry(InstallService service, Registry registry) throws Exception {
