@@ -136,4 +136,16 @@ class VersionNumberTest {
         VersionNumber v = new VersionNumber("1.2.3");
         assertNotEquals(v, "1.2.3");
     }
+
+    @Test
+    void shouldHandleOverflowVersionParts() {
+        VersionNumber v = new VersionNumber("999999999999999999999");
+        assertEquals(0, v.getMajor());
+    }
+
+    @Test
+    void shouldNotEqualNull() {
+        VersionNumber v = new VersionNumber("1.2.3");
+        assertNotEquals(v, null);
+    }
 }

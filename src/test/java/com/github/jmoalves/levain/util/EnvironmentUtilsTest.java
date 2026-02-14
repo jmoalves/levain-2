@@ -8,6 +8,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -94,6 +96,40 @@ class EnvironmentUtilsTest {
     }
 
     @Test
+    void shouldResolveProfilePathForZsh() throws Exception {
+        String original = System.getenv("SHELL");
+        String originalHome = System.getProperty("user.home");
+        try {
+            updateEnv("SHELL", "/bin/zsh");
+            System.setProperty("user.home", tempDir.toString());
+
+            Path resolved = EnvironmentUtils.resolveProfilePath();
+
+            assertEquals(tempDir.resolve(".zshrc"), resolved);
+        } finally {
+            restoreEnv("SHELL", original);
+            restoreProperty("user.home", originalHome);
+        }
+    }
+
+    @Test
+    void shouldResolveProfilePathForBash() throws Exception {
+        String original = System.getenv("SHELL");
+        String originalHome = System.getProperty("user.home");
+        try {
+            updateEnv("SHELL", "/bin/bash");
+            System.setProperty("user.home", tempDir.toString());
+
+            Path resolved = EnvironmentUtils.resolveProfilePath();
+
+            assertEquals(tempDir.resolve(".bashrc"), resolved);
+        } finally {
+            restoreEnv("SHELL", original);
+            restoreProperty("user.home", originalHome);
+        }
+    }
+
+    @Test
     void shouldPersistUnixEnvAndReplaceExisting() throws IOException {
         Path profile = tempDir.resolve(".profile");
         Files.writeString(profile, "export TEST=old\n", StandardCharsets.UTF_8);
@@ -156,5 +192,22 @@ class EnvironmentUtilsTest {
             return;
         }
         System.setProperty(key, original);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void updateEnv(String key, String value) throws Exception {
+        Map<String, String> env = System.getenv();
+        Field field = env.getClass().getDeclaredField("m");
+        field.setAccessible(true);
+        Map<String, String> mutable = (Map<String, String>) field.get(env);
+        if (value == null) {
+            mutable.remove(key);
+        } else {
+            mutable.put(key, value);
+        }
+    }
+
+    private static void restoreEnv(String key, String original) throws Exception {
+        updateEnv(key, original);
     }
 }

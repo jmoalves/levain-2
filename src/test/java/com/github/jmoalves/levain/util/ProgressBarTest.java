@@ -7,6 +7,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.lang.reflect.Field;
+import java.time.Instant;
+import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -159,5 +162,84 @@ class ProgressBarTest {
             System.setOut(originalOut);
         }
         assertTrue(out.toString().contains("NoPlace"));
+    }
+
+    @Test
+    @DisplayName("Should disable in-place output for dumb terminals")
+    void testSupportsInPlaceForDumbTerm() throws Exception {
+        String original = System.getenv("TERM");
+        try {
+            updateEnv("TERM", "dumb");
+
+            Method supports = ProgressBar.class.getDeclaredMethod("supportsInPlace");
+            supports.setAccessible(true);
+            boolean value = (boolean) supports.invoke(null);
+
+            assertTrue(!value);
+        } finally {
+            restoreEnv("TERM", original);
+        }
+    }
+
+    @Test
+    @DisplayName("Should fall back to default width for invalid columns")
+    void testGetTerminalWidthWithInvalidColumns() throws Exception {
+        String original = System.getenv("COLUMNS");
+        try {
+            updateEnv("COLUMNS", "invalid");
+
+            Method width = ProgressBar.class.getDeclaredMethod("getTerminalWidth");
+            width.setAccessible(true);
+            int value = (int) width.invoke(null);
+
+            assertTrue(value == 80);
+        } finally {
+            restoreEnv("COLUMNS", original);
+        }
+    }
+
+    @Test
+    @DisplayName("Should skip render when percent unchanged")
+    void testRenderSkipsWhenPercentUnchanged() throws Exception {
+        PrintStream originalOut = System.out;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(out, true, StandardCharsets.UTF_8));
+            ProgressBar bar = new ProgressBar("Skip", 10, true);
+            out.reset();
+
+            Field lastPercent = ProgressBar.class.getDeclaredField("lastPercent");
+            lastPercent.setAccessible(true);
+            lastPercent.setInt(bar, 50);
+
+            Field startTime = ProgressBar.class.getDeclaredField("startTime");
+            startTime.setAccessible(true);
+            startTime.set(bar, Instant.now().minusSeconds(3));
+
+            Method render = ProgressBar.class.getDeclaredMethod("render", long.class);
+            render.setAccessible(true);
+            render.invoke(bar, 5L);
+
+            assertTrue(out.toString().isEmpty());
+        } finally {
+            System.setOut(originalOut);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void updateEnv(String key, String value) throws Exception {
+        Map<String, String> env = System.getenv();
+        Field field = env.getClass().getDeclaredField("m");
+        field.setAccessible(true);
+        Map<String, String> mutable = (Map<String, String>) field.get(env);
+        if (value == null) {
+            mutable.remove(key);
+        } else {
+            mutable.put(key, value);
+        }
+    }
+
+    private static void restoreEnv(String key, String original) throws Exception {
+        updateEnv(key, original);
     }
 }
