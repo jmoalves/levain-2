@@ -81,6 +81,18 @@ class CdiCommandFactoryTest {
     }
 
     @Test
+    @DisplayName("Should log errors when enabled")
+    void shouldThrowWhenLoggingEnabled() {
+        class UnknownClass {
+        }
+
+        CdiCommandFactory testFactory = new CdiCommandFactory(true);
+
+        assertThrows(CommandLine.InitializationException.class,
+                () -> testFactory.create(UnknownClass.class));
+    }
+
+    @Test
     @DisplayName("Should throw execution exception when CDI unavailable")
     void shouldFailWhenCdiUnavailable() {
         container.close();

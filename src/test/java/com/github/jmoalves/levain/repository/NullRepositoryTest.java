@@ -74,6 +74,22 @@ class NullRepositoryTest {
     }
 
     @Test
+    @DisplayName("Should return empty YAML content and file name")
+    void shouldReturnEmptyYamlAndFileName() {
+        assertTrue(repository.getRecipeYamlContent("anything").isEmpty());
+        assertTrue(repository.getRecipeFileName("anything").isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should return fresh empty list each time")
+    void shouldReturnFreshEmptyLists() {
+        var recipes = repository.listRecipes();
+        recipes.add(new com.github.jmoalves.levain.model.Recipe());
+
+        assertTrue(repository.listRecipes().isEmpty());
+    }
+
+    @Test
     @DisplayName("Should be idempotent on init")
     void shouldBeIdempotentOnInit() {
         repository.init();

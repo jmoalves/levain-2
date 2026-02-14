@@ -108,4 +108,32 @@ class VersionNumberTest {
         assertNotEquals(v1, v3);
         assertEquals(v1.hashCode(), v2.hashCode());
     }
+
+    @Test
+    void shouldHandleNonNumericVersionParts() {
+        VersionNumber v = new VersionNumber("alpha.beta.gamma");
+        assertEquals(0, v.getMajor());
+        assertEquals(0, v.getMinor());
+        assertEquals(0, v.getPatch());
+    }
+
+    @Test
+    void shouldCompareAgainstNull() {
+        VersionNumber v = new VersionNumber("1.0.0");
+        assertTrue(v.compareTo(null) > 0);
+        assertFalse(v.isEqualTo(null));
+        assertFalse(v.isOlderThan(null));
+    }
+
+    @Test
+    void shouldReturnFallbackToStringForNullOriginal() {
+        VersionNumber v = new VersionNumber(null);
+        assertEquals("0.0.0", v.toString());
+    }
+
+    @Test
+    void shouldNotEqualDifferentType() {
+        VersionNumber v = new VersionNumber("1.2.3");
+        assertNotEquals(v, "1.2.3");
+    }
 }
