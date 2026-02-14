@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
@@ -152,8 +153,9 @@ class RecipeServiceTest {
 
     @Test
     void testInstalledMetadataDefaults() {
-        assertFalse(recipeService.isInstalled("jdk-21"));
-        assertTrue(recipeService.getInstalledMetadata("jdk-21").isEmpty());
+        String recipeName = "missing-" + UUID.randomUUID();
+        assertFalse(recipeService.isInstalled(recipeName));
+        assertTrue(recipeService.getInstalledMetadata(recipeName).isEmpty());
     }
 
     @Test
