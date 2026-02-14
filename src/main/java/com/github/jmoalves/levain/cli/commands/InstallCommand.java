@@ -56,6 +56,15 @@ public class InstallCommand implements Callable<Integer> {
             installService.installPlan(plan);
             console.info("\nAll packages installed successfully!");
             return 0;
+        } catch (IllegalArgumentException e) {
+            logger.error("Failed to install packages", e);
+            String message = e.getMessage();
+            if (message != null && message.startsWith("Recipe not found")) {
+                console.error("✗ {}", message);
+            } else {
+                console.error("✗ Failed to install packages. See logs for details. Hint: check network/proxy and permissions.");
+            }
+            return 1;
         } catch (Exception e) {
             logger.error("Failed to install packages", e);
             console.error("✗ Failed to install packages. See logs for details. Hint: check network/proxy and permissions.");

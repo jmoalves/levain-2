@@ -7,6 +7,7 @@
         -->
         <Console name="USER_CONSOLE" target="SYSTEM_OUT">
             <PatternLayout pattern="%msg%n" />
+            <LevelRangeFilter minLevel="INFO" maxLevel="INFO" onMatch="ACCEPT" onMismatch="DENY" />
         </Console>
 
         <!-- 
@@ -14,7 +15,7 @@
         Shows highlighted level for critical messages
         -->
         <Console name="ERROR_CONSOLE" target="SYSTEM_ERR">
-            <PatternLayout pattern="%highlight{[%level]} %msg%n" />
+            <PatternLayout pattern="%highlight{[%level]} %msg%n%throwable{none}" />
             <ThresholdFilter level="WARN" onMatch="ACCEPT" onMismatch="DENY" />
         </Console>
 
@@ -61,7 +62,6 @@
         - All INFO+ to file
         -->
         <Root level="INFO">
-            <AppenderRef ref="ERROR_CONSOLE" />
             <AppenderRef ref="FILE" />
         </Root>
 
