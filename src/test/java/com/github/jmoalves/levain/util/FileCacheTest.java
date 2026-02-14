@@ -1,15 +1,34 @@
 package com.github.jmoalves.levain.util;
 
 import com.github.jmoalves.levain.config.Config;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.net.ProxySelector;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.lang.reflect.Method;
+import java.util.LinkedHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
@@ -217,5 +236,371 @@ class FileCacheTest {
         when(config.getCacheDir()).thenReturn(tempDir.resolve("no-proxy-cache"));
         FileCache cacheWithoutProxy = new FileCache(config);
         assertNotNull(cacheWithoutProxy);
+    }
+
+    @Test
+    void testDownloadRemoteFileAndCacheReuse() throws Exception {
+        AtomicReference<byte[]> content = new AtomicReference<>("hello".getBytes());
+        AtomicReference<String> lastModified = new AtomicReference<>(
+                OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(10).format(DateTimeFormatter.RFC_1123_DATE_TIME));
+        AtomicReference<Integer> headStatus = new AtomicReference<>(200);
+        AtomicReference<Integer> getStatus = new AtomicReference<>(200);
+        AtomicInteger headCount = new AtomicInteger(0);
+        AtomicInteger getCount = new AtomicInteger(0);
+
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/file.txt", new TestHandler(content, lastModified, headStatus, getStatus, headCount, getCount));
+        server.start();
+        try {
+            String url = "http://localhost:" + server.getAddress().getPort() + "/file.txt";
+            Path cached = fileCache.get(url);
+            assertTrue(Files.exists(cached));
+            assertEquals("hello", Files.readString(cached));
+
+            Path cachedAgain = fileCache.get(url);
+            assertEquals(cached, cachedAgain);
+            assertEquals(1, getCount.get());
+            assertTrue(headCount.get() >= 1);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void testCacheInvalidWhenContentLengthChanges() throws Exception {
+        AtomicReference<byte[]> content = new AtomicReference<>("aaa".getBytes());
+        AtomicReference<String> lastModified = new AtomicReference<>(null);
+        AtomicReference<Integer> headStatus = new AtomicReference<>(200);
+        AtomicReference<Integer> getStatus = new AtomicReference<>(200);
+        AtomicInteger headCount = new AtomicInteger(0);
+        AtomicInteger getCount = new AtomicInteger(0);
+
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/file.txt", new TestHandler(content, lastModified, headStatus, getStatus, headCount, getCount));
+        server.start();
+        try {
+            String url = "http://localhost:" + server.getAddress().getPort() + "/file.txt";
+            Path cached = fileCache.get(url);
+            assertEquals("aaa", Files.readString(cached));
+            assertEquals(1, getCount.get());
+
+            content.set("bbbbbb".getBytes());
+            Path cachedUpdated = fileCache.get(url);
+            assertEquals(cached, cachedUpdated);
+            assertEquals("bbbbbb", Files.readString(cachedUpdated));
+            assertEquals(2, getCount.get());
+            assertTrue(headCount.get() >= 1);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void testCacheInvalidWhenRemoteIsNewer() throws Exception {
+        AtomicReference<byte[]> content = new AtomicReference<>("old".getBytes());
+        AtomicReference<String> lastModified = new AtomicReference<>(
+                OffsetDateTime.now(ZoneOffset.UTC).minusHours(1).format(DateTimeFormatter.RFC_1123_DATE_TIME));
+        AtomicReference<Integer> headStatus = new AtomicReference<>(200);
+        AtomicReference<Integer> getStatus = new AtomicReference<>(200);
+        AtomicInteger headCount = new AtomicInteger(0);
+        AtomicInteger getCount = new AtomicInteger(0);
+
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/file.txt", new TestHandler(content, lastModified, headStatus, getStatus, headCount, getCount));
+        server.start();
+        try {
+            String url = "http://localhost:" + server.getAddress().getPort() + "/file.txt";
+            Path cached = fileCache.get(url);
+            assertEquals("old", Files.readString(cached));
+
+            content.set("new".getBytes());
+            lastModified.set(OffsetDateTime.now(ZoneOffset.UTC).plusHours(1)
+                    .format(DateTimeFormatter.RFC_1123_DATE_TIME));
+
+            Path updated = fileCache.get(url);
+            assertEquals(cached, updated);
+            assertEquals("new", Files.readString(updated));
+            assertEquals(2, getCount.get());
+            assertTrue(headCount.get() >= 1);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void testDownloadFailsOnHttpError() throws Exception {
+        AtomicReference<byte[]> content = new AtomicReference<>("".getBytes());
+        AtomicReference<String> lastModified = new AtomicReference<>(null);
+        AtomicReference<Integer> headStatus = new AtomicReference<>(200);
+        AtomicReference<Integer> getStatus = new AtomicReference<>(404);
+        AtomicInteger headCount = new AtomicInteger(0);
+        AtomicInteger getCount = new AtomicInteger(0);
+
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/file.txt", new TestHandler(content, lastModified, headStatus, getStatus, headCount, getCount));
+        server.start();
+        try {
+            String url = "http://localhost:" + server.getAddress().getPort() + "/file.txt";
+            IOException ex = assertThrows(IOException.class, () -> fileCache.get(url));
+            assertTrue(ex.getMessage().contains("HTTP 404"));
+            assertEquals(1, getCount.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void testCacheIsValidWhenHeadReturnsError() throws Exception {
+        AtomicReference<byte[]> content = new AtomicReference<>("cached".getBytes());
+        AtomicReference<String> lastModified = new AtomicReference<>(null);
+        AtomicReference<Integer> headStatus = new AtomicReference<>(200);
+        AtomicReference<Integer> getStatus = new AtomicReference<>(200);
+        AtomicInteger headCount = new AtomicInteger(0);
+        AtomicInteger getCount = new AtomicInteger(0);
+
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/file.txt", new TestHandler(content, lastModified, headStatus, getStatus, headCount, getCount));
+        server.start();
+        try {
+            String url = "http://localhost:" + server.getAddress().getPort() + "/file.txt";
+            Path cached = fileCache.get(url);
+            assertEquals("cached", Files.readString(cached));
+
+            headStatus.set(500);
+            content.set("new".getBytes());
+
+            Path cachedAgain = fileCache.get(url);
+            assertEquals(cached, cachedAgain);
+            assertEquals("cached", Files.readString(cachedAgain));
+            assertEquals(1, getCount.get());
+            assertTrue(headCount.get() >= 1);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void testCreateProxySelectorInvalidUrl() throws Exception {
+        Map<String, String> original = snapshotEnv("HTTPS_PROXY");
+        try {
+            Assumptions.assumeTrue(setEnvVar("HTTPS_PROXY", "://bad"));
+            ProxySelector selector = invokeCreateProxySelector(fileCache);
+            assertNull(selector);
+        } finally {
+            restoreEnv(original);
+        }
+    }
+
+    @Test
+    void testCreateProxySelectorMissingPort() throws Exception {
+        Map<String, String> original = snapshotEnv("HTTPS_PROXY");
+        try {
+            Assumptions.assumeTrue(setEnvVar("HTTPS_PROXY", "http://proxy.example.com"));
+            ProxySelector selector = invokeCreateProxySelector(fileCache);
+            assertNull(selector);
+        } finally {
+            restoreEnv(original);
+        }
+    }
+
+    @Test
+    void testCreateProxySelectorValidAndNoProxyRules() throws Exception {
+        Map<String, String> original = snapshotEnv("HTTPS_PROXY", "NO_PROXY");
+        try {
+            Assumptions.assumeTrue(setEnvVar("HTTPS_PROXY", "proxy.example.com:8080"));
+            Assumptions.assumeTrue(setEnvVar("NO_PROXY", "example.com,.internal,localhost"));
+
+            ProxySelector selector = invokeCreateProxySelector(fileCache);
+            assertNotNull(selector);
+
+            List<Proxy> proxiesForNoProxyHost = selector.select(URI.create("http://service.internal"));
+            assertEquals(1, proxiesForNoProxyHost.size());
+            assertEquals(Proxy.NO_PROXY, proxiesForNoProxyHost.get(0));
+
+            List<Proxy> proxiesForOtherHost = selector.select(URI.create("http://other.com"));
+            assertEquals(1, proxiesForOtherHost.size());
+            assertEquals(Proxy.Type.HTTP, proxiesForOtherHost.get(0).type());
+        } finally {
+            restoreEnv(original);
+        }
+    }
+
+    @Test
+    void testIsNoProxyRules() throws Exception {
+        Method method = FileCache.class.getDeclaredMethod("isNoProxy", String.class, List.class);
+        method.setAccessible(true);
+
+        assertTrue((Boolean) method.invoke(null, "example.com", List.of("*")));
+        assertTrue((Boolean) method.invoke(null, "service.internal", List.of(".internal")));
+        assertTrue((Boolean) method.invoke(null, "example.com", List.of("example.com")));
+        assertTrue((Boolean) method.invoke(null, "sub.example.com", List.of("example.com")));
+        assertFalse((Boolean) method.invoke(null, "other.com", List.of("example.com")));
+    }
+
+    @Test
+    void testParseNoProxyList() throws Exception {
+        Method method = FileCache.class.getDeclaredMethod("parseNoProxyList", String[].class);
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        List<String> result = (List<String>) method.invoke(null, (Object) new String[]{" a , b ", ""});
+        assertEquals(List.of("a", "b"), result);
+    }
+
+    @Test
+    void testCacheIsValidReturnsTrueOnException() throws Exception {
+        Method method = FileCache.class.getDeclaredMethod("cacheIsValid", String.class, Path.class);
+        method.setAccessible(true);
+
+        Path cacheDir = config.getCacheDir().resolve("downloads");
+        Files.createDirectories(cacheDir);
+        Path cachedFile = cacheDir.resolve("dummy.txt");
+        Files.writeString(cachedFile, "cached");
+
+        boolean result = (Boolean) method.invoke(fileCache, "http://[invalid", cachedFile);
+        assertTrue(result);
+    }
+
+    private static class TestHandler implements HttpHandler {
+        private final AtomicReference<byte[]> content;
+        private final AtomicReference<String> lastModified;
+        private final AtomicReference<Integer> headStatus;
+        private final AtomicReference<Integer> getStatus;
+        private final AtomicInteger headCount;
+        private final AtomicInteger getCount;
+
+        private TestHandler(AtomicReference<byte[]> content,
+                            AtomicReference<String> lastModified,
+                            AtomicReference<Integer> headStatus,
+                            AtomicReference<Integer> getStatus,
+                            AtomicInteger headCount,
+                            AtomicInteger getCount) {
+            this.content = content;
+            this.lastModified = lastModified;
+            this.headStatus = headStatus;
+            this.getStatus = getStatus;
+            this.headCount = headCount;
+            this.getCount = getCount;
+        }
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String method = exchange.getRequestMethod();
+            if ("HEAD".equalsIgnoreCase(method)) {
+                headCount.incrementAndGet();
+                int status = headStatus.get();
+                if (status >= 400) {
+                    exchange.sendResponseHeaders(status, -1);
+                    exchange.close();
+                    return;
+                }
+
+                byte[] body = content.get();
+                exchange.getResponseHeaders().add("Content-Length", String.valueOf(body.length));
+                if (lastModified.get() != null) {
+                    exchange.getResponseHeaders().add("Last-Modified", lastModified.get());
+                }
+                exchange.sendResponseHeaders(200, -1);
+                exchange.close();
+                return;
+            }
+
+            getCount.incrementAndGet();
+            int status = getStatus.get();
+            if (status >= 400) {
+                exchange.sendResponseHeaders(status, -1);
+                exchange.close();
+                return;
+            }
+
+            byte[] body = content.get();
+            exchange.getResponseHeaders().add("Content-Length", String.valueOf(body.length));
+            if (lastModified.get() != null) {
+                exchange.getResponseHeaders().add("Last-Modified", lastModified.get());
+            }
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        }
+    }
+
+    private static ProxySelector invokeCreateProxySelector(FileCache cache) throws Exception {
+        Method method = FileCache.class.getDeclaredMethod("createProxySelector");
+        method.setAccessible(true);
+        return (ProxySelector) method.invoke(cache);
+    }
+
+    private static Map<String, String> snapshotEnv(String... keys) {
+        Map<String, String> snapshot = new LinkedHashMap<>();
+        if (keys == null) {
+            return snapshot;
+        }
+        for (String key : keys) {
+            if (key == null || snapshot.containsKey(key)) {
+                continue;
+            }
+            snapshot.put(key, System.getenv(key));
+        }
+        return snapshot;
+    }
+
+    private static void restoreEnv(Map<String, String> snapshot) {
+        for (Map.Entry<String, String> entry : snapshot.entrySet()) {
+            if (entry.getValue() == null) {
+                clearEnvVar(entry.getKey());
+            } else {
+                setEnvVar(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    private static boolean setEnvVar(String key, String value) {
+        try {
+            Map<String, String> env = System.getenv();
+            Class<?> cl = env.getClass();
+            try {
+                java.lang.reflect.Field field = cl.getDeclaredField("m");
+                field.setAccessible(true);
+                @SuppressWarnings("unchecked")
+                Map<String, String> writableEnv = (Map<String, String>) field.get(env);
+                if (value == null) {
+                    writableEnv.remove(key);
+                } else {
+                    writableEnv.put(key, value);
+                }
+                return true;
+            } catch (NoSuchFieldException e) {
+                // Fall through to ProcessEnvironment strategy below
+            }
+
+            Class<?> pe = Class.forName("java.lang.ProcessEnvironment");
+            java.lang.reflect.Field envField = pe.getDeclaredField("theEnvironment");
+            envField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Map<String, String> writableEnv = (Map<String, String>) envField.get(null);
+            if (value == null) {
+                writableEnv.remove(key);
+            } else {
+                writableEnv.put(key, value);
+            }
+
+            java.lang.reflect.Field ciEnvField = pe.getDeclaredField("theCaseInsensitiveEnvironment");
+            ciEnvField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Map<String, String> ciEnv = (Map<String, String>) ciEnvField.get(null);
+            if (value == null) {
+                ciEnv.remove(key);
+            } else {
+                ciEnv.put(key, value);
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static void clearEnvVar(String key) {
+        setEnvVar(key, null);
     }
 }
