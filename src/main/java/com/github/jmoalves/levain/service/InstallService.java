@@ -20,7 +20,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.LinkedHashMap;
 
 /**
  * Service for installing packages.
@@ -77,7 +76,12 @@ public class InstallService {
     public void install(String packageName, boolean force) {
         logger.info("Analyzing installation for: {} (force={})", packageName, force);
 
-        List<Recipe> toInstall = buildInstallationPlan(List.of(packageName), force);
+        PlanResult result = buildInstallationPlan(List.of(packageName), force);
+        if (!result.missing().isEmpty()) {
+            throw new IllegalArgumentException("Recipe not found: " + String.join(", ", result.missing()));
+        }
+
+        List<Recipe> toInstall = result.plan();
         if (toInstall.isEmpty()) {
             logger.info("All packages already installed");
             return;
@@ -87,18 +91,13 @@ public class InstallService {
         installPlan(toInstall);
     }
 
-    public List<Recipe> buildInstallationPlan(List<String> packageNames, boolean force) {
+    public PlanResult buildInstallationPlan(List<String> packageNames, boolean force) {
         if (packageNames == null || packageNames.isEmpty()) {
-            return List.of();
+            return new PlanResult(List.of(), List.of());
         }
 
-        LinkedHashMap<String, Recipe> ordered = new LinkedHashMap<>();
-        for (String packageName : packageNames) {
-            List<Recipe> installationPlan = dependencyResolver.resolveAndSort(packageName);
-            for (Recipe recipe : installationPlan) {
-                ordered.putIfAbsent(recipe.getName(), recipe);
-            }
-        }
+        DependencyResolver.ResolutionResult resolution = dependencyResolver
+                .resolveAndSortWithMissing(packageNames);
 
         if (registry == null) {
             registry = new Registry();
@@ -106,7 +105,7 @@ public class InstallService {
         }
 
         List<Recipe> toInstall = new ArrayList<>();
-        for (Recipe recipe : ordered.values()) {
+        for (Recipe recipe : resolution.recipes()) {
             if (force || !registry.isInstalled(recipe.getName())) {
                 toInstall.add(recipe);
             } else {
@@ -114,7 +113,7 @@ public class InstallService {
             }
         }
 
-        return toInstall;
+        return new PlanResult(toInstall, resolution.missing());
     }
 
     public void installPlan(List<Recipe> plan) {
@@ -128,6 +127,24 @@ public class InstallService {
 
     public String formatInstallationPlan(List<Recipe> plan) {
         return dependencyResolver.formatInstallationPlan(plan);
+    }
+
+    public static class PlanResult {
+        private final List<Recipe> plan;
+        private final List<String> missing;
+
+        public PlanResult(List<Recipe> plan, List<String> missing) {
+            this.plan = plan;
+            this.missing = missing;
+        }
+
+        public List<Recipe> plan() {
+            return plan;
+        }
+
+        public List<String> missing() {
+            return missing;
+        }
     }
 
     /**

@@ -25,6 +25,7 @@ import com.github.jmoalves.levain.model.Recipe;
 import com.github.jmoalves.levain.repository.Repository;
 import com.github.jmoalves.levain.repository.RepositoryFactory;
 import com.github.jmoalves.levain.repository.Registry;
+import com.github.jmoalves.levain.service.DependencyResolver.ResolutionResult;
 
 /**
  * Unit tests for InstallService using JUnit 5 and Mockito.
@@ -69,28 +70,28 @@ class InstallServiceTest {
     void testInstallPackageNotFound() {
         String packageName = "nonexistent-package";
 
-        when(dependencyResolver.resolveAndSort(packageName))
-                .thenThrow(new IllegalArgumentException("Recipe not found: " + packageName));
+        when(dependencyResolver.resolveAndSortWithMissing(java.util.List.of(packageName)))
+            .thenReturn(new ResolutionResult(java.util.List.of(), java.util.List.of(packageName)));
 
         assertThrows(IllegalArgumentException.class, () -> {
             installService.install(packageName);
         });
 
-        verify(dependencyResolver).resolveAndSort(packageName);
+        verify(dependencyResolver).resolveAndSortWithMissing(java.util.List.of(packageName));
     }
 
     @Test
     void testInstallPackageWithRecipeServiceException() {
         String packageName = "failing-package";
 
-        when(dependencyResolver.resolveAndSort(packageName))
+        when(dependencyResolver.resolveAndSortWithMissing(java.util.List.of(packageName)))
                 .thenThrow(new RuntimeException("Recipe not found"));
 
         assertThrows(RuntimeException.class, () -> {
             installService.install(packageName);
         });
 
-        verify(dependencyResolver).resolveAndSort(packageName);
+        verify(dependencyResolver).resolveAndSortWithMissing(java.util.List.of(packageName));
     }
 
     @Test
@@ -99,14 +100,14 @@ class InstallServiceTest {
         when(registry.isInstalled("test-package")).thenReturn(true);
         setRegistry(installService, registry);
 
-        when(dependencyResolver.resolveAndSort("test-package"))
-                .thenReturn(java.util.List.of(mockRecipe));
+        when(dependencyResolver.resolveAndSortWithMissing(java.util.List.of("test-package")))
+            .thenReturn(new ResolutionResult(java.util.List.of(mockRecipe), java.util.List.of()));
 
         // When already installed and force=false, install completes without exception
         installService.install("test-package", false);
         
         verify(registry).isInstalled("test-package");
-        verify(dependencyResolver).resolveAndSort("test-package");
+        verify(dependencyResolver).resolveAndSortWithMissing(java.util.List.of("test-package"));
     }
 
     @Test
@@ -115,8 +116,8 @@ class InstallServiceTest {
         lenient().when(registry.isInstalled("test-package")).thenReturn(true);
         setRegistry(installService, registry);
 
-        when(dependencyResolver.resolveAndSort("test-package"))
-                .thenReturn(java.util.List.of(mockRecipe));
+        when(dependencyResolver.resolveAndSortWithMissing(java.util.List.of("test-package")))
+            .thenReturn(new ResolutionResult(java.util.List.of(mockRecipe), java.util.List.of()));
         when(recipeService.loadRecipe("test-package")).thenReturn(mockRecipe);
         when(recipeService.getRecipeYamlContent("test-package"))
                 .thenReturn(Optional.of("name: test-package\nversion: 1.0.0\n"));
@@ -135,8 +136,8 @@ class InstallServiceTest {
         when(registry.isInstalled("test-package")).thenReturn(false);
         setRegistry(installService, registry);
 
-        when(dependencyResolver.resolveAndSort("test-package"))
-                .thenReturn(java.util.List.of(mockRecipe));
+        when(dependencyResolver.resolveAndSortWithMissing(java.util.List.of("test-package")))
+            .thenReturn(new ResolutionResult(java.util.List.of(mockRecipe), java.util.List.of()));
         when(recipeService.loadRecipe("test-package")).thenReturn(mockRecipe);
         when(recipeService.getRecipeYamlContent("test-package")).thenReturn(Optional.empty());
         when(recipeService.findSourceRepository("test-package")).thenReturn(Optional.empty());

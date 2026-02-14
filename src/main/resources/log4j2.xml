@@ -15,7 +15,7 @@
         Shows highlighted level for critical messages
         -->
         <Console name="ERROR_CONSOLE" target="SYSTEM_ERR">
-            <PatternLayout pattern="%highlight{[%level]} %msg%n%throwable{none}" />
+            <PatternLayout pattern="%msg%n%throwable{none}" />
             <ThresholdFilter level="WARN" onMatch="ACCEPT" onMismatch="DENY" />
         </Console>
 

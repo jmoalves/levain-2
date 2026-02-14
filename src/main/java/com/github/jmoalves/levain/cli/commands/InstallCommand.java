@@ -6,6 +6,7 @@ import java.util.concurrent.Callable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.jmoalves.levain.model.Recipe;
 import com.github.jmoalves.levain.service.InstallService;
 
 import jakarta.inject.Inject;
@@ -46,25 +47,28 @@ public class InstallCommand implements Callable<Integer> {
 
         logger.debug("Installing {} packages", packages.length);
         try {
-            var plan = installService.buildInstallationPlan(List.of(packages), force);
-            if (plan.isEmpty()) {
+            InstallService.PlanResult result = installService.buildInstallationPlan(List.of(packages), force);
+            List<Recipe> plan = result.plan();
+            if (plan.isEmpty() && result.missing().isEmpty()) {
                 console.info("All packages already installed");
                 return 0;
             }
 
-            console.info("\n" + installService.formatInstallationPlan(plan));
+            if (!plan.isEmpty()) {
+                console.info("\n" + installService.formatInstallationPlan(plan));
+            }
+
+            if (!result.missing().isEmpty()) {
+                console.error("\nMissing recipes:");
+                for (String missing : result.missing()) {
+                    console.error("  ✗ {}", missing);
+                }
+                return 1;
+            }
+
             installService.installPlan(plan);
             console.info("\nAll packages installed successfully!");
             return 0;
-        } catch (IllegalArgumentException e) {
-            logger.error("Failed to install packages", e);
-            String message = e.getMessage();
-            if (message != null && message.startsWith("Recipe not found")) {
-                console.error("✗ {}", message);
-            } else {
-                console.error("✗ Failed to install packages. See logs for details. Hint: check network/proxy and permissions.");
-            }
-            return 1;
         } catch (Exception e) {
             logger.error("Failed to install packages", e);
             console.error("✗ Failed to install packages. See logs for details. Hint: check network/proxy and permissions.");

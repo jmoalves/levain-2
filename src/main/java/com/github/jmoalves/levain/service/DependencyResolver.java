@@ -6,7 +6,13 @@ import org.slf4j.LoggerFactory;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Resolves recipe dependencies and produces a topologically sorted installation plan.
@@ -62,6 +68,35 @@ public class DependencyResolver {
         return result;
     }
 
+    public ResolutionResult resolveAndSortWithMissing(List<String> recipeNames) {
+        if (recipeNames == null || recipeNames.isEmpty()) {
+            return new ResolutionResult(List.of(), List.of());
+        }
+
+        Map<String, Recipe> allRecipes = new HashMap<>();
+        Set<String> visited = new HashSet<>();
+        Set<String> visiting = new HashSet<>();
+        List<String> sortedNames = new ArrayList<>();
+        Set<String> missing = new LinkedHashSet<>();
+
+        for (String recipeName : recipeNames) {
+            if (recipeName == null || recipeName.isBlank()) {
+                continue;
+            }
+            dfsWithMissing(recipeName, allRecipes, visited, visiting, sortedNames, missing);
+        }
+
+        List<Recipe> result = new ArrayList<>();
+        for (String name : sortedNames) {
+            Recipe recipe = allRecipes.get(name);
+            if (recipe != null) {
+                result.add(recipe);
+            }
+        }
+
+        return new ResolutionResult(result, new ArrayList<>(missing));
+    }
+
     /**
      * Depth-first search to build dependency graph and topological sort.
      * Implements Kahn's algorithm variant.
@@ -103,6 +138,76 @@ public class DependencyResolver {
         visiting.remove(recipeName);
         visited.add(recipeName);
         sortedNames.add(recipeName);
+    }
+
+    private boolean dfsWithMissing(String recipeName,
+                                   Map<String, Recipe> allRecipes,
+                                   Set<String> visited,
+                                   Set<String> visiting,
+                                   List<String> sortedNames,
+                                   Set<String> missing) {
+
+        if (visited.contains(recipeName)) {
+            return true;
+        }
+
+        if (visiting.contains(recipeName)) {
+            throw new IllegalArgumentException("Circular dependency detected involving: " + recipeName);
+        }
+
+        visiting.add(recipeName);
+
+        Recipe recipe = allRecipes.get(recipeName);
+        if (recipe == null) {
+            try {
+                recipe = recipeService.loadRecipe(recipeName);
+            } catch (RuntimeException e) {
+                missing.add(recipeName);
+                visiting.remove(recipeName);
+                return false;
+            }
+            if (recipe == null) {
+                missing.add(recipeName);
+                visiting.remove(recipeName);
+                return false;
+            }
+            allRecipes.put(recipeName, recipe);
+        }
+
+        boolean ok = true;
+        if (recipe.getDependencies() != null && !recipe.getDependencies().isEmpty()) {
+            for (String dependency : recipe.getDependencies()) {
+                if (!dfsWithMissing(dependency, allRecipes, visited, visiting, sortedNames, missing)) {
+                    ok = false;
+                }
+            }
+        }
+
+        visiting.remove(recipeName);
+        if (ok) {
+            visited.add(recipeName);
+            sortedNames.add(recipeName);
+        }
+
+        return ok;
+    }
+
+    public static class ResolutionResult {
+        private final List<Recipe> recipes;
+        private final List<String> missing;
+
+        public ResolutionResult(List<Recipe> recipes, List<String> missing) {
+            this.recipes = recipes;
+            this.missing = missing;
+        }
+
+        public List<Recipe> recipes() {
+            return recipes;
+        }
+
+        public List<String> missing() {
+            return missing;
+        }
     }
 
     /**
