@@ -69,6 +69,16 @@ class ZipRepositoryTest {
     }
 
     @Test
+    void shouldReturnStandardFileNameForValidName() {
+        assertEquals("jdk-21.levain.yaml", repository.getRecipeFileName("jdk-21").orElse(""));
+    }
+
+    @Test
+    void shouldReturnEmptyYamlContentWhenUninitialized() {
+        assertTrue(repository.getRecipeYamlContent("jdk-21").isEmpty());
+    }
+
+    @Test
     void shouldInitializeFromLocalZip() throws Exception {
         Path zipFile = tempDir.resolve("recipes.zip");
         createZipWithRecipe(zipFile, "jdk-21.levain.yaml", "name: jdk-21\nversion: 21.0.0\n");

@@ -13,6 +13,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.ProxySelector;
@@ -77,6 +78,36 @@ class FileCacheTest {
     void testProxySelectorCreation() {
         // Test that FileCache can be created even without proxy environment variables
         assertDoesNotThrow(() -> new FileCache(config));
+    }
+
+    @Test
+    void testProxySelectorBehavior() throws Exception {
+        String originalHttpsProxy = System.getenv("HTTPS_PROXY");
+        String originalNoProxy = System.getenv("NO_PROXY");
+
+        try {
+            setEnv("HTTPS_PROXY", "http://proxy.example.com:8080");
+            setEnv("NO_PROXY", "example.com,.internal");
+
+            FileCache cache = new FileCache(config);
+            Method method = FileCache.class.getDeclaredMethod("createProxySelector");
+            method.setAccessible(true);
+            ProxySelector selector = (ProxySelector) method.invoke(cache);
+
+            assertNotNull(selector);
+            List<Proxy> noProxy = selector.select(URI.create("http://example.com"));
+            assertEquals(Proxy.NO_PROXY, noProxy.get(0));
+
+            List<Proxy> proxied = selector.select(URI.create("http://foo.com"));
+            assertEquals(Proxy.Type.HTTP, proxied.get(0).type());
+
+            assertEquals(Proxy.NO_PROXY, selector.select(null).get(0));
+            selector.connectFailed(URI.create("http://foo.com"),
+                    new InetSocketAddress("proxy.example.com", 8080), new IOException("boom"));
+        } finally {
+            restoreEnv("HTTPS_PROXY", originalHttpsProxy);
+            restoreEnv("NO_PROXY", originalNoProxy);
+        }
     }
 
     @Test
@@ -602,5 +633,64 @@ class FileCacheTest {
 
     private static void clearEnvVar(String key) {
         setEnvVar(key, null);
+    }
+
+    private static void setEnv(String key, String value) throws Exception {
+        updateEnv(key, value);
+    }
+
+    private static void restoreEnv(String key, String original) throws Exception {
+        if (original == null) {
+            updateEnv(key, null);
+            return;
+        }
+        updateEnv(key, original);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void updateEnv(String key, String value) throws Exception {
+        try {
+            Class<?> pe = Class.forName("java.lang.ProcessEnvironment");
+            updateEnvMap(pe, "theEnvironment", key, value);
+            updateEnvMapOptional(pe, "theCaseInsensitiveEnvironment", key, value);
+        } catch (ReflectiveOperationException e) {
+            // Fall through to alternate map update.
+        }
+
+        try {
+            Map<String, String> env = System.getenv();
+            Field field = env.getClass().getDeclaredField("m");
+            field.setAccessible(true);
+            Map<String, String> mutable = (Map<String, String>) field.get(env);
+            if (value == null) {
+                mutable.remove(key);
+            } else {
+                mutable.put(key, value);
+            }
+        } catch (ReflectiveOperationException e) {
+            // Ignore if we cannot update the unmodifiable map.
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean updateEnvMap(Class<?> pe, String fieldName, String key, String value)
+            throws ReflectiveOperationException {
+        Field envField = pe.getDeclaredField(fieldName);
+        envField.setAccessible(true);
+        Map<String, String> env = (Map<String, String>) envField.get(null);
+        if (value == null) {
+            env.remove(key);
+        } else {
+            env.put(key, value);
+        }
+        return true;
+    }
+
+    private static void updateEnvMapOptional(Class<?> pe, String fieldName, String key, String value) {
+        try {
+            updateEnvMap(pe, fieldName, key, value);
+        } catch (ReflectiveOperationException e) {
+            // Optional field missing on some JDKs.
+        }
     }
 }
