@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class EnvironmentUtilsTest {
@@ -92,6 +93,42 @@ class EnvironmentUtilsTest {
         List<String> lines = Files.readAllLines(profile, StandardCharsets.UTF_8);
         assertEquals(1, lines.size());
         assertEquals("export TEST=\"new value\"", lines.get(0));
+    }
+
+    @Test
+    void shouldPersistUnixEnvWhenFileMissing() throws IOException {
+        Path profile = tempDir.resolve("nested").resolve(".profile");
+
+        EnvironmentUtils.persistUnixEnv(profile, "TEST", "value");
+
+        List<String> lines = Files.readAllLines(profile, StandardCharsets.UTF_8);
+        assertEquals(1, lines.size());
+        assertEquals("export TEST=value", lines.get(0));
+    }
+
+    @Test
+    void shouldPersistEmptyUnixEnvValue() throws IOException {
+        Path profile = tempDir.resolve("empty.profile");
+
+        EnvironmentUtils.persistUnixEnv(profile, "EMPTY", "");
+
+        List<String> lines = Files.readAllLines(profile, StandardCharsets.UTF_8);
+        assertEquals("export EMPTY=\"\"", lines.get(0));
+    }
+
+    @Test
+    void shouldReturnNullProfileWhenHomeMissing() {
+        String original = System.getProperty("user.home");
+        try {
+            System.setProperty("user.home", "");
+            System.clearProperty("levain.env.profile");
+
+            Path resolved = EnvironmentUtils.resolveProfilePath();
+
+            assertNull(resolved);
+        } finally {
+            restoreProperty("user.home", original);
+        }
     }
 
     @Test
