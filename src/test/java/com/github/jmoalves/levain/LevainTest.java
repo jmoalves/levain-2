@@ -2,10 +2,14 @@ package com.github.jmoalves.levain;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.mockito.Mockito;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
+import com.github.jmoalves.levain.cli.LevainCommand;
+import com.github.jmoalves.levain.config.Config;
+
+import org.jboss.weld.inject.WeldInstance;
+
+import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -58,6 +62,32 @@ class LevainTest {
             Levain.class.getDeclaredMethod("executeCommand", org.jboss.weld.environment.se.WeldContainer.class,
                     String[].class);
         }, "executeCommand method should exist");
+    }
+
+    @Test
+    @DisplayName("Should apply overrides during execution")
+    void testExecuteCommandAppliesOverrides() throws Exception {
+        LevainCommand command = new LevainCommand();
+        Config config = Mockito.mock(Config.class);
+        Field configField = LevainCommand.class.getDeclaredField("config");
+        configField.setAccessible(true);
+        configField.set(command, config);
+
+        org.jboss.weld.environment.se.WeldContainer container = Mockito.mock(org.jboss.weld.environment.se.WeldContainer.class);
+        @SuppressWarnings("unchecked")
+        WeldInstance<LevainCommand> instance = Mockito.mock(WeldInstance.class);
+        Mockito.when(container.select(LevainCommand.class)).thenReturn(instance);
+        Mockito.when(instance.get()).thenReturn(command);
+
+        var method = Levain.class.getDeclaredMethod("executeCommand",
+                org.jboss.weld.environment.se.WeldContainer.class, String[].class);
+        method.setAccessible(true);
+        Object result = method.invoke(null, container,
+                new String[] { "--levainHome", "/tmp/levain-home", "--levainCache", "/tmp/levain-cache" });
+
+        assertEquals(0, result);
+        Mockito.verify(config).setLevainHome("/tmp/levain-home");
+        Mockito.verify(config).setCacheDir("/tmp/levain-cache");
     }
 
     @Test

@@ -4,14 +4,17 @@ import com.github.jmoalves.levain.cli.commands.ConfigCommand;
 import com.github.jmoalves.levain.cli.commands.InstallCommand;
 import com.github.jmoalves.levain.cli.commands.ListCommand;
 import com.github.jmoalves.levain.cli.commands.ShellCommand;
+import com.github.jmoalves.levain.config.Config;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import picocli.CommandLine;
+import org.mockito.Mockito;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -33,6 +36,28 @@ class LevainCommandTest {
     void testCallWithoutSubcommand() {
         Integer result = command.call();
         assertEquals(0, result, "Should return 0 when called without subcommand");
+    }
+
+    @Test
+    @DisplayName("Should apply CLI overrides")
+    void testApplyOverrides() throws Exception {
+        Config config = Mockito.mock(Config.class);
+        Field configField = LevainCommand.class.getDeclaredField("config");
+        configField.setAccessible(true);
+        configField.set(command, config);
+
+        Field homeField = LevainCommand.class.getDeclaredField("levainHome");
+        homeField.setAccessible(true);
+        homeField.set(command, "/tmp/levain-home");
+
+        Field cacheField = LevainCommand.class.getDeclaredField("levainCache");
+        cacheField.setAccessible(true);
+        cacheField.set(command, "/tmp/levain-cache");
+
+        command.applyOverrides();
+
+        Mockito.verify(config).setLevainHome("/tmp/levain-home");
+        Mockito.verify(config).setCacheDir("/tmp/levain-cache");
     }
 
     @Test

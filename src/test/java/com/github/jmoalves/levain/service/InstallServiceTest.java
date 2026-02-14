@@ -221,7 +221,8 @@ class InstallServiceTest {
         when(registry.getMetadata("test-package")).thenReturn(Optional.of(new RecipeMetadata()));
         setRegistry(installService, registry);
 
-        when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain-missing"));
+        Path levainHome = Files.createTempDirectory("levain-missing");
+        when(config.getLevainHome()).thenReturn(levainHome);
 
         when(dependencyResolver.resolveAndSortWithMissing(java.util.List.of("test-package")))
             .thenReturn(new ResolutionResult(java.util.List.of(mockRecipe), java.util.List.of()));
