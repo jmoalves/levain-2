@@ -364,4 +364,49 @@ class VariableSubstitutionServiceTest {
                 baseDir);
         assertEquals("Install maven 3.9.0 with JDK 21.0.1 to /opt/maven", result);
     }
+
+    @Test
+    @DisplayName("Should include shellPath when configured")
+    void shouldIncludeShellPathWhenConfigured() {
+        when(config.getShellPath()).thenReturn("/bin/zsh");
+
+        Recipe recipe = new Recipe();
+        String result = service.substitute("Shell is ${shellPath}", recipe, Paths.get("/tmp"));
+
+        assertEquals("Shell is /bin/zsh", result);
+    }
+
+    @Test
+    @DisplayName("Should resolve numeric and boolean custom attributes")
+    void shouldResolveNumericAndBooleanCustomAttributes() {
+        Recipe recipe = new Recipe();
+        recipe.getCustomAttributes().put("flag", true);
+        recipe.getCustomAttributes().put("count", 5);
+        recipe.getCustomAttributes().put("cmd.skip", "ignored");
+
+        String result = service.substitute("Flag=${flag} Count=${count}", recipe, Paths.get("/tmp"));
+
+        assertEquals("Flag=true Count=5", result);
+    }
+
+    @Test
+    @DisplayName("Should substitute custom attribute values using baseDir")
+    void shouldSubstituteCustomAttributesUsingBaseDir() {
+        Recipe recipe = new Recipe();
+        recipe.getCustomAttributes().put("toolHome", "${baseDir}/tool");
+
+        String result = service.substitute("Home=${toolHome}", recipe, Paths.get("/opt/pkg"));
+
+        assertEquals("Home=/opt/pkg/tool", result);
+    }
+
+    @Test
+    @DisplayName("Should keep invalid pkg reference without variable name")
+    void shouldKeepInvalidPkgReference() {
+        Recipe recipe = new Recipe();
+
+        String result = service.substitute("Value=${pkg.onlypackage}", recipe, Paths.get("/tmp"));
+
+        assertEquals("Value=${pkg.onlypackage}", result);
+    }
 }
