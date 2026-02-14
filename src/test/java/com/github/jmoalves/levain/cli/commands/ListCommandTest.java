@@ -1,6 +1,7 @@
 package com.github.jmoalves.levain.cli.commands;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -166,5 +167,43 @@ class ListCommandTest {
 
         assertEquals(0, exitCode);
         verify(recipeService).findSourceRepository("nodejs");
+    }
+
+    @Test
+    void shouldHandleMissingInstalledMetadataSource() {
+        when(recipeService.listRecipes(null)).thenReturn(List.of("jdk-21"));
+        when(recipeService.isInstalled("jdk-21")).thenReturn(true);
+        when(recipeService.getInstalledMetadata("jdk-21")).thenReturn(java.util.Optional.empty());
+
+        int exitCode = new CommandLine(command).execute("--source");
+
+        assertEquals(0, exitCode);
+        verify(recipeService).getInstalledMetadata("jdk-21");
+        verify(recipeService, never()).findSourceRepository("jdk-21");
+    }
+
+    @Test
+    void shouldHandleSourceWithBlankUri() {
+        when(recipeService.listRecipes(null)).thenReturn(List.of("git"));
+        when(recipeService.isInstalled("git")).thenReturn(false);
+
+        Repository repo = org.mockito.Mockito.mock(Repository.class);
+        when(repo.getName()).thenReturn("repo1");
+        when(repo.getUri()).thenReturn(" ");
+        when(recipeService.findSourceRepository("git")).thenReturn(java.util.Optional.of(repo));
+
+        int exitCode = new CommandLine(command).execute("--source");
+
+        assertEquals(0, exitCode);
+        verify(recipeService).findSourceRepository("git");
+    }
+
+    @Test
+    void shouldReturnErrorWhenListingFails() {
+        when(recipeService.listRecipes(null)).thenThrow(new RuntimeException("boom"));
+
+        int exitCode = new CommandLine(command).execute();
+
+        assertEquals(1, exitCode);
     }
 }
