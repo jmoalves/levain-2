@@ -175,6 +175,24 @@ class ResourceRepositoryTest {
         assertTrue(recipes.isEmpty());
     }
 
+    @Test
+    void shouldHandleInvalidDirectoryUrl() throws Exception {
+        java.net.URL invalidUrl = new java.net.URL("file", "", "invalid%zz");
+
+        List<java.net.URL> recipes = invokeListRecipesFromDirectoryUrl(invalidUrl);
+
+        assertTrue(recipes.isEmpty());
+    }
+
+    @Test
+    void shouldHandleInvalidJarUrl() throws Exception {
+        java.net.URL invalidJar = new java.net.URL("jar", "", "file:/invalid%zz");
+
+        List<java.net.URL> recipes = invokeListRecipesFromJar(invalidJar);
+
+        assertTrue(recipes.isEmpty());
+    }
+
     private boolean invokeIsRecipeFile(String filename) throws Exception {
         Method method = ResourceRepository.class.getDeclaredMethod("isRecipeFile", String.class);
         method.setAccessible(true);
@@ -191,6 +209,12 @@ class ResourceRepositoryTest {
         Method method = ResourceRepository.class.getDeclaredMethod("listRecipesFromDirectory", java.net.URL.class);
         method.setAccessible(true);
         return castUrlList(method.invoke(repository, directory.toUri().toURL()));
+    }
+
+    private List<java.net.URL> invokeListRecipesFromDirectoryUrl(java.net.URL url) throws Exception {
+        Method method = ResourceRepository.class.getDeclaredMethod("listRecipesFromDirectory", java.net.URL.class);
+        method.setAccessible(true);
+        return castUrlList(method.invoke(repository, url));
     }
 
     private List<java.net.URL> invokeListRecipesFromJar(java.net.URL jarUrl) throws Exception {
