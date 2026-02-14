@@ -136,6 +136,13 @@ class RecipeServiceTest {
     }
 
     @Test
+    void testGetDependenciesWhenNone() {
+        List<String> deps = recipeService.getDependencies("jdk-21");
+
+        assertNotNull(deps);
+    }
+
+    @Test
     void testGetRecipeFileName() {
         Optional<String> fileName = recipeService.getRecipeFileName("jdk-21");
 
@@ -156,6 +163,26 @@ class RecipeServiceTest {
         String recipeName = "missing-" + UUID.randomUUID();
         assertFalse(recipeService.isInstalled(recipeName));
         assertTrue(recipeService.getInstalledMetadata(recipeName).isEmpty());
+    }
+
+    @Test
+    void testListRecipesWithoutExternalDirectory() {
+        String original = System.getProperty("levain.recipes.dir");
+        try {
+            System.setProperty("levain.recipes.dir", tempDir.resolve("missing-recipes").toString());
+            RecipeService localService = new RecipeService(new RecipeLoader(), new ConfigService(), new RepositoryFactory());
+
+            List<String> recipes = localService.listRecipes(null);
+
+            assertNotNull(recipes);
+            assertFalse(recipes.isEmpty());
+        } finally {
+            if (original != null) {
+                System.setProperty("levain.recipes.dir", original);
+            } else {
+                System.clearProperty("levain.recipes.dir");
+            }
+        }
     }
 
     @Test
