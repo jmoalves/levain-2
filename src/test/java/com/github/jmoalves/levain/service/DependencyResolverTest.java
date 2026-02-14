@@ -10,6 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
@@ -256,6 +257,43 @@ class DependencyResolverTest {
         
         assertTrue(indexD > indexF && indexD < indexB);
         assertTrue(indexE > indexF && indexE < indexC);
+    }
+
+    @Test
+    void testResolveAndSortWithMissingReturnsMissingList() {
+        Recipe recipeA = createRecipe("A", "1.0.0", List.of("B"));
+        Recipe recipeC = createRecipe("C", "1.0.0");
+
+        when(recipeService.loadRecipe("A")).thenReturn(recipeA);
+        when(recipeService.loadRecipe("B")).thenThrow(new IllegalArgumentException("missing"));
+        when(recipeService.loadRecipe("C")).thenReturn(recipeC);
+
+        DependencyResolver.ResolutionResult result =
+                resolver.resolveAndSortWithMissing(List.of("A", "C", " "));
+
+        assertEquals(1, result.recipes().size());
+        assertEquals("C", result.recipes().get(0).getName());
+        assertEquals(Set.of("B"), Set.copyOf(result.missing()));
+    }
+
+    @Test
+    void testResolveAndSortWithMissingHandlesEmptyInput() {
+        DependencyResolver.ResolutionResult result = resolver.resolveAndSortWithMissing(List.of());
+
+        assertTrue(result.recipes().isEmpty());
+        assertTrue(result.missing().isEmpty());
+    }
+
+    @Test
+    void testFormatInstallationPlan() {
+        Recipe dependency = createRecipe("dep", "1.0.0");
+        Recipe main = createRecipe("main", "1.0.0", List.of("dep"));
+
+        String plan = resolver.formatInstallationPlan(List.of(dependency, main));
+
+        assertTrue(plan.contains("Installation Plan"));
+        assertTrue(plan.contains("✓ dep"));
+        assertTrue(plan.contains("→ main"));
     }
 
     // ========== Circular Dependency Detection Tests ==========

@@ -3,10 +3,13 @@ package com.github.jmoalves.levain.repository;
 import com.github.jmoalves.levain.model.Recipe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,6 +18,9 @@ import com.sun.net.httpserver.HttpServer;
 import static org.junit.jupiter.api.Assertions.*;
 
 class RemoteRepositoryTest {
+    @TempDir
+    Path tempDir;
+
     private RemoteRepository repository;
 
     @BeforeEach
@@ -88,5 +94,64 @@ class RemoteRepositoryTest {
         } finally {
             server.stop(0);
         }
+    }
+
+    @Test
+    void shouldNormalizeGithubUrlsToRawRecipes() throws Exception {
+        String normalized = invokeNormalizeUrl("https://github.com/acme/repo/tree/main");
+
+        assertEquals("https://raw.githubusercontent.com/acme/repo/main/recipes", normalized);
+    }
+
+    @Test
+    void shouldNormalizeDirectoryUrls() throws Exception {
+        String normalized = invokeNormalizeUrl("https://example.com/base");
+        String normalizedWithSlash = invokeNormalizeUrl("https://example.com/base/");
+
+        assertEquals("https://example.com/base/recipes", normalized);
+        assertEquals("https://example.com/base/recipes/", normalizedWithSlash);
+    }
+
+    @Test
+    void shouldExtractRecipeNameFromUrl() throws Exception {
+        String name = invokeExtractRecipeName("https://example.com/jdk-21.levain.yaml");
+
+        assertEquals("jdk-21", name);
+    }
+
+    @Test
+    void shouldCreateDefaultCacheDirectory() throws Exception {
+        String original = System.getProperty("levain.cache.dir");
+        try {
+            System.setProperty("levain.cache.dir", tempDir.toString());
+            String cacheDir = invokeGetDefaultCacheDirectory("https://example.com/repo");
+
+            assertTrue(cacheDir.startsWith(tempDir.toString()));
+            assertTrue(java.nio.file.Files.exists(Path.of(cacheDir)));
+        } finally {
+            if (original == null) {
+                System.clearProperty("levain.cache.dir");
+            } else {
+                System.setProperty("levain.cache.dir", original);
+            }
+        }
+    }
+
+    private String invokeNormalizeUrl(String url) throws Exception {
+        Method method = RemoteRepository.class.getDeclaredMethod("normalizeUrl", String.class);
+        method.setAccessible(true);
+        return (String) method.invoke(repository, url);
+    }
+
+    private String invokeExtractRecipeName(String url) throws Exception {
+        Method method = RemoteRepository.class.getDeclaredMethod("extractRecipeName", String.class);
+        method.setAccessible(true);
+        return (String) method.invoke(repository, url);
+    }
+
+    private String invokeGetDefaultCacheDirectory(String url) throws Exception {
+        Method method = RemoteRepository.class.getDeclaredMethod("getDefaultCacheDirectory", String.class);
+        method.setAccessible(true);
+        return (String) method.invoke(repository, url);
     }
 }
