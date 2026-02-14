@@ -3,6 +3,7 @@ package com.github.jmoalves.levain.model;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
@@ -81,6 +82,38 @@ class RecipeTest {
 
         // Shorthand is checked first, so it should return false
         assertFalse(recipe.shouldSkipInstallDir());
+    }
+
+    @Test
+    void shouldReturnMinVersionWhenPresent() {
+        Recipe recipe = new Recipe();
+        recipe.addCustomAttribute("levain.minVersion", "2.0.0");
+
+        assertEquals("2.0.0", recipe.getMinVersion());
+    }
+
+    @Test
+    void shouldReturnNullMinVersionWhenMissing() {
+        Recipe recipe = new Recipe();
+
+        assertNull(recipe.getMinVersion());
+    }
+
+    @Test
+    void shouldReturnNullMinVersionWhenNotString() {
+        Recipe recipe = new Recipe();
+        recipe.addCustomAttribute("levain.minVersion", 2);
+
+        assertNull(recipe.getMinVersion());
+    }
+
+    @Test
+    void shouldHandleNullCustomAttributes() {
+        Recipe recipe = new Recipe();
+        recipe.setCustomAttributes(null);
+
+        recipe.addCustomAttribute("skipInstallDir", true);
+        assertTrue(recipe.shouldSkipInstallDir());
     }
 }
 

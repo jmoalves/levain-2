@@ -121,6 +121,14 @@ class MockRepositoryTest {
     }
 
     @Test
+    @DisplayName("Should handle null recipe list")
+    void shouldHandleNullRecipes() {
+        var nullRepo = new MockRepository("null-repo", null);
+        assertEquals(0, nullRepo.size());
+        assertTrue(nullRepo.listRecipes().isEmpty());
+    }
+
+    @Test
     @DisplayName("Should return copy of recipes to prevent external modification")
     void shouldReturnCopyOfRecipesToPreventModification() {
         var recipes = mockRepository.listRecipes();
