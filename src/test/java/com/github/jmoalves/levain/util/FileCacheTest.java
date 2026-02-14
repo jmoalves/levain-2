@@ -479,6 +479,66 @@ class FileCacheTest {
     }
 
     @Test
+    void testParseNoProxyListWithBlankValues() throws Exception {
+        Method method = FileCache.class.getDeclaredMethod("parseNoProxyList", String[].class);
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        List<String> result = (List<String>) method.invoke(null, (Object) new String[]{" ", ""});
+        assertEquals(List.of(), result);
+    }
+
+    @Test
+    void testIsNoProxyWithEmptyRules() throws Exception {
+        Method method = FileCache.class.getDeclaredMethod("isNoProxy", String.class, List.class);
+        method.setAccessible(true);
+
+        assertFalse((Boolean) method.invoke(null, "example.com", null));
+        assertFalse((Boolean) method.invoke(null, "example.com", List.of()));
+    }
+
+    @Test
+    void testIsNoProxyWithPortRule() throws Exception {
+        Method method = FileCache.class.getDeclaredMethod("isNoProxy", String.class, List.class);
+        method.setAccessible(true);
+
+        assertTrue((Boolean) method.invoke(null, "example.com", List.of("example.com:8080")));
+    }
+
+    @Test
+    void testProxySelectorHandlesNullHost() throws Exception {
+        Map<String, String> original = snapshotEnv("HTTPS_PROXY", "NO_PROXY");
+        try {
+            Assumptions.assumeTrue(setEnvVar("HTTPS_PROXY", "proxy.example.com:8080"));
+            Assumptions.assumeTrue(setEnvVar("NO_PROXY", ""));
+
+            ProxySelector selector = invokeCreateProxySelector(fileCache);
+            assertNotNull(selector);
+
+            List<Proxy> proxies = selector.select(URI.create("file:///tmp/test"));
+            assertEquals(Proxy.NO_PROXY, proxies.get(0));
+        } finally {
+            restoreEnv(original);
+        }
+    }
+
+    @Test
+    void testCreateProxySelectorWithBlankProxy() throws Exception {
+        Map<String, String> original = snapshotEnv("HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy");
+        try {
+            Assumptions.assumeTrue(setEnvVar("HTTPS_PROXY", " "));
+            Assumptions.assumeTrue(setEnvVar("https_proxy", ""));
+            Assumptions.assumeTrue(setEnvVar("HTTP_PROXY", ""));
+            Assumptions.assumeTrue(setEnvVar("http_proxy", ""));
+
+            ProxySelector selector = invokeCreateProxySelector(fileCache);
+            assertNull(selector);
+        } finally {
+            restoreEnv(original);
+        }
+    }
+
+    @Test
     void testCacheIsValidReturnsTrueOnException() throws Exception {
         Method method = FileCache.class.getDeclaredMethod("cacheIsValid", String.class, Path.class);
         method.setAccessible(true);

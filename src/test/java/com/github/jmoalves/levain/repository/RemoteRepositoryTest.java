@@ -97,6 +97,15 @@ class RemoteRepositoryTest {
     }
 
     @Test
+    void shouldHandleInitFailureGracefully() {
+        RemoteRepository badRepo = new RemoteRepository("http://[invalid");
+        badRepo.init();
+
+        assertTrue(badRepo.isInitialized());
+        assertTrue(badRepo.listRecipes().isEmpty());
+    }
+
+    @Test
     void shouldNormalizeGithubUrlsToRawRecipes() throws Exception {
         String normalized = invokeNormalizeUrl("https://github.com/acme/repo/tree/main");
 
@@ -110,6 +119,20 @@ class RemoteRepositoryTest {
 
         assertEquals("https://example.com/base/recipes", normalized);
         assertEquals("https://example.com/base/recipes/", normalizedWithSlash);
+    }
+
+    @Test
+    void shouldLeaveRecipesUrlWithTrailingSlash() throws Exception {
+        String normalized = invokeNormalizeUrl("https://example.com/base/recipes/");
+
+        assertEquals("https://example.com/base/recipes/", normalized);
+    }
+
+    @Test
+    void shouldLeaveRawGithubRecipesUrl() throws Exception {
+        String normalized = invokeNormalizeUrl("https://raw.githubusercontent.com/acme/repo/main/recipes/");
+
+        assertEquals("https://raw.githubusercontent.com/acme/repo/main/recipes/", normalized);
     }
 
     @Test

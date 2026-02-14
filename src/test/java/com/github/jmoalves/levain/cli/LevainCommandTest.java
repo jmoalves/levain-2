@@ -61,6 +61,34 @@ class LevainCommandTest {
     }
 
     @Test
+    @DisplayName("Should ignore overrides when config is null")
+    void testApplyOverridesWithNullConfig() {
+        assertDoesNotThrow(() -> command.applyOverrides());
+    }
+
+    @Test
+    @DisplayName("Should skip blank override values")
+    void testApplyOverridesWithBlankValues() throws Exception {
+        Config config = Mockito.mock(Config.class);
+        Field configField = LevainCommand.class.getDeclaredField("config");
+        configField.setAccessible(true);
+        configField.set(command, config);
+
+        Field homeField = LevainCommand.class.getDeclaredField("levainHome");
+        homeField.setAccessible(true);
+        homeField.set(command, " ");
+
+        Field cacheField = LevainCommand.class.getDeclaredField("levainCache");
+        cacheField.setAccessible(true);
+        cacheField.set(command, "");
+
+        command.applyOverrides();
+
+        Mockito.verify(config, Mockito.never()).setLevainHome(Mockito.anyString());
+        Mockito.verify(config, Mockito.never()).setCacheDir(Mockito.anyString());
+    }
+
+    @Test
     @DisplayName("Should have ListCommand subcommand")
     void testHasListCommand() {
         assertTrue(isSubcommandDefined(ListCommand.class), "ListCommand should be registered");

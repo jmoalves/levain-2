@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
@@ -147,6 +148,135 @@ class ZipRepositoryTest {
                 System.clearProperty("levain.cache.dir");
             }
         }
+    }
+
+    @Test
+    void shouldDownloadRemoteZipWithoutFilename() throws Exception {
+        Path zipFile = tempDir.resolve("remote-no-name.zip");
+        createZipWithRecipe(zipFile, "node.levain.yaml", "name: node\nversion: 20.0.0\n");
+
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/", exchange -> {
+            byte[] content = Files.readAllBytes(zipFile);
+            exchange.sendResponseHeaders(200, content.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(content);
+            }
+        });
+        server.start();
+
+        String originalHome = System.getProperty("user.home");
+        String originalCache = System.getProperty("levain.cache.dir");
+        System.setProperty("user.home", tempDir.toString());
+        System.setProperty("levain.cache.dir", tempDir.resolve("cache-remote").toString());
+
+        try {
+            String url = "http://localhost:" + server.getAddress().getPort() + "/";
+            ZipRepository remoteRepo = new ZipRepository(url);
+            remoteRepo.init();
+
+            assertTrue(remoteRepo.listRecipes().stream().anyMatch(r -> r.getName().equals("node")));
+        } finally {
+            server.stop(0);
+            if (originalHome != null) {
+                System.setProperty("user.home", originalHome);
+            } else {
+                System.clearProperty("user.home");
+            }
+            if (originalCache != null) {
+                System.setProperty("levain.cache.dir", originalCache);
+            } else {
+                System.clearProperty("levain.cache.dir");
+            }
+        }
+    }
+
+    @Test
+    void shouldExtractZipWithDirectoryEntry() throws Exception {
+        Path zipFile = tempDir.resolve("dir.zip");
+        Files.deleteIfExists(zipFile);
+        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipFile.toFile()))) {
+            ZipEntry dir = new ZipEntry("recipes/");
+            zos.putNextEntry(dir);
+            zos.closeEntry();
+
+            ZipEntry entry = new ZipEntry("recipes/demo.levain.yaml");
+            zos.putNextEntry(entry);
+            zos.write("name: demo\nversion: 1.0.0\n".getBytes());
+            zos.closeEntry();
+        }
+
+        String originalCache = System.getProperty("levain.cache.dir");
+        System.setProperty("levain.cache.dir", tempDir.resolve("cache-dir").toString());
+        try {
+            ZipRepository localRepo = new ZipRepository(zipFile.toString());
+            localRepo.init();
+
+            assertTrue(localRepo.listRecipes().stream().anyMatch(r -> r.getName().equals("demo")));
+        } finally {
+            if (originalCache != null) {
+                System.setProperty("levain.cache.dir", originalCache);
+            } else {
+                System.clearProperty("levain.cache.dir");
+            }
+        }
+    }
+
+    @Test
+    void shouldExtractWhenCacheDirExistsButEmpty() throws Exception {
+        Path zipFile = tempDir.resolve("empty-cache.zip");
+        createZipWithRecipe(zipFile, "python.levain.yaml", "name: python\nversion: 3.12.0\n");
+
+        String originalCache = System.getProperty("levain.cache.dir");
+        System.setProperty("levain.cache.dir", tempDir.resolve("cache-empty").toString());
+        try {
+            ZipRepository localRepo = new ZipRepository(zipFile.toString());
+            Path cacheDir = Path.of(getLocalCachePath(localRepo));
+            Files.createDirectories(cacheDir);
+
+            localRepo.init();
+
+            assertTrue(localRepo.listRecipes().stream().anyMatch(r -> r.getName().equals("python")));
+        } finally {
+            if (originalCache != null) {
+                System.setProperty("levain.cache.dir", originalCache);
+            } else {
+                System.clearProperty("levain.cache.dir");
+            }
+        }
+    }
+
+    @Test
+    void shouldHandleExtractZipEntryFailure() throws Exception {
+        Path zipFile = tempDir.resolve("broken.zip");
+        Files.deleteIfExists(zipFile);
+        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zipFile.toFile()))) {
+            ZipEntry entry = new ZipEntry("file.txt");
+            zos.putNextEntry(entry);
+            zos.write("data".getBytes());
+            zos.closeEntry();
+        }
+
+        Path targetFile = tempDir.resolve("target-file");
+        Files.writeString(targetFile, "not a dir");
+
+        ZipRepository repo = new ZipRepository(zipFile.toString());
+        java.lang.reflect.Method method = ZipRepository.class.getDeclaredMethod("extractZip", File.class, File.class);
+        method.setAccessible(true);
+
+        assertDoesNotThrow(() -> method.invoke(repo, zipFile.toFile(), targetFile.toFile()));
+    }
+
+    @Test
+    void shouldReturnEmptyWhenLocalRepositoryMissing() throws Exception {
+        ZipRepository repo = new ZipRepository("missing.zip");
+        java.lang.reflect.Method method = ZipRepository.class.getDeclaredMethod("loadRecipesFromLocalDirectory");
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Recipe> recipes = (java.util.Map<String, Recipe>) method.invoke(repo);
+
+        assertTrue(recipes.isEmpty());
     }
 
     @Test

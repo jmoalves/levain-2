@@ -8,6 +8,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -173,5 +175,20 @@ class SetEnvActionTest {
         Path profile = EnvironmentUtils.resolveProfilePath();
         String content = Files.readString(profile, StandardCharsets.UTF_8);
         assertTrue(content.contains("export EMPTY_VAR=\"\""));
+    }
+
+    @Test
+    @DisplayName("Test 11: setEnv --permanent uses Windows persistence")
+    void testPermanentUsesWindowsPersist() throws Exception {
+        try (MockedStatic<EnvironmentUtils> env = Mockito.mockStatic(EnvironmentUtils.class)) {
+            env.when(EnvironmentUtils::isWindows).thenReturn(true);
+            env.when(() -> EnvironmentUtils.persistWindowsEnv("JAVA_HOME", "C:\\Java"))
+                    .thenAnswer(invocation -> null);
+
+            action.execute(context, List.of("--permanent", "JAVA_HOME", "C:\\Java"));
+
+            assertEquals("C:\\Java", context.getConfig().getVariable("JAVA_HOME"));
+            env.verify(() -> EnvironmentUtils.persistWindowsEnv("JAVA_HOME", "C:\\Java"));
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.github.jmoalves.levain.action;
 
 import com.github.jmoalves.levain.config.Config;
+import com.github.jmoalves.levain.extract.Extractor;
 import com.github.jmoalves.levain.extract.ExtractorFactory;
 import com.github.jmoalves.levain.model.Recipe;
 import com.github.jmoalves.levain.util.FileCache;
@@ -12,6 +13,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -307,6 +309,30 @@ class ExtractActionTest {
                 () -> action.execute(createContext(tempDir, tempDir),
                         List.of("--type", "unknown", src.toString(), dst.toString())));
         assertTrue(ex.getMessage().contains("Unknown type"));
+    }
+
+    @Test
+    void testExtractRemoteSourceUsesFileCache() throws Exception {
+        FileCache cache = Mockito.mock(FileCache.class);
+        ExtractorFactory factory = Mockito.mock(ExtractorFactory.class);
+        Extractor extractor = Mockito.mock(com.github.jmoalves.levain.extract.Extractor.class);
+
+        Path cached = tempDir.resolve("cached.zip");
+        Files.writeString(cached, "data", StandardCharsets.UTF_8);
+        String url = "http://example.com/archive.zip";
+
+        Mockito.when(cache.get(url)).thenReturn(cached);
+        Mockito.when(factory.createExtractor(cached, null)).thenReturn(extractor);
+
+        ExtractAction action = new ExtractAction(cache, factory);
+        Path dst = tempDir.resolve("dst");
+        Files.createDirectories(dst);
+
+        action.execute(createContext(tempDir, tempDir), List.of(url, dst.toString()));
+
+        Mockito.verify(cache).get(url);
+        Mockito.verify(factory).createExtractor(cached, null);
+        Mockito.verify(extractor).extract(Mockito.eq(false), Mockito.eq(cached), Mockito.eq(dst), Mockito.any());
     }
 
     // ========================================

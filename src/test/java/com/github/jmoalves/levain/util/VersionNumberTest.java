@@ -85,6 +85,17 @@ class VersionNumberTest {
     }
 
     @Test
+    void shouldCompareMinorAndPatchVersions() {
+        VersionNumber v1 = new VersionNumber("1.2.0");
+        VersionNumber v2 = new VersionNumber("1.3.0");
+        VersionNumber v3 = new VersionNumber("1.2.3");
+        VersionNumber v4 = new VersionNumber("1.2.4");
+
+        assertTrue(v1.compareTo(v2) < 0);
+        assertTrue(v3.compareTo(v4) < 0);
+    }
+
+    @Test
     void shouldDetectOlderVersion() {
         VersionNumber v1 = new VersionNumber("1.0.0");
         VersionNumber v2 = new VersionNumber("2.0.0");
@@ -147,5 +158,19 @@ class VersionNumberTest {
     void shouldNotEqualNull() {
         VersionNumber v = new VersionNumber("1.2.3");
         assertNotEquals(v, null);
+    }
+
+    @Test
+    void shouldTreatEmptyVersionAsZero() {
+        VersionNumber v = new VersionNumber("");
+        assertEquals(0, v.getMajor());
+        assertEquals(0, v.getMinor());
+        assertEquals(0, v.getPatch());
+    }
+
+    @Test
+    void shouldReportNewerThanNull() {
+        VersionNumber v = new VersionNumber("1.0.0");
+        assertTrue(v.isNewerThan(null));
     }
 }

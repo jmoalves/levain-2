@@ -69,6 +69,15 @@ class ProgressBarTest {
     }
 
     @Test
+    @DisplayName("Should keep label when no overflow")
+    void testResizeLabelNoOverflow() throws Exception {
+        Method resize = ProgressBar.class.getDeclaredMethod("resizeLabel", String.class, int.class, int.class);
+        resize.setAccessible(true);
+        String resized = (String) resize.invoke(null, "Short", 5, 20);
+        assertTrue(resized.equals("Short"));
+    }
+
+    @Test
     @DisplayName("Should build message with totals")
     void testBuildMessageWithTotals() throws Exception {
         ProgressBar bar = new ProgressBar("Build", 10);
@@ -76,6 +85,22 @@ class ProgressBarTest {
         build.setAccessible(true);
         String message = (String) build.invoke(bar, 5L);
         assertTrue(message.contains("Build"));
+    }
+
+    @Test
+    @DisplayName("Should resize message when terminal is narrow")
+    void testBuildMessageResizesWhenNarrow() throws Exception {
+        String original = System.getenv("COLUMNS");
+        try {
+            updateEnv("COLUMNS", "20");
+            ProgressBar bar = new ProgressBar("VeryLongLabel", 10, false);
+            Method build = ProgressBar.class.getDeclaredMethod("buildMessage", long.class);
+            build.setAccessible(true);
+            String message = (String) build.invoke(bar, 10L);
+            assertTrue(!message.contains("VeryLongLabel"));
+        } finally {
+            restoreEnv("COLUMNS", original);
+        }
     }
 
     @Test
@@ -131,6 +156,16 @@ class ProgressBarTest {
     }
 
     @Test
+    @DisplayName("Should ignore empty message when padding")
+    void testPadToClearEmpty() throws Exception {
+        ProgressBar bar = new ProgressBar("Pad", 10);
+        Method pad = ProgressBar.class.getDeclaredMethod("padToClear", String.class);
+        pad.setAccessible(true);
+        String value = (String) pad.invoke(bar, "");
+        assertTrue(value.isEmpty());
+    }
+
+    @Test
     @DisplayName("Should ignore reset after finish")
     void testResetAfterFinish() {
         ProgressBar bar = new ProgressBar("Done", 1);
@@ -146,6 +181,21 @@ class ProgressBarTest {
         force.setAccessible(true);
         Object value = force.invoke(bar);
         assertTrue(value instanceof Boolean);
+    }
+
+    @Test
+    @DisplayName("Should not force render after timeout")
+    void testShouldNotForceRenderAfterTimeout() throws Exception {
+        ProgressBar bar = new ProgressBar("Force", 1);
+        Field startTime = ProgressBar.class.getDeclaredField("startTime");
+        startTime.setAccessible(true);
+        startTime.set(bar, Instant.now().minusSeconds(3));
+
+        Method force = ProgressBar.class.getDeclaredMethod("shouldForceRender");
+        force.setAccessible(true);
+        boolean value = (boolean) force.invoke(bar);
+
+        assertTrue(!value);
     }
 
     @Test
@@ -182,11 +232,45 @@ class ProgressBarTest {
     }
 
     @Test
+    @DisplayName("Should disable in-place output for blank terminals")
+    void testSupportsInPlaceForBlankTerm() throws Exception {
+        String original = System.getenv("TERM");
+        try {
+            updateEnv("TERM", " ");
+
+            Method supports = ProgressBar.class.getDeclaredMethod("supportsInPlace");
+            supports.setAccessible(true);
+            boolean value = (boolean) supports.invoke(null);
+
+            assertTrue(!value);
+        } finally {
+            restoreEnv("TERM", original);
+        }
+    }
+
+    @Test
     @DisplayName("Should fall back to default width for invalid columns")
     void testGetTerminalWidthWithInvalidColumns() throws Exception {
         String original = System.getenv("COLUMNS");
         try {
             updateEnv("COLUMNS", "invalid");
+
+            Method width = ProgressBar.class.getDeclaredMethod("getTerminalWidth");
+            width.setAccessible(true);
+            int value = (int) width.invoke(null);
+
+            assertTrue(value == 80);
+        } finally {
+            restoreEnv("COLUMNS", original);
+        }
+    }
+
+    @Test
+    @DisplayName("Should fall back to default width for zero columns")
+    void testGetTerminalWidthWithZeroColumns() throws Exception {
+        String original = System.getenv("COLUMNS");
+        try {
+            updateEnv("COLUMNS", "0");
 
             Method width = ProgressBar.class.getDeclaredMethod("getTerminalWidth");
             width.setAccessible(true);

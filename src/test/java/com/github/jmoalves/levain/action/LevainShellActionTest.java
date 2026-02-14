@@ -105,6 +105,23 @@ class LevainShellActionTest {
     }
 
     @Test
+    void shouldRejectLevainShellExactAction() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+        recipe.setCommands(Map.of(
+                "shell", List.of("levainShell")
+        ));
+
+        when(recipeService.resolveRecipe("test-pkg")).thenReturn(List.of(recipe));
+
+        LevainShellAction action = new LevainShellAction(actionExecutor, recipeService, config);
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+
+        assertThrows(IllegalStateException.class, () -> action.execute(context, List.of("echo", "ok")));
+        verify(actionExecutor, never()).executeCommands(any(), any());
+    }
+
+    @Test
     void shouldExecuteShellAndEnvActionsInOrder() throws Exception {
         Recipe recipe = new Recipe();
         recipe.setName("test-pkg");
@@ -252,6 +269,32 @@ class LevainShellActionTest {
     }
 
     @Test
+    void shouldUseRecipeWhenNameMissing() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setCommands(new HashMap<>());
+
+        TestLevainShellAction action = new TestLevainShellAction(actionExecutor, recipeService, config);
+        action.nextResult = new LevainShellAction.ProcessResult(0, "ok");
+
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+        action.execute(context, List.of("echo", "ok"));
+
+        verify(recipeService, never()).resolveRecipe(any());
+    }
+
+    @Test
+    void shouldUseRecipeWhenServiceNull() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+
+        TestLevainShellAction action = new TestLevainShellAction(actionExecutor, null, config);
+        action.nextResult = new LevainShellAction.ProcessResult(0, "ok");
+
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+        action.execute(context, List.of("echo", "ok"));
+    }
+
+    @Test
     void shouldPopulatePackageNamesInEnvironment() throws Exception {
         Recipe recipe = new Recipe();
         recipe.setName("test-pkg");
@@ -292,6 +335,26 @@ class LevainShellActionTest {
 
         Object result = method.invoke(action, new Object[] { null });
         assertNull(result);
+    }
+
+    @Test
+    void shouldRunCommandWithAndWithoutCapture() throws Exception {
+        LevainShellAction action = new LevainShellAction(actionExecutor, recipeService, config);
+        var method = LevainShellAction.class.getDeclaredMethod("runCommand", List.class, Map.class, boolean.class);
+        method.setAccessible(true);
+
+        Map<String, String> env = new HashMap<>(System.getenv());
+        @SuppressWarnings("unchecked")
+        LevainShellAction.ProcessResult captured = (LevainShellAction.ProcessResult) method.invoke(
+            action, List.of("echo", "hello"), env, true);
+        assertEquals(0, captured.exitCode);
+        assertTrue(captured.output.contains("hello"));
+
+        @SuppressWarnings("unchecked")
+        LevainShellAction.ProcessResult uncaptured = (LevainShellAction.ProcessResult) method.invoke(
+            action, List.of("echo", "hello"), env, false);
+        assertEquals(0, uncaptured.exitCode);
+        assertNull(uncaptured.output);
     }
 
     static class TestLevainShellAction extends LevainShellAction {

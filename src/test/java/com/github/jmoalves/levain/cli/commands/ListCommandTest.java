@@ -199,6 +199,58 @@ class ListCommandTest {
     }
 
     @Test
+    void shouldHandleInstalledSourceWithNullMetadataFields() {
+        when(recipeService.listRecipes(null)).thenReturn(List.of("jdk-21"));
+        when(recipeService.isInstalled("jdk-21")).thenReturn(true);
+
+        RecipeMetadata metadata = new RecipeMetadata();
+        when(recipeService.getInstalledMetadata("jdk-21")).thenReturn(java.util.Optional.of(metadata));
+
+        int exitCode = new CommandLine(command).execute("--source");
+
+        assertEquals(0, exitCode);
+        verify(recipeService).getInstalledMetadata("jdk-21");
+    }
+
+    @Test
+    void shouldHandleAvailableSourceWithNullName() {
+        when(recipeService.listRecipes(null)).thenReturn(List.of("git"));
+        when(recipeService.isInstalled("git")).thenReturn(false);
+
+        Repository repo = org.mockito.Mockito.mock(Repository.class);
+        when(repo.getName()).thenReturn(null);
+        when(repo.getUri()).thenReturn("https://example.com/repo");
+        when(recipeService.findSourceRepository("git")).thenReturn(java.util.Optional.of(repo));
+
+        int exitCode = new CommandLine(command).execute("--source");
+
+        assertEquals(0, exitCode);
+        verify(recipeService).findSourceRepository("git");
+    }
+
+    @Test
+    void shouldHandleNoInstalledResultsWithFilter() {
+        when(recipeService.listRecipes("jdk")).thenReturn(List.of("jdk-21"));
+        when(recipeService.isInstalled("jdk-21")).thenReturn(false);
+
+        int exitCode = new CommandLine(command).execute("jdk", "--installed");
+
+        assertEquals(0, exitCode);
+        verify(recipeService).listRecipes("jdk");
+    }
+
+    @Test
+    void shouldHandleNoAvailableResultsWithoutFilter() {
+        when(recipeService.listRecipes(null)).thenReturn(List.of("jdk-21"));
+        when(recipeService.isInstalled("jdk-21")).thenReturn(true);
+
+        int exitCode = new CommandLine(command).execute("--available");
+
+        assertEquals(0, exitCode);
+        verify(recipeService).listRecipes(null);
+    }
+
+    @Test
     void shouldReturnErrorWhenListingFails() {
         when(recipeService.listRecipes(null)).thenThrow(new RuntimeException("boom"));
 

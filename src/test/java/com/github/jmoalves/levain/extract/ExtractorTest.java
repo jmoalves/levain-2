@@ -69,6 +69,86 @@ class ExtractorTest {
         assertEquals("You should not ask for --strip if there are more than one directory", error.getMessage());
     }
 
+    @Test
+    void shouldHandleStripWithEmptyDirectory() throws IOException {
+        Path src = tempDir.resolve("src");
+        Files.createDirectories(src);
+        Path dst = tempDir.resolve("dst");
+        Files.createDirectories(dst);
+
+        TestExtractor extractor = new TestExtractor();
+        extractor.extract(true, src, dst, new ProgressBar("extract", 0));
+
+        try (var stream = Files.list(dst)) {
+            assertTrue(stream.findAny().isEmpty());
+        }
+    }
+
+    @Test
+    void shouldReportBytesWithoutProgress() throws IOException {
+        Path src = tempDir.resolve("src.txt");
+        Files.writeString(src, "data", StandardCharsets.UTF_8);
+        Path dst = tempDir.resolve("dst");
+        Files.createDirectories(dst);
+
+        ReportingExtractor extractor = new ReportingExtractor();
+        extractor.extract(false, src, dst);
+
+        assertTrue(Files.exists(dst.resolve("payload.txt")));
+    }
+
+    @Test
+    void shouldReportBytesWithProgress() throws IOException {
+        Path src = tempDir.resolve("src.txt");
+        Files.writeString(src, "data", StandardCharsets.UTF_8);
+        Path dst = tempDir.resolve("dst");
+        Files.createDirectories(dst);
+
+        ReportingExtractor extractor = new ReportingExtractor();
+        extractor.extract(false, src, dst, new ProgressBar("extract", 0));
+
+        assertTrue(Files.exists(dst.resolve("payload.txt")));
+    }
+
+    @Test
+    void shouldSkipDeleteWhenDirectoryMissing() throws Exception {
+        TestExtractor extractor = new TestExtractor();
+        var delete = Extractor.class.getDeclaredMethod("deleteDirectory", Path.class);
+        delete.setAccessible(true);
+
+        Path missing = tempDir.resolve("missing");
+        delete.invoke(extractor, missing);
+
+        assertTrue(Files.notExists(missing));
+    }
+
+    @Test
+    void shouldIgnoreDeleteFailures() throws Exception {
+        Path protectedDir = tempDir.resolve("protected");
+        Files.createDirectories(protectedDir);
+        Path child = protectedDir.resolve("file.txt");
+        Files.writeString(child, "data", StandardCharsets.UTF_8);
+
+        var delete = Extractor.class.getDeclaredMethod("deleteDirectory", Path.class);
+        delete.setAccessible(true);
+
+        boolean posix = Files.getFileStore(protectedDir).supportsFileAttributeView("posix");
+        if (posix) {
+            var perms = java.nio.file.attribute.PosixFilePermissions.fromString("r-xr-xr-x");
+            Files.setPosixFilePermissions(protectedDir, perms);
+        }
+
+        try {
+            delete.invoke(new TestExtractor(), protectedDir);
+        } finally {
+            if (posix) {
+                var perms = java.nio.file.attribute.PosixFilePermissions.fromString("rwxr-xr-x");
+                Files.setPosixFilePermissions(protectedDir, perms);
+            }
+            delete.invoke(new TestExtractor(), protectedDir);
+        }
+    }
+
     private static class TestExtractor extends Extractor {
         @Override
         protected void extractImpl(Path src, Path dst) throws IOException {
@@ -83,6 +163,16 @@ class ExtractorTest {
                     }
                 }
             }
+        }
+    }
+
+    private static class ReportingExtractor extends Extractor {
+        @Override
+        protected void extractImpl(Path src, Path dst) throws IOException {
+            Files.createDirectories(dst);
+            Path target = dst.resolve("payload.txt");
+            Files.writeString(target, "payload", StandardCharsets.UTF_8);
+            reportBytes(7);
         }
     }
 }

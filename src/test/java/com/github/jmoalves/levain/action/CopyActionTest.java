@@ -6,6 +6,7 @@ import com.github.jmoalves.levain.util.FileCache;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -230,6 +231,28 @@ class CopyActionTest {
 
         assertTrue(Files.exists(dst));
         assertEquals("quiet test", Files.readString(dst));
+    }
+
+    @Test
+    void testCopyRemoteFileUsesFileCache() throws Exception {
+        FileCache cache = Mockito.mock(FileCache.class);
+        CopyAction remoteAction = new CopyAction(cache);
+
+        Path cached = tempDir.resolve("cached.txt");
+        Files.writeString(cached, "remote");
+
+        String remoteUrl = "http://example.com/file.txt";
+        Mockito.when(cache.get(remoteUrl)).thenReturn(cached);
+
+        Path baseDir = tempDir.resolve("base");
+        Files.createDirectories(baseDir);
+
+        ActionContext context = createContext(tempDir, baseDir);
+        remoteAction.execute(context, List.of(remoteUrl, "dest.txt"));
+
+        Path dst = baseDir.resolve("dest.txt");
+        assertTrue(Files.exists(dst));
+        assertEquals("remote", Files.readString(dst));
     }
 
     // ========== Error Handling Tests ==========

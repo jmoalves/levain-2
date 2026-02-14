@@ -3,7 +3,12 @@ package com.github.jmoalves.levain.repository;
 import com.github.jmoalves.levain.model.Recipe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
@@ -11,6 +16,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class DirectoryRepositoryTest {
     private DirectoryRepository repository;
+
+    @TempDir
+    Path tempDir;
 
     @BeforeEach
     void setUp() {
@@ -92,6 +100,81 @@ class DirectoryRepositoryTest {
         Optional<String> fileName = repository.getRecipeFileName("test.levain.yaml");
 
         assertTrue(fileName.isEmpty());
+    }
+
+    @Test
+    void shouldReturnEmptyFileNameWhenRecipeMissing() {
+        repository.init();
+
+        Optional<String> fileName = repository.getRecipeFileName("missing-recipe");
+
+        assertTrue(fileName.isEmpty());
+    }
+
+    @Test
+    void shouldFindYamlContentInSubdirectory() throws Exception {
+        Path recipesDir = tempDir.resolve("recipes");
+        Path nested = recipesDir.resolve("nested");
+        Files.createDirectories(nested);
+        Files.writeString(nested.resolve("demo.levain.yaml"), "version: 1.0.0\n", StandardCharsets.UTF_8);
+
+        DirectoryRepository localRepo = new DirectoryRepository("TempRepo", recipesDir.toString());
+        localRepo.init();
+
+        Optional<String> content = localRepo.getRecipeYamlContent("demo");
+
+        assertTrue(content.isPresent());
+        assertTrue(content.get().contains("version"));
+    }
+
+    @Test
+    void shouldRejectMultipleLevainExtensions() throws Exception {
+        Method method = DirectoryRepository.class.getDeclaredMethod("isValidLevainFilename", String.class);
+        method.setAccessible(true);
+
+        boolean valid = (boolean) method.invoke(repository, "bad.levain.yaml.levain.yaml");
+
+        assertFalse(valid);
+    }
+
+    @Test
+    void shouldRejectNonLevainFilename() throws Exception {
+        Method method = DirectoryRepository.class.getDeclaredMethod("isValidLevainFilename", String.class);
+        method.setAccessible(true);
+
+        boolean valid = (boolean) method.invoke(repository, "notes.txt");
+
+        assertFalse(valid);
+    }
+
+    @Test
+    void shouldWarnOnRecipeNameWithExtension() throws Exception {
+        DirectoryRepository localRepo = new DirectoryRepository("TempRepo", tempDir.toString());
+
+        java.lang.reflect.Field field = DirectoryRepository.class.getDeclaredField("recipes");
+        field.setAccessible(true);
+        field.set(localRepo, java.util.Map.of("bad.levain.yaml", new Recipe()));
+
+        Optional<String> result = localRepo.getRecipeFileName("bad.levain.yaml");
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldReturnEmptyWhenFallbackFindsNoMatch() throws Exception {
+        Path recipesDir = tempDir.resolve("recipes-missing");
+        Files.createDirectories(recipesDir);
+        Files.writeString(recipesDir.resolve("other.levain.yaml"), "version: 1.0.0\n", StandardCharsets.UTF_8);
+        Files.writeString(recipesDir.resolve("bad.levain.yaml.levain.yaml"), "version: 2.0.0\n", StandardCharsets.UTF_8);
+
+        DirectoryRepository localRepo = new DirectoryRepository("TempRepo", recipesDir.toString());
+        java.lang.reflect.Field field = DirectoryRepository.class.getDeclaredField("recipes");
+        field.setAccessible(true);
+        field.set(localRepo, java.util.Map.of("demo", new Recipe()));
+
+        Optional<String> content = localRepo.getRecipeYamlContent("demo");
+
+        assertTrue(content.isEmpty());
     }
 
     @Test

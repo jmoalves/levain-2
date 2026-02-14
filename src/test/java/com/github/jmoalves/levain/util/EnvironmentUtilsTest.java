@@ -130,6 +130,23 @@ class EnvironmentUtilsTest {
     }
 
     @Test
+    void shouldResolveProfilePathForOtherShells() throws Exception {
+        String original = System.getenv("SHELL");
+        String originalHome = System.getProperty("user.home");
+        try {
+            updateEnv("SHELL", "/bin/fish");
+            System.setProperty("user.home", tempDir.toString());
+
+            Path resolved = EnvironmentUtils.resolveProfilePath();
+
+            assertEquals(tempDir.resolve(".profile"), resolved);
+        } finally {
+            restoreEnv("SHELL", original);
+            restoreProperty("user.home", originalHome);
+        }
+    }
+
+    @Test
     void shouldPersistUnixEnvAndReplaceExisting() throws IOException {
         Path profile = tempDir.resolve(".profile");
         Files.writeString(profile, "export TEST=old\n", StandardCharsets.UTF_8);
@@ -163,6 +180,16 @@ class EnvironmentUtilsTest {
     }
 
     @Test
+    void shouldPersistQuotedValueWithQuotes() throws IOException {
+        Path profile = tempDir.resolve("quoted.profile");
+
+        EnvironmentUtils.persistUnixEnv(profile, "QUOTED", "a\"b");
+
+        List<String> lines = Files.readAllLines(profile, StandardCharsets.UTF_8);
+        assertEquals("export QUOTED=\"a\\\"b\"", lines.get(0));
+    }
+
+    @Test
     void shouldReturnNullProfileWhenHomeMissing() {
         String original = System.getProperty("user.home");
         try {
@@ -180,6 +207,44 @@ class EnvironmentUtilsTest {
     @Test
     void shouldFailWhenProfileMissing() {
         assertThrows(IOException.class, () -> EnvironmentUtils.persistUnixEnv(null, "KEY", "value"));
+    }
+
+    @Test
+    void shouldHandleNullOsName() {
+        String original = System.getProperty("os.name");
+        try {
+            System.clearProperty("os.name");
+
+            boolean value = EnvironmentUtils.isWindows();
+
+            assertEquals(false, value);
+        } finally {
+            restoreProperty("os.name", original);
+        }
+    }
+
+    @Test
+    void shouldNormalizeNullPathValue() throws Exception {
+        String original = System.getProperty("os.name");
+        try {
+            System.setProperty("os.name", "Linux");
+
+            var normalize = EnvironmentUtils.class.getDeclaredMethod("normalizeForCompare", String.class);
+            normalize.setAccessible(true);
+            String value = (String) normalize.invoke(null, new Object[] { null });
+
+            assertEquals("", value);
+        } finally {
+            restoreProperty("os.name", original);
+        }
+    }
+
+    @Test
+    void shouldQuoteNullValue() throws Exception {
+        var quote = EnvironmentUtils.class.getDeclaredMethod("quote", String.class);
+        quote.setAccessible(true);
+        String value = (String) quote.invoke(null, new Object[] { null });
+        assertEquals("\"\"", value);
     }
 
     private void restoreOsName(String original) {
