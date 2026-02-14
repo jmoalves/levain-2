@@ -12,6 +12,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import picocli.CommandLine;
 
 /**
  * Unit tests for CdiCommandFactory to ensure command classes are properly
@@ -77,5 +78,16 @@ class CdiCommandFactoryTest {
         // Act & Assert - expect an exception to be thrown
         assertThrows(Exception.class, () -> testFactory.create(UnknownClass.class),
                 "Factory should throw an exception for unknown CDI beans");
+    }
+
+    @Test
+    @DisplayName("Should throw execution exception when CDI unavailable")
+    void shouldFailWhenCdiUnavailable() {
+        container.close();
+
+        CdiCommandFactory testFactory = new CdiCommandFactory(false);
+
+        assertThrows(CommandLine.ExecutionException.class,
+                () -> testFactory.create(ListCommand.class));
     }
 }
