@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -140,5 +141,32 @@ class DirectoryRepositoryAdditionalTest {
     void testNonExistentDirectory() {
         DirectoryRepository noPath = new DirectoryRepository("no-path", "/non/existent/path");
         assertDoesNotThrow(() -> noPath.init(), "Should handle non-existent directory gracefully");
+    }
+
+    @Test
+    @DisplayName("Should fall back to subdirectory when direct path is unreadable")
+    void testGetRecipeYamlContentFallsBackToSubdirectory() throws IOException {
+        Path directPath = tempDir.resolve("fallback.levain.yaml");
+        Files.createDirectory(directPath);
+
+        Path nestedDir = Files.createDirectories(tempDir.resolve("nested"));
+        Path nestedFile = nestedDir.resolve("fallback.levain.yaml");
+        Files.writeString(nestedFile, "version: 1.0.0\n");
+
+        repository.init();
+        Optional<String> content = repository.getRecipeYamlContent("fallback");
+
+        assertTrue(content.isPresent(), "Should read content from nested recipe file");
+        assertTrue(content.get().contains("version"), "Content should include recipe data");
+    }
+
+    @Test
+    @DisplayName("Should validate levain filename with multiple extensions")
+    void testInvalidLevainFilenameMultipleExtensions() throws Exception {
+        Method method = DirectoryRepository.class.getDeclaredMethod("isValidLevainFilename", String.class);
+        method.setAccessible(true);
+
+        boolean valid = (boolean) method.invoke(repository, "bad.levain.yaml.levain.yaml");
+        assertFalse(valid, "Multiple .levain.yaml occurrences should be rejected");
     }
 }
