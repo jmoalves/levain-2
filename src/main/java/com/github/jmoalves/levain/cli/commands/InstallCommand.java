@@ -47,15 +47,17 @@ public class InstallCommand implements Callable<Integer> {
 
         logger.debug("Installing {} packages", packages.length);
         try {
-            InstallService.PlanResult result = installService.buildInstallationPlan(List.of(packages), force);
+            List<String> requested = List.of(packages);
+            InstallService.PlanResult result = installService.buildInstallationPlan(requested, force);
             List<Recipe> plan = result.plan();
-            if (plan.isEmpty() && result.missing().isEmpty()) {
+            boolean hasPlanOutput = !plan.isEmpty() || !result.alreadyInstalled().isEmpty();
+            if (!hasPlanOutput && result.missing().isEmpty()) {
                 console.info("All packages already installed");
                 return 0;
             }
 
-            if (!plan.isEmpty()) {
-                console.info("\n" + installService.formatInstallationPlan(plan));
+            if (hasPlanOutput) {
+                console.info("\n" + installService.formatInstallationPlan(result, requested));
             }
 
             if (!result.missing().isEmpty()) {
@@ -66,8 +68,12 @@ public class InstallCommand implements Callable<Integer> {
                 return 1;
             }
 
-            installService.installPlan(plan);
-            console.info("\nAll packages installed successfully!");
+            if (!plan.isEmpty()) {
+                installService.installPlan(plan);
+                console.info("\nAll packages installed successfully!");
+            } else {
+                console.info("\nAll packages already installed");
+            }
             return 0;
         } catch (Exception e) {
             logger.error("Failed to install packages", e);

@@ -30,12 +30,12 @@ class InstallCommandTest {
         InstallCommand command = new InstallCommand(installService);
         Recipe recipe = new Recipe();
         recipe.setName("jdk-21");
-        InstallService.PlanResult result = new InstallService.PlanResult(List.of(recipe), List.of());
+        InstallService.PlanResult result = new InstallService.PlanResult(List.of(recipe), List.of(), List.of());
 
         doNothing().when(installService).installPlan(List.of(recipe));
         org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21"), false))
             .thenReturn(result);
-        org.mockito.Mockito.when(installService.formatInstallationPlan(List.of(recipe)))
+        org.mockito.Mockito.when(installService.formatInstallationPlan(result, List.of("jdk-21")))
             .thenReturn("Installation Plan:\n1.   ✓ jdk-21\n");
 
         CommandLine cmd = new CommandLine(command);
@@ -56,11 +56,11 @@ class InstallCommandTest {
         Recipe recipe3 = new Recipe();
         recipe3.setName("git");
         List<Recipe> plan = List.of(recipe1, recipe2, recipe3);
-        InstallService.PlanResult result = new InstallService.PlanResult(plan, List.of());
+        InstallService.PlanResult result = new InstallService.PlanResult(plan, List.of(), List.of());
 
         org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21", "maven", "git"), false))
             .thenReturn(result);
-        org.mockito.Mockito.when(installService.formatInstallationPlan(plan))
+        org.mockito.Mockito.when(installService.formatInstallationPlan(result, List.of("jdk-21", "maven", "git")))
             .thenReturn("Installation Plan:\n1.   ✓ jdk-21\n2.   ✓ maven\n3.   ✓ git\n");
         doNothing().when(installService).installPlan(plan);
 
@@ -77,11 +77,11 @@ class InstallCommandTest {
         InstallCommand command = new InstallCommand(installService);
         Recipe recipe = new Recipe();
         recipe.setName("jdk-21");
-        InstallService.PlanResult result = new InstallService.PlanResult(List.of(recipe), List.of());
+        InstallService.PlanResult result = new InstallService.PlanResult(List.of(recipe), List.of(), List.of());
 
         org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21"), true))
             .thenReturn(result);
-        org.mockito.Mockito.when(installService.formatInstallationPlan(List.of(recipe)))
+        org.mockito.Mockito.when(installService.formatInstallationPlan(result, List.of("jdk-21")))
             .thenReturn("Installation Plan:\n1.   ✓ jdk-21\n");
         doNothing().when(installService).installPlan(List.of(recipe));
 
@@ -95,10 +95,12 @@ class InstallCommandTest {
     @Test
     void testInstallAlreadyInstalled() throws Exception {
         InstallCommand command = new InstallCommand(installService);
-        InstallService.PlanResult result = new InstallService.PlanResult(List.of(), List.of());
+        InstallService.PlanResult result = new InstallService.PlanResult(List.of(), List.of(), List.of("jdk-21"));
 
         org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21"), false))
             .thenReturn(result);
+        org.mockito.Mockito.when(installService.formatInstallationPlan(result, List.of("jdk-21")))
+            .thenReturn("Installation Plan:\n1. * jdk-21 [installed]\n");
 
         CommandLine cmd = new CommandLine(command);
         int exitCode = cmd.execute("jdk-21");
@@ -111,7 +113,7 @@ class InstallCommandTest {
     @Test
     void testInstallFailure() throws Exception {
         InstallCommand command = new InstallCommand(installService);
-        InstallService.PlanResult result = new InstallService.PlanResult(List.of(), List.of("invalid-package"));
+        InstallService.PlanResult result = new InstallService.PlanResult(List.of(), List.of("invalid-package"), List.of());
 
         org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("invalid-package"), false))
             .thenReturn(result);
@@ -145,11 +147,11 @@ class InstallCommandTest {
         Recipe recipe3 = new Recipe();
         recipe3.setName("maven");
         List<Recipe> plan = List.of(recipe1, recipe2, recipe3);
-        InstallService.PlanResult result = new InstallService.PlanResult(plan, List.of());
+        InstallService.PlanResult result = new InstallService.PlanResult(plan, List.of(), List.of());
 
         org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21", "invalid-package", "maven"), false))
             .thenReturn(result);
-        org.mockito.Mockito.when(installService.formatInstallationPlan(plan))
+        org.mockito.Mockito.when(installService.formatInstallationPlan(result, List.of("jdk-21", "invalid-package", "maven")))
             .thenReturn("Installation Plan:\n1.   ✓ jdk-21\n2.   ✓ invalid-package\n3.   ✓ maven\n");
         doThrow(new RuntimeException("Package not found")).when(installService).installPlan(plan);
 

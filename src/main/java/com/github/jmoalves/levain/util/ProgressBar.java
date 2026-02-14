@@ -8,8 +8,10 @@ public class ProgressBar {
     private static final int BAR_WIDTH = 30;
     private static final char[] SPINNER = new char[] { '|', '/', '-', '\\' };
     private static final Duration MIN_RENDER_INTERVAL = Duration.ofMillis(150);
+    private static final String EMPTY = "";
 
     private final PrintStream out;
+    private final boolean inPlace;
     private String label;
     private long totalBytes;
     private final Instant startTime;
@@ -18,14 +20,18 @@ public class ProgressBar {
     private int spinnerIndex = 0;
     private long lastBytes = 0;
     private boolean finished = false;
+    private int lastRenderLength = 0;
 
     public ProgressBar(String label, long totalBytes) {
         this.out = System.out;
+        this.inPlace = supportsInPlace();
         this.label = label == null ? "Working" : label;
         this.totalBytes = totalBytes;
         this.startTime = Instant.now();
         this.lastRender = Instant.EPOCH;
-        render(0);
+        if (inPlace) {
+            render(0);
+        }
     }
 
     public void reset(String label, long totalBytes) {
@@ -45,6 +51,9 @@ public class ProgressBar {
             return;
         }
         this.lastBytes = processedBytes;
+        if (!inPlace) {
+            return;
+        }
         Instant now = Instant.now();
         if (now.minus(MIN_RENDER_INTERVAL).isAfter(lastRender)) {
             render(processedBytes);
@@ -56,13 +65,21 @@ public class ProgressBar {
         if (finished) {
             return;
         }
-        render(lastBytes);
-        out.print(System.lineSeparator());
+        if (inPlace) {
+            render(lastBytes);
+            out.print(System.lineSeparator());
+        } else {
+            out.print(buildMessage(lastBytes));
+            out.print(System.lineSeparator());
+        }
         out.flush();
         finished = true;
     }
 
     private void render(long processedBytes) {
+        if (!inPlace) {
+            return;
+        }
         if (totalBytes > 0) {
             long capped = Math.min(processedBytes, totalBytes);
             int percent = (int) ((capped * 100) / totalBytes);
@@ -70,23 +87,91 @@ public class ProgressBar {
                 return;
             }
             lastPercent = percent;
+        }
+        String msg = buildMessage(processedBytes);
+        if (msg.isEmpty()) {
+            return;
+        }
+        msg = padToClear(msg);
+        out.print("\r" + msg);
+        out.flush();
+    }
+
+    private String buildMessage(long processedBytes) {
+        int maxWidth = getTerminalWidth();
+        if (totalBytes > 0) {
+            long capped = Math.min(processedBytes, totalBytes);
+            int percent = (int) ((capped * 100) / totalBytes);
             int filled = (int) ((capped * BAR_WIDTH) / totalBytes);
             String bar = "[" + "#".repeat(filled) + "-".repeat(BAR_WIDTH - filled) + "]";
-                String msg = String.format("\r%s %s %3d%% (%s/%s)", label, bar, percent,
+            String message = String.format("%s %s %3d%% (%s/%s)", label, bar, percent,
+                formatBytes(capped), formatBytes(totalBytes));
+            if (message.length() > maxWidth) {
+                String resized = resizeLabel(label, message.length(), maxWidth);
+                message = String.format("%s %s %3d%% (%s/%s)", resized, bar, percent,
                     formatBytes(capped), formatBytes(totalBytes));
-            out.print(msg);
-            out.flush();
-            return;
+            }
+            return message;
         }
 
         char spinner = SPINNER[spinnerIndex++ % SPINNER.length];
-        String msg = String.format("\r%s %c %s", label, spinner, formatBytes(processedBytes));
-        out.print(msg);
-        out.flush();
+        String message = String.format("%s %c %s", label, spinner, formatBytes(processedBytes));
+        if (message.length() > maxWidth) {
+            String resized = resizeLabel(label, message.length(), maxWidth);
+            message = String.format("%s %c %s", resized, spinner, formatBytes(processedBytes));
+        }
+        return message;
+    }
+
+    private String padToClear(String msg) {
+        if (msg.isEmpty()) {
+            return msg;
+        }
+        int len = msg.length();
+        if (len < lastRenderLength) {
+            msg = msg + " ".repeat(lastRenderLength - len);
+        }
+        lastRenderLength = msg.length();
+        return msg;
     }
 
     private boolean shouldForceRender() {
         return Duration.between(startTime, Instant.now()).toSeconds() < 2;
+    }
+
+    private static boolean supportsInPlace() {
+        String term = System.getenv("TERM");
+        if (term == null || term.isBlank() || "dumb".equals(term)) {
+            return false;
+        }
+        return true;
+    }
+
+    private static int getTerminalWidth() {
+        String columns = System.getenv("COLUMNS");
+        if (columns != null) {
+            try {
+                int width = Integer.parseInt(columns.trim());
+                if (width > 0) {
+                    return width;
+                }
+            } catch (NumberFormatException e) {
+                // Ignore invalid values.
+            }
+        }
+        return 80;
+    }
+
+    private static String resizeLabel(String original, int messageLength, int maxWidth) {
+        int overflow = messageLength - maxWidth;
+        if (overflow <= 0) {
+            return original;
+        }
+        int targetLength = original.length() - overflow;
+        if (targetLength <= 3) {
+            return original.substring(0, Math.max(0, targetLength));
+        }
+        return original.substring(0, targetLength - 3) + "...";
     }
 
     private static String formatBytes(long bytes) {

@@ -83,18 +83,29 @@ public class InstallService {
 
         List<Recipe> toInstall = result.plan();
         if (toInstall.isEmpty()) {
+            if (!result.alreadyInstalled().isEmpty()) {
+                System.out.println("\n" + formatInstallationPlan(result, List.of(packageName)));
+            }
             logger.info("All packages already installed");
             return;
         }
 
-        System.out.println("\n" + dependencyResolver.formatInstallationPlan(toInstall));
+        System.out.println("\n" + formatInstallationPlan(result, List.of(packageName)));
         installPlan(toInstall);
     }
 
     public PlanResult buildInstallationPlan(List<String> packageNames, boolean force) {
         if (packageNames == null || packageNames.isEmpty()) {
-            return new PlanResult(List.of(), List.of());
+            return new PlanResult(List.of(), List.of(), List.of());
         }
+
+        List<String> requested = new ArrayList<>();
+        for (String name : packageNames) {
+            if (name != null && !name.isBlank()) {
+                requested.add(name);
+            }
+        }
+        java.util.Set<String> requestedSet = new java.util.LinkedHashSet<>(requested);
 
         DependencyResolver.ResolutionResult resolution = dependencyResolver
                 .resolveAndSortWithMissing(packageNames);
@@ -105,15 +116,19 @@ public class InstallService {
         }
 
         List<Recipe> toInstall = new ArrayList<>();
+        java.util.Set<String> alreadyInstalled = new java.util.LinkedHashSet<>();
         for (Recipe recipe : resolution.recipes()) {
             if (force || !registry.isInstalled(recipe.getName())) {
                 toInstall.add(recipe);
             } else {
                 logger.info("Package already installed (skipping): {}", recipe.getName());
+                if (requestedSet.contains(recipe.getName())) {
+                    alreadyInstalled.add(recipe.getName());
+                }
             }
         }
 
-        return new PlanResult(toInstall, resolution.missing());
+        return new PlanResult(toInstall, resolution.missing(), new ArrayList<>(alreadyInstalled));
     }
 
     public void installPlan(List<Recipe> plan) {
@@ -125,17 +140,46 @@ public class InstallService {
         }
     }
 
-    public String formatInstallationPlan(List<Recipe> plan) {
-        return dependencyResolver.formatInstallationPlan(plan);
+    public String formatInstallationPlan(PlanResult result, List<String> requestedNames) {
+        List<Recipe> plan = result.plan();
+        java.util.Set<String> requested = new java.util.LinkedHashSet<>();
+        if (requestedNames != null) {
+            for (String name : requestedNames) {
+                if (name != null && !name.isBlank()) {
+                    requested.add(name);
+                }
+            }
+        }
+
+        java.util.Set<String> alreadyInstalled = new java.util.LinkedHashSet<>(result.alreadyInstalled());
+        StringBuilder sb = new StringBuilder();
+        sb.append("Installation Plan:\n");
+
+        int index = 1;
+        for (Recipe recipe : plan) {
+            boolean isRequested = requested.contains(recipe.getName());
+            String marker = isRequested ? "* " : "+ ";
+            sb.append(String.format("%d. %s%s\n", index++, marker, recipe.getName()));
+        }
+
+        for (String name : requested) {
+            if (alreadyInstalled.contains(name)) {
+                sb.append(String.format("%d. * %s [installed]\n", index++, name));
+            }
+        }
+
+        return sb.toString();
     }
 
     public static class PlanResult {
         private final List<Recipe> plan;
         private final List<String> missing;
+        private final List<String> alreadyInstalled;
 
-        public PlanResult(List<Recipe> plan, List<String> missing) {
+        public PlanResult(List<Recipe> plan, List<String> missing, List<String> alreadyInstalled) {
             this.plan = plan;
             this.missing = missing;
+            this.alreadyInstalled = alreadyInstalled;
         }
 
         public List<Recipe> plan() {
@@ -144,6 +188,10 @@ public class InstallService {
 
         public List<String> missing() {
             return missing;
+        }
+
+        public List<String> alreadyInstalled() {
+            return alreadyInstalled;
         }
     }
 
