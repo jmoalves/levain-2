@@ -3,6 +3,7 @@ package com.github.jmoalves.levain.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -155,5 +156,96 @@ class ShellServiceTest {
         service.openShell(List.of("bad"));
 
         assertNotNull(service.capturedCommand);
+    }
+
+    @Test
+    @DisplayName("Should build environment with valid package names only")
+    void testBuildEnvironmentFiltersPackageNames() throws Exception {
+        Config config = Mockito.mock(Config.class);
+        when(config.getVariables()).thenReturn(Map.of("X", "1"));
+        when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain"));
+
+        ShellService service = new ShellService();
+        setField(service, "config", config);
+
+        Recipe recipeA = new Recipe();
+        recipeA.setName("pkg-a");
+        Recipe recipeBlank = new Recipe();
+        recipeBlank.setName(" ");
+
+        var method = ShellService.class.getDeclaredMethod("buildEnvironment", List.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, String> env = (Map<String, String>) method.invoke(service, List.of(recipeA, recipeBlank));
+
+        assertEquals("/tmp/levain", env.get("levainHome"));
+        assertEquals("1", env.get("X"));
+        assertEquals("pkg-a", env.get("LEVAIN_PKG_NAMES"));
+    }
+
+    @Test
+    @DisplayName("Should use default package list in shell command")
+    void testBuildShellCommandDefaultsToDefaultPackage() throws Exception {
+        ShellService service = new ShellService();
+
+        var method = ShellService.class.getDeclaredMethod("buildShellCommand", List.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<String> command = (List<String>) method.invoke(service, (Object) null);
+
+        assertEquals("/bin/bash", command.get(0));
+        assertTrue(command.get(2).contains("default"));
+    }
+
+    @Test
+    @DisplayName("Should detect levainShell actions")
+    void testIsLevainShellActionRecognizesPrefix() throws Exception {
+        ShellService service = new ShellService();
+
+        var method = ShellService.class.getDeclaredMethod("isLevainShellAction", String.class);
+        method.setAccessible(true);
+
+        assertTrue((Boolean) method.invoke(service, "levainShell"));
+        assertTrue((Boolean) method.invoke(service, "levainShell echo hi"));
+        assertTrue((Boolean) method.invoke(service, "  levainShell echo hi"));
+    }
+
+    @Test
+    @DisplayName("Should skip actions when recipe commands are missing")
+    void testExecuteShellActionsSkipsMissingCommands() throws Exception {
+        Config config = Mockito.mock(Config.class);
+        when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain"));
+
+        ActionExecutor actionExecutor = Mockito.mock(ActionExecutor.class);
+
+        ShellService service = new ShellService();
+        setField(service, "config", config);
+        setField(service, "actionExecutor", actionExecutor);
+
+        Recipe recipe = new Recipe();
+        recipe.setName("tooling");
+        recipe.setCommands(null);
+
+        var method = ShellService.class.getDeclaredMethod("executeShellActions", Recipe.class);
+        method.setAccessible(true);
+        method.invoke(service, recipe);
+
+        verify(actionExecutor, never()).executeCommands(any(), any(ActionContext.class));
+    }
+
+    @Test
+    @DisplayName("Should run process with empty env")
+    void testRunProcessWithEmptyEnvironment() throws Exception {
+        ShellService service = new ShellService();
+
+        var method = ShellService.class.getDeclaredMethod("runProcess", List.class, Map.class);
+        method.setAccessible(true);
+        method.invoke(service, List.of("/bin/true"), Map.of());
+    }
+
+    private static void setField(Object target, String name, Object value) throws Exception {
+        Field field = ShellService.class.getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(target, value);
     }
 }

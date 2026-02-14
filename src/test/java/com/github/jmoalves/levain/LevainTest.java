@@ -12,6 +12,8 @@ import org.jboss.weld.inject.WeldInstance;
 import java.lang.reflect.Field;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -49,6 +51,22 @@ class LevainTest {
                 throw new IOException("boom");
             }
         });
+        assertEquals("unknown", version);
+    }
+
+    @Test
+    @DisplayName("Should return version from properties")
+    void testGetVersionFromProperties() {
+        String content = "version=1.2.3\n";
+        String version = Levain.getVersion(() -> new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)));
+        assertEquals("1.2.3", version);
+    }
+
+    @Test
+    @DisplayName("Should return unknown when version missing")
+    void testGetVersionMissingProperty() {
+        String content = "name=levain\n";
+        String version = Levain.getVersion(() -> new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8)));
         assertEquals("unknown", version);
     }
 

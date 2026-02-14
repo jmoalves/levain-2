@@ -2,6 +2,7 @@ package com.github.jmoalves.levain.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 
 /**
  * Unit tests for Config.
@@ -202,6 +204,101 @@ class ConfigTest {
     }
 
     @Test
+    @DisplayName("Should use LEVAIN_HOME when configured")
+    void shouldUseLevainHomeFromEnv() throws Exception {
+        String original = System.getenv("LEVAIN_HOME");
+        String originalHome = System.getProperty("user.home");
+        try {
+            updateEnv("LEVAIN_HOME", tempDir.resolve("env-home").toString());
+            System.setProperty("user.home", tempDir.toString());
+
+            assertEquals(tempDir.resolve("env-home"), config.getLevainHome());
+        } finally {
+            restoreEnv("LEVAIN_HOME", original);
+            restoreProperty("user.home", originalHome);
+        }
+    }
+
+    @Test
+    @DisplayName("Should use LEVAIN_REGISTRY_DIR when configured")
+    void shouldUseRegistryDirFromEnv() throws Exception {
+        String original = System.getenv("LEVAIN_REGISTRY_DIR");
+        String originalHome = System.getProperty("user.home");
+        try {
+            updateEnv("LEVAIN_REGISTRY_DIR", tempDir.resolve("env-registry").toString());
+            System.setProperty("user.home", tempDir.toString());
+
+            assertEquals(tempDir.resolve("env-registry"), config.getRegistryDir());
+        } finally {
+            restoreEnv("LEVAIN_REGISTRY_DIR", original);
+            restoreProperty("user.home", originalHome);
+        }
+    }
+
+    @Test
+    @DisplayName("Should use LEVAIN_CACHE_DIR when configured")
+    void shouldUseCacheDirFromEnv() throws Exception {
+        String original = System.getenv("LEVAIN_CACHE_DIR");
+        String originalHome = System.getProperty("user.home");
+        try {
+            updateEnv("LEVAIN_CACHE_DIR", tempDir.resolve("env-cache").toString());
+            System.setProperty("user.home", tempDir.toString());
+
+            assertEquals(tempDir.resolve("env-cache"), config.getCacheDir());
+        } finally {
+            restoreEnv("LEVAIN_CACHE_DIR", original);
+            restoreProperty("user.home", originalHome);
+        }
+    }
+
+    @Test
+    @DisplayName("Should fall back when env is blank")
+    void shouldFallbackWhenEnvBlank() throws Exception {
+        String original = System.getenv("LEVAIN_HOME");
+        String originalHome = System.getProperty("user.home");
+        try {
+            updateEnv("LEVAIN_HOME", " ");
+            System.setProperty("user.home", tempDir.toString());
+
+            assertEquals(tempDir.resolve("levain"), config.getLevainHome());
+        } finally {
+            restoreEnv("LEVAIN_HOME", original);
+            restoreProperty("user.home", originalHome);
+        }
+    }
+
+    @Test
+    @DisplayName("Should handle null variable map")
+    void shouldHandleNullVariableMap() throws Exception {
+        Field dataField = Config.class.getDeclaredField("configData");
+        dataField.setAccessible(true);
+        Config.ConfigData data = (Config.ConfigData) dataField.get(config);
+        data.variables = null;
+
+        assertNotNull(config.getVariables());
+        assertTrue(config.getVariables().isEmpty());
+        assertNull(config.getVariable("missing"));
+    }
+
+    @Test
+    @DisplayName("Should keep defaults when config file is null")
+    void shouldHandleNullConfigFile() throws Exception {
+        Path configPath = tempDir.resolve(".levain").resolve("config.json");
+        Files.createDirectories(configPath.getParent());
+        Files.writeString(configPath, "null");
+
+        Field configPathField = Config.class.getDeclaredField("configPath");
+        configPathField.setAccessible(true);
+        configPathField.set(config, configPath);
+
+        var loadConfig = Config.class.getDeclaredMethod("loadConfig");
+        loadConfig.setAccessible(true);
+        loadConfig.invoke(config);
+
+        assertEquals("levain", config.getDefaultPackage());
+    }
+
+    @Test
     @DisplayName("Should update existing variable")
     void shouldUpdateExistingVariable() {
         config.setVariable("key", "value1");
@@ -283,5 +380,30 @@ class ConfigTest {
         configPathField.set(config, parentFile.resolve("config.json"));
 
         assertThrows(RuntimeException.class, () -> config.save());
+    }
+
+    private void restoreProperty(String key, String original) {
+        if (original == null) {
+            System.clearProperty(key);
+            return;
+        }
+        System.setProperty(key, original);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void updateEnv(String key, String value) throws Exception {
+        Map<String, String> env = System.getenv();
+        Field field = env.getClass().getDeclaredField("m");
+        field.setAccessible(true);
+        Map<String, String> mutable = (Map<String, String>) field.get(env);
+        if (value == null) {
+            mutable.remove(key);
+        } else {
+            mutable.put(key, value);
+        }
+    }
+
+    private static void restoreEnv(String key, String original) throws Exception {
+        updateEnv(key, original);
     }
 }

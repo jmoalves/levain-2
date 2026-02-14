@@ -13,6 +13,8 @@ import static org.mockito.ArgumentMatchers.isNull;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -261,6 +263,119 @@ class InstallServiceTest {
         verify(registry).store(org.mockito.Mockito.eq(mockRecipe),
             org.mockito.Mockito.eq("name: test-package\nversion: 1.0.0\n"),
             isNull(), isNull());
+    }
+
+    @Test
+    void testBuildInstallationPlanWithNullPackages() {
+        InstallService.PlanResult result = installService.buildInstallationPlan(null, false);
+        assertTrue(result.plan().isEmpty());
+        assertTrue(result.missing().isEmpty());
+        assertTrue(result.alreadyInstalled().isEmpty());
+        verifyNoInteractions(dependencyResolver);
+    }
+
+    @Test
+    void testBuildInstallationPlanMarksAlreadyInstalledRequested() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        when(registry.isInstalled("pkg-a")).thenReturn(true);
+        when(registry.getMetadata("pkg-a")).thenReturn(Optional.of(new RecipeMetadata()));
+        setRegistry(installService, registry);
+
+        Path baseDir = Path.of("/tmp/levain-plan/pkg-a");
+        Files.createDirectories(baseDir);
+        when(config.getLevainHome()).thenReturn(baseDir.getParent());
+
+        Recipe recipeA = new Recipe();
+        recipeA.setName("pkg-a");
+
+        when(dependencyResolver.resolveAndSortWithMissing(List.of("pkg-a")))
+            .thenReturn(new ResolutionResult(List.of(recipeA), List.of()));
+
+        InstallService.PlanResult result = installService.buildInstallationPlan(List.of("pkg-a"), false);
+
+        assertTrue(result.plan().isEmpty());
+        assertEquals(List.of("pkg-a"), result.alreadyInstalled());
+    }
+
+    @Test
+    void testBuildInstallationPlanForcesInstallWhenRequested() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        setRegistry(installService, registry);
+
+        Recipe recipeA = new Recipe();
+        recipeA.setName("pkg-a");
+
+        when(dependencyResolver.resolveAndSortWithMissing(List.of("pkg-a")))
+            .thenReturn(new ResolutionResult(List.of(recipeA), List.of()));
+
+        InstallService.PlanResult result = installService.buildInstallationPlan(List.of("pkg-a"), true);
+
+        assertEquals(1, result.plan().size());
+        assertTrue(result.alreadyInstalled().isEmpty());
+    }
+
+    @Test
+    void testFormatInstallationPlanIncludesInstalledMarker() {
+        Recipe recipeA = new Recipe();
+        recipeA.setName("pkg-a");
+
+        InstallService.PlanResult result = new InstallService.PlanResult(
+            List.of(recipeA), List.of(), List.of("pkg-b"));
+
+        String formatted = installService.formatInstallationPlan(result, List.of("pkg-a", "pkg-b"));
+
+        assertTrue(formatted.contains("* pkg-a"));
+        assertTrue(formatted.contains("pkg-b [installed]"));
+    }
+
+    @Test
+    void testInstallPlanRunsSingleRecipe() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        setRegistry(installService, registry);
+
+        Recipe recipeA = new Recipe();
+        recipeA.setName("pkg-a");
+        when(recipeService.loadRecipe("pkg-a")).thenReturn(recipeA);
+        when(recipeService.getRecipeYamlContent("pkg-a")).thenReturn(Optional.of("name: pkg-a\n"));
+        when(recipeService.findSourceRepository("pkg-a")).thenReturn(Optional.empty());
+
+        Path baseDir = Files.createTempDirectory("levain-install-plan");
+        when(config.getLevainHome()).thenReturn(baseDir);
+
+        installService.installPlan(List.of(recipeA));
+
+        verify(registry).store(org.mockito.Mockito.eq(recipeA),
+            org.mockito.Mockito.eq("name: pkg-a\n"), isNull(), isNull());
+    }
+
+    @Test
+    void testInstallSingleRecipeMissingRecipeThrows() throws Exception {
+        when(recipeService.loadRecipe("missing")).thenReturn(null);
+
+        var method = InstallService.class.getDeclaredMethod("installSingleRecipe", String.class);
+        method.setAccessible(true);
+
+        Exception exception = assertThrows(Exception.class, () -> method.invoke(installService, "missing"));
+        assertTrue(exception.getCause() instanceof IllegalArgumentException);
+    }
+
+    @Test
+    void testInstallRecipeRejectsMinVersion() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        setRegistry(installService, registry);
+
+        Recipe recipe = new Recipe();
+        recipe.setName("min-version");
+        recipe.setCommands(Map.of());
+        recipe.addCustomAttribute("levain.minVersion", "99.0.0");
+
+        var method = InstallService.class.getDeclaredMethod("installRecipe",
+            Recipe.class, String.class, String.class, String.class);
+        method.setAccessible(true);
+
+        Exception exception = assertThrows(Exception.class,
+            () -> method.invoke(installService, recipe, "name: min-version\n", null, null));
+        assertTrue(exception.getCause() instanceof RuntimeException);
     }
 
     private static void setRegistry(InstallService service, Registry registry) throws Exception {
