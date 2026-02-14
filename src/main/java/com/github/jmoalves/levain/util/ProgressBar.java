@@ -23,13 +23,17 @@ public class ProgressBar {
     private int lastRenderLength = 0;
 
     public ProgressBar(String label, long totalBytes) {
+        this(label, totalBytes, supportsInPlace());
+    }
+
+    ProgressBar(String label, long totalBytes, boolean inPlace) {
         this.out = System.out;
-        this.inPlace = supportsInPlace();
+        this.inPlace = inPlace;
         this.label = label == null ? "Working" : label;
         this.totalBytes = totalBytes;
         this.startTime = Instant.now();
         this.lastRender = Instant.EPOCH;
-        if (inPlace) {
+        if (this.inPlace) {
             render(0);
         }
     }

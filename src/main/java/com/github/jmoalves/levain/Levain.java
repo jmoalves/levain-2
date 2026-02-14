@@ -3,6 +3,7 @@ package com.github.jmoalves.levain;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+import java.util.function.Supplier;
 
 import org.jboss.weld.environment.se.Weld;
 import org.jboss.weld.environment.se.WeldContainer;
@@ -24,12 +25,20 @@ public class Levain {
     private static final Logger logger = LoggerFactory.getLogger(Levain.class);
 
     public static void main(String[] args) {
+        System.exit(run(args));
+    }
+
+    static int run(String[] args) {
+        return run(args, Levain::initializeCdiContainer);
+    }
+
+    static int run(String[] args, Supplier<WeldContainer> containerSupplier) {
         String version = getVersion();
         logger.info("Starting Levain {}...", version);
 
         int exitCode = 0;
 
-        try (WeldContainer container = initializeCdiContainer()) {
+        try (WeldContainer container = containerSupplier.get()) {
             exitCode = executeCommand(container, args);
             logger.info("Levain finished with exit code: {}", exitCode);
         } catch (Exception e) {
@@ -37,7 +46,7 @@ public class Levain {
             exitCode = 1;
         }
 
-        System.exit(exitCode);
+        return exitCode;
     }
 
     /**
@@ -81,8 +90,12 @@ public class Levain {
      * @return version string, or "unknown" if not available
      */
     private static String getVersion() {
-        try (InputStream input = Levain.class
-                .getResourceAsStream("/META-INF/maven/com.github.jmoalves/levain/pom.properties")) {
+        return getVersion(() -> Levain.class
+                .getResourceAsStream("/META-INF/maven/com.github.jmoalves/levain/pom.properties"));
+    }
+
+    static String getVersion(Supplier<InputStream> inputSupplier) {
+        try (InputStream input = inputSupplier.get()) {
             if (input != null) {
                 Properties props = new Properties();
                 props.load(input);

@@ -10,6 +10,9 @@ import com.github.jmoalves.levain.config.Config;
 import org.jboss.weld.inject.WeldInstance;
 
 import java.lang.reflect.Field;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -28,6 +31,25 @@ class LevainTest {
         Object result = method.invoke(null);
         assertNotNull(result, "Version should not be null");
         assertFalse(result.toString().isBlank(), "Version should not be blank");
+    }
+
+    @Test
+    @DisplayName("Should return unknown when version stream missing")
+    void testGetVersionWithNullStream() {
+        String version = Levain.getVersion(() -> null);
+        assertEquals("unknown", version);
+    }
+
+    @Test
+    @DisplayName("Should return unknown when version stream fails")
+    void testGetVersionWithFailingStream() {
+        String version = Levain.getVersion(() -> new InputStream() {
+            @Override
+            public int read() throws IOException {
+                throw new IOException("boom");
+            }
+        });
+        assertEquals("unknown", version);
     }
 
     @Test
@@ -88,6 +110,42 @@ class LevainTest {
         assertEquals(0, result);
         Mockito.verify(config).setLevainHome("/tmp/levain-home");
         Mockito.verify(config).setCacheDir("/tmp/levain-cache");
+    }
+
+    @Test
+    @DisplayName("Should return exit code from run")
+    void testRunReturnsExitCode() {
+        LevainCommand command = new LevainCommand();
+        org.jboss.weld.environment.se.WeldContainer container = Mockito.mock(org.jboss.weld.environment.se.WeldContainer.class);
+        @SuppressWarnings("unchecked")
+        WeldInstance<LevainCommand> instance = Mockito.mock(WeldInstance.class);
+        Mockito.when(container.select(LevainCommand.class)).thenReturn(instance);
+        Mockito.when(instance.get()).thenReturn(command);
+
+        Supplier<org.jboss.weld.environment.se.WeldContainer> supplier = () -> container;
+
+        int result = Levain.run(new String[0], supplier);
+
+        assertEquals(0, result);
+    }
+
+    @Test
+    @DisplayName("Should return 1 when run throws")
+    void testRunHandlesException() {
+        Supplier<org.jboss.weld.environment.se.WeldContainer> supplier = () -> {
+            throw new RuntimeException("boom");
+        };
+
+        int result = Levain.run(new String[0], supplier);
+
+        assertEquals(1, result);
+    }
+
+    @Test
+    @DisplayName("Should run with default container")
+    void testRunDefault() {
+        int result = Levain.run(new String[0]);
+        assertEquals(0, result);
     }
 
     @Test
