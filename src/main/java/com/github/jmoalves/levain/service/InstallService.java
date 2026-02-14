@@ -27,6 +27,7 @@ import java.util.List;
 @ApplicationScoped
 public class InstallService {
     private static final Logger logger = LoggerFactory.getLogger(InstallService.class);
+    private static final Logger console = LoggerFactory.getLogger("CONSOLE");
     private static final String LEVAIN_VERSION = "2.0.0";
 
     private final RecipeService recipeService;
@@ -152,8 +153,14 @@ public class InstallService {
         if (plan == null || plan.isEmpty()) {
             return;
         }
-        for (Recipe recipe : plan) {
+        for (int i = 0; i < plan.size(); i++) {
+            Recipe recipe = plan.get(i);
+            console.info("Installing {}...", recipe.getName());
             installSingleRecipe(recipe.getName());
+            console.info("Installed {}", recipe.getName());
+            if (i < plan.size() - 1) {
+                console.info("");
+            }
         }
     }
 
