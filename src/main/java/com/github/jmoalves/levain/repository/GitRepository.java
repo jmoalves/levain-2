@@ -8,6 +8,7 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import com.github.jmoalves.levain.util.JGitProgressMonitor;
 
 import java.io.File;
 import java.io.IOException;
@@ -136,29 +137,36 @@ public class GitRepository extends AbstractRepository {
     }
 
     private void cloneRepository(File localDir) throws IOException {
+        JGitProgressMonitor monitor = new JGitProgressMonitor();
         try {
             Git.cloneRepository()
                     .setURI(gitUrl)
                     .setDirectory(localDir)
+                    .setProgressMonitor(monitor)
                     .call()
                     .close();
         } catch (GitAPIException e) {
             throw new IOException("Failed to clone git repository: " + gitUrl + ": " + e.getMessage(), e);
+        } finally {
+            monitor.finish();
         }
     }
 
     private void pullRepository(File localDir) throws IOException {
         File gitDir = new File(localDir, ".git");
         FileRepositoryBuilder builder = new FileRepositoryBuilder();
+        JGitProgressMonitor monitor = new JGitProgressMonitor();
         try (Repository repository = builder.setGitDir(gitDir)
                 .setWorkTree(localDir)
                 .readEnvironment()
                 .findGitDir()
                 .build();
              Git git = new Git(repository)) {
-            git.pull().call();
+            git.pull().setProgressMonitor(monitor).call();
         } catch (GitAPIException e) {
             throw new IOException("Failed to pull git repository: " + gitUrl + ": " + e.getMessage(), e);
+        } finally {
+            monitor.finish();
         }
     }
 

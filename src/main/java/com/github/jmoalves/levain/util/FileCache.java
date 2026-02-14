@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
 
+
 @ApplicationScoped
 public class FileCache {
     private static final Logger logger = LoggerFactory.getLogger(FileCache.class);
@@ -219,9 +220,21 @@ public class FileCache {
             throw new IOException("Failed to download " + src + ": HTTP " + response.statusCode());
         }
 
+        long contentLength = response.headers().firstValueAsLong("Content-Length").orElse(-1);
         Path tempFile = cachedFile.resolveSibling(cachedFile.getFileName() + ".tmp");
-        try (InputStream inputStream = response.body()) {
-            Files.copy(inputStream, tempFile, StandardCopyOption.REPLACE_EXISTING);
+        ProgressBar progress = new ProgressBar("Downloading " + cachedFile.getFileName(), contentLength);
+        try (InputStream inputStream = response.body();
+                var out = Files.newOutputStream(tempFile)) {
+            byte[] buffer = new byte[8192];
+            long total = 0;
+            int read;
+            while ((read = inputStream.read(buffer)) > 0) {
+                out.write(buffer, 0, read);
+                total += read;
+                progress.update(total);
+            }
+        } finally {
+            progress.finish();
         }
         Files.move(tempFile, cachedFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }

@@ -26,6 +26,7 @@ public class SevenZipExtractor extends Extractor {
                     int read;
                     while ((read = sevenZFile.read(buffer)) > 0) {
                         out.write(buffer, 0, read);
+                        reportBytes(read);
                     }
                 }
             }

@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 
 public class TarGzExtractor extends Extractor {
     @Override
@@ -18,6 +18,7 @@ public class TarGzExtractor extends Extractor {
                 BufferedInputStream bis = new BufferedInputStream(fis);
                 GzipCompressorInputStream gzis = new GzipCompressorInputStream(bis);
                 TarArchiveInputStream tais = new TarArchiveInputStream(gzis)) {
+            byte[] buffer = new byte[8192];
             while (true) {
                 var entry = tais.getNextEntry();
                 if (entry == null) {
@@ -29,7 +30,14 @@ public class TarGzExtractor extends Extractor {
                     Files.createDirectories(target);
                 } else {
                     Files.createDirectories(target.getParent());
-                    Files.copy(tais, target, StandardCopyOption.REPLACE_EXISTING);
+                        try (var out = Files.newOutputStream(target, StandardOpenOption.CREATE,
+                            StandardOpenOption.TRUNCATE_EXISTING)) {
+                        int read;
+                        while ((read = tais.read(buffer)) > 0) {
+                            out.write(buffer, 0, read);
+                            reportBytes(read);
+                        }
+                    }
                 }
             }
         }

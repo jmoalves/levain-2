@@ -4,6 +4,7 @@ import com.github.jmoalves.levain.extract.Extractor;
 import com.github.jmoalves.levain.extract.ExtractorFactory;
 import com.github.jmoalves.levain.util.FileCache;
 import com.github.jmoalves.levain.util.FileUtils;
+import com.github.jmoalves.levain.util.ProgressBar;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.slf4j.Logger;
@@ -69,7 +70,9 @@ public class ExtractAction implements Action {
         String cacheKey = isLocalSource ? srcResolved.toString() : srcArg;
         Path cachedSrc = fileCache.get(cacheKey);
         Extractor extractor = extractorFactory.createExtractor(cachedSrc, parsed.type);
-        extractor.extract(parsed.strip, cachedSrc, dstResolved);
+        long totalBytes = Files.exists(cachedSrc) ? Files.size(cachedSrc) : -1;
+        ProgressBar progress = new ProgressBar("Extracting " + cachedSrc.getFileName(), totalBytes);
+        extractor.extract(parsed.strip, cachedSrc, dstResolved, progress);
     }
 
     private ParsedArgs parseArgs(List<String> args) {

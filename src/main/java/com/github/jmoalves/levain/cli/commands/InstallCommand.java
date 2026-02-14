@@ -1,12 +1,12 @@
 package com.github.jmoalves.levain.cli.commands;
 
+import java.util.List;
 import java.util.concurrent.Callable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.jmoalves.levain.service.InstallService;
-import com.github.jmoalves.levain.service.AlreadyInstalledException;
 
 import jakarta.inject.Inject;
 import picocli.CommandLine.Command;
@@ -45,23 +45,21 @@ public class InstallCommand implements Callable<Integer> {
         }
 
         logger.debug("Installing {} packages", packages.length);
-
-        for (String pkg : packages) {
-            console.info("Installing package: {}", pkg);
-            try {
-                // Pass --force flag to install service
-                installService.install(pkg, force);
-                console.info("  ✓ {} installed successfully", pkg);
-            } catch (AlreadyInstalledException e) {
-                console.info("  ℹ {} already installed (use --force to reinstall)", pkg);
-            } catch (Exception e) {
-                logger.error("Failed to install package: {}", pkg, e);
-                console.error("  ✗ Failed to install {}: {}", pkg, e.getMessage());
-                return 1;
+        try {
+            var plan = installService.buildInstallationPlan(List.of(packages), force);
+            if (plan.isEmpty()) {
+                console.info("All packages already installed");
+                return 0;
             }
-        }
 
-        console.info("\nAll packages installed successfully!");
-        return 0;
+            console.info("\n" + installService.formatInstallationPlan(plan));
+            installService.installPlan(plan);
+            console.info("\nAll packages installed successfully!");
+            return 0;
+        } catch (Exception e) {
+            logger.error("Failed to install packages", e);
+            console.error("✗ Failed to install packages. See logs for details. Hint: check network/proxy and permissions.");
+            return 1;
+        }
     }
 }

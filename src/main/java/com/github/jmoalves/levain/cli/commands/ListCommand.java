@@ -47,16 +47,17 @@ public class ListCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        // Validate mutually exclusive options
-        if (installedOnly && availableOnly) {
-            console.info("Error: --installed and --available are mutually exclusive");
-            return 1;
-        }
+        try {
+            // Validate mutually exclusive options
+            if (installedOnly && availableOnly) {
+                console.info("Error: --installed and --available are mutually exclusive");
+                return 1;
+            }
 
-        logger.info("Listing recipes (filter: {}, installedOnly: {}, availableOnly: {})",
-                filter, installedOnly, availableOnly);
+            logger.info("Listing recipes (filter: {}, installedOnly: {}, availableOnly: {})",
+                    filter, installedOnly, availableOnly);
 
-        List<String> recipes = recipeService.listRecipes(filter);
+            List<String> recipes = recipeService.listRecipes(filter);
 
         if (recipes.isEmpty()) {
             if (filter != null) {
@@ -124,7 +125,12 @@ public class ListCommand implements Callable<Integer> {
             }
         }
 
-        return 0;
+            return 0;
+        } catch (Exception e) {
+            logger.error("Failed to list recipes", e);
+            console.error("Error: Failed to list recipes. See logs for details.");
+            return 1;
+        }
     }
 
     private RecipeStatus buildRecipeStatus(String recipeName) {

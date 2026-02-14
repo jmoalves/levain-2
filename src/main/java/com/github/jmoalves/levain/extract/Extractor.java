@@ -11,14 +11,40 @@ import java.nio.file.StandardCopyOption;
 
 public abstract class Extractor {
     private static final Logger logger = LoggerFactory.getLogger(Extractor.class);
+    private com.github.jmoalves.levain.util.ProgressBar progress;
+    private long extractedBytes = 0;
 
     public void extract(boolean strip, Path src, Path dst) throws IOException {
-        Path tempDir = extractToTemp(src, dst);
-        move(strip, tempDir, dst);
-        deleteDirectory(tempDir);
+        extract(strip, src, dst, null);
+    }
+
+    public void extract(boolean strip, Path src, Path dst, com.github.jmoalves.levain.util.ProgressBar progress)
+            throws IOException {
+        this.progress = progress;
+        this.extractedBytes = 0;
+        Path tempDir = null;
+        try {
+            tempDir = extractToTemp(src, dst);
+            move(strip, tempDir, dst);
+        } finally {
+            if (tempDir != null) {
+                deleteDirectory(tempDir);
+            }
+            if (this.progress != null) {
+                this.progress.finish();
+            }
+        }
     }
 
     protected abstract void extractImpl(Path src, Path dst) throws IOException;
+
+    protected void reportBytes(long bytes) {
+        if (progress == null) {
+            return;
+        }
+        extractedBytes += bytes;
+        progress.update(extractedBytes);
+    }
 
     private Path extractToTemp(Path src, Path dst) throws IOException {
         Path safeTempDir = dst.toAbsolutePath().normalize().getParent();

@@ -76,7 +76,7 @@ public class ConfigCommand implements Callable<Integer> {
                     return 0;
                 } catch (Exception e) {
                     logger.error("Failed to add repository: {}", repositoryUri, e);
-                    console.error("✗ Failed to add repository: {}", e.getMessage());
+                    console.error("✗ Failed to add repository. See logs for details. Hint: check the URI and network/proxy.");
                     return 1;
                 }
             }
@@ -119,7 +119,7 @@ public class ConfigCommand implements Callable<Integer> {
                     return 0;
                 } catch (Exception e) {
                     logger.error("Failed to list repositories", e);
-                    console.error("✗ Failed to list repositories: {}", e.getMessage());
+                    console.error("✗ Failed to list repositories. See logs for details.");
                     return 1;
                 }
             }
@@ -156,7 +156,7 @@ public class ConfigCommand implements Callable<Integer> {
                     }
                 } catch (Exception e) {
                     logger.error("Failed to remove repository: {}", identifier, e);
-                    console.error("✗ Failed to remove repository: {}", e.getMessage());
+                    console.error("✗ Failed to remove repository. See logs for details. Hint: verify the name or URI.");
                     return 1;
                 }
             }

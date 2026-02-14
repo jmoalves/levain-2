@@ -20,8 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashMap;
 
 /**
  * Service for installing packages.
@@ -78,17 +77,36 @@ public class InstallService {
     public void install(String packageName, boolean force) {
         logger.info("Analyzing installation for: {} (force={})", packageName, force);
 
-        // Resolve all dependencies in topological order
-        List<Recipe> installationPlan = dependencyResolver.resolveAndSort(packageName);
+        List<Recipe> toInstall = buildInstallationPlan(List.of(packageName), force);
+        if (toInstall.isEmpty()) {
+            logger.info("All packages already installed");
+            return;
+        }
 
-        // Filter out already installed packages (unless force=true)
+        System.out.println("\n" + dependencyResolver.formatInstallationPlan(toInstall));
+        installPlan(toInstall);
+    }
+
+    public List<Recipe> buildInstallationPlan(List<String> packageNames, boolean force) {
+        if (packageNames == null || packageNames.isEmpty()) {
+            return List.of();
+        }
+
+        LinkedHashMap<String, Recipe> ordered = new LinkedHashMap<>();
+        for (String packageName : packageNames) {
+            List<Recipe> installationPlan = dependencyResolver.resolveAndSort(packageName);
+            for (Recipe recipe : installationPlan) {
+                ordered.putIfAbsent(recipe.getName(), recipe);
+            }
+        }
+
         if (registry == null) {
             registry = new Registry();
             registry.init();
         }
 
         List<Recipe> toInstall = new ArrayList<>();
-        for (Recipe recipe : installationPlan) {
+        for (Recipe recipe : ordered.values()) {
             if (force || !registry.isInstalled(recipe.getName())) {
                 toInstall.add(recipe);
             } else {
@@ -96,18 +114,20 @@ public class InstallService {
             }
         }
 
-        if (toInstall.isEmpty()) {
-            logger.info("All packages already installed");
+        return toInstall;
+    }
+
+    public void installPlan(List<Recipe> plan) {
+        if (plan == null || plan.isEmpty()) {
             return;
         }
-
-        // Show the installation plan to the user
-        System.out.println("\n" + dependencyResolver.formatInstallationPlan(toInstall));
-
-        // Install each recipe in order
-        for (Recipe recipe : toInstall) {
+        for (Recipe recipe : plan) {
             installSingleRecipe(recipe.getName());
         }
+    }
+
+    public String formatInstallationPlan(List<Recipe> plan) {
+        return dependencyResolver.formatInstallationPlan(plan);
     }
 
     /**
