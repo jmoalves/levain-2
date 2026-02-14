@@ -269,6 +269,15 @@ class RegistryTest {
     }
 
     @Test
+    @DisplayName("Should return empty metadata when JSON is invalid")
+    void shouldReturnEmptyMetadataWhenJsonInvalid() throws Exception {
+        Files.writeString(tempDir.resolve("bad.levain.meta"), "{bad json");
+
+        var metadata = registry.getMetadata("bad");
+        assertTrue(metadata.isEmpty());
+    }
+
+    @Test
     @DisplayName("Should store with standardized extension even when filename provided")
     void shouldStoreWithStandardExtensionWhenFilenameProvided() {
         Recipe recipe = createRecipe("node", "20.11.0");

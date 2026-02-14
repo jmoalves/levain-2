@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -120,6 +121,16 @@ class ResourceRepositoryTest {
     }
 
     @Test
+    void shouldReturnEmptyWhenRecipeYamlInvalid() throws Exception {
+        Path recipeFile = tempDir.resolve("broken.levain.yaml");
+        Files.writeString(recipeFile, "version: [", StandardCharsets.UTF_8);
+
+        Optional<Recipe> recipe = invokeLoadRecipeFromResource(recipeFile);
+
+        assertTrue(recipe.isEmpty());
+    }
+
+    @Test
     void shouldSkipNonRecipeResourceFiles() throws Exception {
         Path recipeFile = tempDir.resolve("skip.txt");
         Files.writeString(recipeFile, "version: 1.2.3\n");
@@ -137,6 +148,15 @@ class ResourceRepositoryTest {
         List<java.net.URL> recipes = invokeListRecipesFromJar(jarUrl);
 
         assertEquals(2, recipes.size());
+    }
+
+    @Test
+    void shouldHandleMissingDirectoryResource() throws Exception {
+        Path missing = tempDir.resolve("missing-dir");
+
+        List<java.net.URL> recipes = invokeListRecipesFromDirectory(missing);
+
+        assertTrue(recipes.isEmpty());
     }
 
     private boolean invokeIsRecipeFile(String filename) throws Exception {
