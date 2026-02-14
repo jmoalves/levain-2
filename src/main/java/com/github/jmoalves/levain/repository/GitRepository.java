@@ -4,11 +4,13 @@ import com.github.jmoalves.levain.model.Recipe;
 import jakarta.enterprise.context.Dependent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -20,15 +22,10 @@ import java.util.stream.Collectors;
 
 /**
  * Repository that loads recipes from a Git repository.
- * Uses git command-line interface (must be available on system PATH).
- * 
+ * Uses JGit so no external git binary is required.
+ *
  * The repository is cloned or pulled to a local cache directory.
  * Recipes are then loaded from the local copy.
- * 
- * NOTE: This implementation requires git to be installed and available on PATH.
- * This is intentional - it keeps the application lightweight and portable.
- * If git is not available, the repository will fail gracefully with a clear
- * error message.
  */
 @Dependent
 public class GitRepository extends AbstractRepository {
@@ -98,7 +95,7 @@ public class GitRepository extends AbstractRepository {
      * Ensure we have a local copy of the git repository.
      * Clones if not present, otherwise pulls latest changes.
      */
-    private void ensureLocalCopy() throws IOException, InterruptedException {
+    private void ensureLocalCopy() throws IOException {
         File localDir = new File(localCachePath);
         File gitDir = new File(localCachePath, ".git");
 
@@ -109,11 +106,11 @@ public class GitRepository extends AbstractRepository {
                 deleteDirectory(localDir);
             }
             logger.debug("Cloning git repository from {} to {}", gitUrl, localCachePath);
-            executeGitCommand(null, "clone", gitUrl, localCachePath);
+            cloneRepository(localDir);
             logger.debug("Successfully cloned repository");
         } else {
             logger.debug("Updating existing repository at {}", localCachePath);
-            executeGitCommand(localCachePath, "pull");
+            pullRepository(localDir);
             logger.debug("Successfully pulled latest changes");
         }
 
@@ -138,50 +135,30 @@ public class GitRepository extends AbstractRepository {
         dir.delete();
     }
 
-    /**
-     * Execute a git command and check for success.
-     * 
-     * @param workingDirectory Optional working directory for the git command (null
-     *                         for current directory)
-     * @param args             The git command arguments (excluding 'git')
-     */
-    private void executeGitCommand(String workingDirectory, String... args) throws IOException, InterruptedException {
-        String[] command = new String[args.length + 1];
-        command[0] = "git";
-        System.arraycopy(args, 0, command, 1, args.length);
-
-        logger.debug("Executing git command: {}", String.join(" ", command));
-        if (workingDirectory != null) {
-            logger.debug("Working directory: {}", workingDirectory);
+    private void cloneRepository(File localDir) throws IOException {
+        try {
+            Git.cloneRepository()
+                    .setURI(gitUrl)
+                    .setDirectory(localDir)
+                    .call()
+                    .close();
+        } catch (GitAPIException e) {
+            throw new IOException("Failed to clone git repository: " + gitUrl + ": " + e.getMessage(), e);
         }
+    }
 
-        ProcessBuilder pb = new ProcessBuilder(command);
-        if (workingDirectory != null) {
-            pb.directory(new File(workingDirectory));
-        }
-        // Ensure git can find its config
-        Map<String, String> env = pb.environment();
-        if (!env.containsKey("HOME")) {
-            env.put("HOME", System.getProperty("user.home"));
-        }
-
-        Process process = pb.start();
-
-        StringBuilder output = new StringBuilder();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                logger.debug("git: {}", line);
-                output.append(line).append("\n");
-            }
-        }
-
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            String errorMessage = String.format("Git command failed with exit code: %d\nCommand: %s\nOutput: %s",
-                    exitCode, String.join(" ", command), output.toString());
-            logger.error(errorMessage);
-            throw new IOException(errorMessage);
+    private void pullRepository(File localDir) throws IOException {
+        File gitDir = new File(localDir, ".git");
+        FileRepositoryBuilder builder = new FileRepositoryBuilder();
+        try (Repository repository = builder.setGitDir(gitDir)
+                .setWorkTree(localDir)
+                .readEnvironment()
+                .findGitDir()
+                .build();
+             Git git = new Git(repository)) {
+            git.pull().call();
+        } catch (GitAPIException e) {
+            throw new IOException("Failed to pull git repository: " + gitUrl + ": " + e.getMessage(), e);
         }
     }
 

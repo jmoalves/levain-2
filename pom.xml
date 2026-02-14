@@ -36,6 +36,7 @@
         <cdi.version>4.1.0</cdi.version>
         <weld.version>5.1.3.Final</weld.version>
         <disruptor.version>4.0.0</disruptor.version>
+        <jgit.version>6.10.0.202406032230-r</jgit.version>
 
         <!-- Nexus Repository Configuration (optional for corporate environments) -->
         <!-- Activates automatically when NEXUS_REPOSITORY_URL environment variable is set -->
@@ -132,6 +133,13 @@
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>${commons-io.version}</version>
+        </dependency>
+
+        <!-- Git operations without external git binary -->
+        <dependency>
+            <groupId>org.eclipse.jgit</groupId>
+            <artifactId>org.eclipse.jgit</artifactId>
+            <version>${jgit.version}</version>
         </dependency>
 
         <!-- Archive extraction (zip, tar.gz, 7z) -->

@@ -1,13 +1,15 @@
 package com.github.jmoalves.levain.repository;
 
 import com.github.jmoalves.levain.model.Recipe;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
 
@@ -58,54 +60,105 @@ class GitRepositoryTest {
     }
 
     @Test
+    void shouldReturnEmptyYamlContentWhenNotInitialized() {
+        assertTrue(repository.getRecipeYamlContent("jdk-21").isEmpty());
+    }
+
+    @Test
     void shouldReturnEmptyFileNameForInvalidName() {
         assertTrue(repository.getRecipeFileName("bad.levain.yaml").isEmpty());
+    }
+
+    @Test
+    void shouldReturnFileNameForValidName() {
+        assertEquals(Optional.of("jdk-21.levain.yaml"), repository.getRecipeFileName("jdk-21"));
     }
 
     @Test
     void shouldInitializeFromLocalGitRepository() throws Exception {
         Path originDir = tempDir.resolve("origin");
         Files.createDirectories(originDir);
-        runGit(originDir, "init");
-        runGit(originDir, "config", "user.email", "test@example.com");
-        runGit(originDir, "config", "user.name", "Test User");
+        try (Git origin = initRepository(originDir)) {
+            Files.writeString(originDir.resolve("jdk-21.levain.yaml"), "name: jdk-21\nversion: 21.0.0\n");
+            commitAll(origin, "init");
 
-        Files.writeString(originDir.resolve("jdk-21.levain.yaml"), "name: jdk-21\nversion: 21.0.0\n");
-        runGit(originDir, "add", ".");
-        runGit(originDir, "commit", "-m", "init");
+            String originalCache = System.getProperty("levain.cache.dir");
+            System.setProperty("levain.cache.dir", tempDir.resolve("cache").toString());
+            try {
+                GitRepository localRepo = new GitRepository(originDir.toUri().toString());
+                localRepo.init();
 
-        String originalCache = System.getProperty("levain.cache.dir");
-        System.setProperty("levain.cache.dir", tempDir.resolve("cache").toString());
-        try {
-            GitRepository localRepo = new GitRepository(originDir.toString());
-            localRepo.init();
+                assertTrue(localRepo.isInitialized());
+                assertTrue(localRepo.listRecipes().stream().anyMatch(r -> r.getName().equals("jdk-21")));
+                assertTrue(localRepo.getRecipeYamlContent("jdk-21").isPresent());
+                assertTrue(localRepo.describe().contains("->"));
 
-            assertTrue(localRepo.isInitialized());
-            assertTrue(localRepo.listRecipes().stream().anyMatch(r -> r.getName().equals("jdk-21")));
-            assertTrue(localRepo.getRecipeYamlContent("jdk-21").isPresent());
-            assertTrue(localRepo.describe().contains("->"));
-        } finally {
-            if (originalCache != null) {
-                System.setProperty("levain.cache.dir", originalCache);
-            } else {
-                System.clearProperty("levain.cache.dir");
+                Files.writeString(originDir.resolve("maven-3.9.9.levain.yaml"), "name: maven-3.9.9\nversion: 3.9.9\n");
+                commitAll(origin, "add maven");
+                localRepo.init();
+
+                assertTrue(localRepo.listRecipes().stream().anyMatch(r -> r.getName().equals("maven-3.9.9")));
+            } finally {
+                if (originalCache != null) {
+                    System.setProperty("levain.cache.dir", originalCache);
+                } else {
+                    System.clearProperty("levain.cache.dir");
+                }
             }
         }
     }
 
-    private static void runGit(Path workingDir, String... args) throws Exception {
-        String[] command = new String[args.length + 1];
-        command[0] = "git";
-        System.arraycopy(args, 0, command, 1, args.length);
+    @Test
+    void shouldDeleteIncompleteCacheDirBeforeClone() throws Exception {
+        Path originDir = tempDir.resolve("origin-delete");
+        Files.createDirectories(originDir);
+        try (Git origin = initRepository(originDir)) {
+            Files.writeString(originDir.resolve("deno.levain.yaml"), "name: deno\nversion: 1.0.0\n");
+            commitAll(origin, "init");
 
-        Process process = new ProcessBuilder(command)
-                .directory(new File(workingDir.toString()))
-                .redirectErrorStream(true)
-                .start();
+            String originalCache = System.getProperty("levain.cache.dir");
+            Path cacheRoot = tempDir.resolve("cache-delete");
+            System.setProperty("levain.cache.dir", cacheRoot.toString());
+            try {
+                String repoName = String.valueOf(Math.abs(originDir.toUri().toString().hashCode()));
+                Path cachePath = Paths.get(cacheRoot.toString(), "git", repoName);
+                Files.createDirectories(cachePath);
+                Path junkFile = cachePath.resolve("junk.txt");
+                Files.writeString(junkFile, "junk");
 
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            throw new IllegalStateException("Git command failed: " + String.join(" ", command));
+                GitRepository localRepo = new GitRepository(originDir.toUri().toString());
+                localRepo.init();
+
+                assertFalse(Files.exists(junkFile));
+                assertTrue(Files.exists(cachePath.resolve(".git")));
+            } finally {
+                if (originalCache != null) {
+                    System.setProperty("levain.cache.dir", originalCache);
+                } else {
+                    System.clearProperty("levain.cache.dir");
+                }
+            }
         }
+    }
+
+    @Test
+    void shouldHandleInitFailureGracefully() {
+        GitRepository badRepo = new GitRepository("file:///nonexistent/levain-pkgs.git");
+        badRepo.init();
+
+        assertTrue(badRepo.isInitialized());
+        assertTrue(badRepo.listRecipes().isEmpty());
+    }
+
+    private static Git initRepository(Path originDir) throws GitAPIException {
+        return Git.init().setDirectory(originDir.toFile()).call();
+    }
+
+    private static void commitAll(Git git, String message) throws GitAPIException {
+        git.add().addFilepattern(".").call();
+        git.commit()
+                .setMessage(message)
+                .setAuthor("Test User", "test@example.com")
+                .call();
     }
 }
