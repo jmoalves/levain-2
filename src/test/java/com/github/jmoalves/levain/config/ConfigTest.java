@@ -2,6 +2,7 @@ package com.github.jmoalves.levain.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -247,5 +249,39 @@ class ConfigTest {
         String repoString = repo.toString();
         assertTrue(repoString.contains("local"));
         assertTrue(repoString.contains("dir:/tmp"));
+    }
+
+    @Test
+    @DisplayName("Should handle invalid config file")
+    void shouldHandleInvalidConfigFile() throws Exception {
+        String originalHome = System.getProperty("user.home");
+        System.setProperty("user.home", tempDir.toString());
+        try {
+            Path configPath = tempDir.resolve(".levain").resolve("config.json");
+            Files.createDirectories(configPath.getParent());
+            Files.writeString(configPath, "{invalid json");
+
+            Config localConfig = new Config();
+            assertEquals("levain", localConfig.getDefaultPackage());
+        } finally {
+            if (originalHome != null) {
+                System.setProperty("user.home", originalHome);
+            } else {
+                System.clearProperty("user.home");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("Should throw when save cannot create parent directory")
+    void shouldThrowWhenSaveCannotCreateParent() throws Exception {
+        Path parentFile = tempDir.resolve("not-a-dir");
+        Files.writeString(parentFile, "content");
+
+        Field configPathField = Config.class.getDeclaredField("configPath");
+        configPathField.setAccessible(true);
+        configPathField.set(config, parentFile.resolve("config.json"));
+
+        assertThrows(RuntimeException.class, () -> config.save());
     }
 }
