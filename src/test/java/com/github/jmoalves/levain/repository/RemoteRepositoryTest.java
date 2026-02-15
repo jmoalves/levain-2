@@ -10,6 +10,7 @@ import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 
@@ -136,8 +137,29 @@ class RemoteRepositoryTest {
     }
 
     @Test
+    void shouldNormalizeGithubBlobUrlToRawRecipes() throws Exception {
+        String normalized = invokeNormalizeUrl("https://github.com/acme/repo/blob/main/recipes");
+
+        assertEquals("https://raw.githubusercontent.com/acme/repo/main/recipes", normalized);
+    }
+
+    @Test
+    void shouldNormalizeRawGithubUrlWithoutRecipes() throws Exception {
+        String normalized = invokeNormalizeUrl("https://raw.githubusercontent.com/acme/repo/main");
+
+        assertEquals("https://raw.githubusercontent.com/acme/repo/main/recipes", normalized);
+    }
+
+    @Test
     void shouldExtractRecipeNameFromUrl() throws Exception {
         String name = invokeExtractRecipeName("https://example.com/jdk-21.levain.yaml");
+
+        assertEquals("jdk-21", name);
+    }
+
+    @Test
+    void shouldExtractRecipeNameFromYmlUrl() throws Exception {
+        String name = invokeExtractRecipeName("https://example.com/jdk-21.levain.yml");
 
         assertEquals("jdk-21", name);
     }
@@ -160,6 +182,27 @@ class RemoteRepositoryTest {
         }
     }
 
+    @Test
+    void shouldUseEnvCacheDirectoryWhenConfigured() throws Exception {
+        String originalProp = System.getProperty("levain.cache.dir");
+        String originalEnv = System.getenv("LEVAIN_CACHE_DIR");
+        try {
+            System.clearProperty("levain.cache.dir");
+            updateEnv("LEVAIN_CACHE_DIR", tempDir.toString());
+
+            String cacheDir = invokeGetDefaultCacheDirectory("https://example.com/repo");
+
+            assertTrue(cacheDir.startsWith(tempDir.toString()));
+        } finally {
+            if (originalProp == null) {
+                System.clearProperty("levain.cache.dir");
+            } else {
+                System.setProperty("levain.cache.dir", originalProp);
+            }
+            restoreEnv("LEVAIN_CACHE_DIR", originalEnv);
+        }
+    }
+
     private String invokeNormalizeUrl(String url) throws Exception {
         Method method = RemoteRepository.class.getDeclaredMethod("normalizeUrl", String.class);
         method.setAccessible(true);
@@ -176,5 +219,22 @@ class RemoteRepositoryTest {
         Method method = RemoteRepository.class.getDeclaredMethod("getDefaultCacheDirectory", String.class);
         method.setAccessible(true);
         return (String) method.invoke(repository, url);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void updateEnv(String key, String value) throws Exception {
+        Map<String, String> env = System.getenv();
+        java.lang.reflect.Field field = env.getClass().getDeclaredField("m");
+        field.setAccessible(true);
+        Map<String, String> mutable = (Map<String, String>) field.get(env);
+        if (value == null) {
+            mutable.remove(key);
+        } else {
+            mutable.put(key, value);
+        }
+    }
+
+    private static void restoreEnv(String key, String original) throws Exception {
+        updateEnv(key, original);
     }
 }
