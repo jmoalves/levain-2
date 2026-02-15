@@ -56,3 +56,7 @@ Thumbs.db
 # incubation
 incubation/
 .e2e-home*/
+
+# Local test repos
+levain-pkgs/
+origin/
