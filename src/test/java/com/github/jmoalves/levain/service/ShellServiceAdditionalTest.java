@@ -56,7 +56,8 @@ class ShellServiceAdditionalTest {
         }
 
         @Override
-        protected void runProcess(List<String> command, java.util.Map<String, String> environment) throws IOException, InterruptedException {
+        protected void runProcess(List<String> command, java.util.Map<String, String> environment, Path workingDir)
+                throws IOException, InterruptedException {
             this.capturedCommand = command;
             if (throwInterrupted) {
                 throw new InterruptedException("Interrupted for test");

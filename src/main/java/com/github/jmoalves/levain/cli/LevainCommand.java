@@ -1,5 +1,6 @@
 package com.github.jmoalves.levain.cli;
 
+import com.github.jmoalves.levain.cli.commands.CloneCommand;
 import com.github.jmoalves.levain.cli.commands.InstallCommand;
 import com.github.jmoalves.levain.cli.commands.ListCommand;
 import com.github.jmoalves.levain.cli.commands.ShellCommand;
@@ -24,10 +25,11 @@ import java.util.concurrent.Callable;
  */
 @ApplicationScoped
 @Command(name = "levain", description = "Something to help you make your software grow", version = "2.0.0-SNAPSHOT", mixinStandardHelpOptions = true, subcommands = {
-        ListCommand.class,
-        InstallCommand.class,
-        ShellCommand.class,
-        ConfigCommand.class
+    ListCommand.class,
+    InstallCommand.class,
+    ShellCommand.class,
+    ConfigCommand.class,
+    CloneCommand.class
 })
 public class LevainCommand implements Callable<Integer> {
     private static final Logger logger = LoggerFactory.getLogger(LevainCommand.class);

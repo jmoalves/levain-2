@@ -44,6 +44,10 @@ public class ShellService {
      * @throws IOException if shell cannot be opened
      */
     public void openShell(List<String> packages) throws IOException {
+        openShell(packages, null);
+    }
+
+    public void openShell(List<String> packages, Path workingDir) throws IOException {
         logger.info("Opening shell with packages: {}", packages);
 
         // Load recipes for all requested packages
@@ -74,7 +78,7 @@ public class ShellService {
         List<String> command = buildShellCommand(packages);
 
         try {
-            runProcess(command, environment);
+            runProcess(command, environment, workingDir);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Shell process interrupted", e);
@@ -161,8 +165,12 @@ public class ShellService {
     /**
      * Execute the shell process with configured environment. Extracted for testability.
      */
-    protected void runProcess(List<String> command, Map<String, String> environment) throws IOException, InterruptedException {
+    protected void runProcess(List<String> command, Map<String, String> environment, Path workingDir)
+            throws IOException, InterruptedException {
         ProcessBuilder pb = new ProcessBuilder(command);
+        if (workingDir != null) {
+            pb.directory(workingDir.toFile());
+        }
         pb.inheritIO();
         if (environment != null && !environment.isEmpty()) {
             pb.environment().putAll(environment);

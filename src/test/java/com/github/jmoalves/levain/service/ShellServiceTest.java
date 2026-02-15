@@ -56,7 +56,7 @@ class ShellServiceTest {
         }
 
         @Override
-        protected void runProcess(List<String> command, Map<String, String> environment) {
+        protected void runProcess(List<String> command, Map<String, String> environment, Path workingDir) {
             this.capturedCommand = command;
             this.capturedEnv = environment;
         }
@@ -238,9 +238,9 @@ class ShellServiceTest {
     void testRunProcessWithEmptyEnvironment() throws Exception {
         ShellService service = new ShellService();
 
-        var method = ShellService.class.getDeclaredMethod("runProcess", List.class, Map.class);
+        var method = ShellService.class.getDeclaredMethod("runProcess", List.class, Map.class, Path.class);
         method.setAccessible(true);
-        method.invoke(service, List.of("/bin/true"), Map.of());
+        method.invoke(service, List.of("/bin/true"), Map.of(), null);
     }
 
     private static void setField(Object target, String name, Object value) throws Exception {
