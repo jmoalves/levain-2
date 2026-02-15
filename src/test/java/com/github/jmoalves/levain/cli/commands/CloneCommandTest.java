@@ -7,9 +7,11 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import picocli.CommandLine;
 
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -96,6 +98,190 @@ class CloneCommandTest {
     }
 
     @Test
+    void shouldUseUrlBranchWhenNoBranchOption() throws Exception {
+        Path originDir = tempDir.resolve("origin-branch.git");
+        Files.createDirectories(originDir);
+
+        try (Git origin = initRepository(originDir)) {
+            Files.writeString(originDir.resolve("README.md"), "hello\n");
+            commitAll(origin, "init");
+            origin.checkout().setCreateBranch(true).setName("dev").call();
+            Files.writeString(originDir.resolve("DEV.md"), "dev\n");
+            commitAll(origin, "dev commit");
+        }
+
+        ShellService shellService = Mockito.mock(ShellService.class);
+        doNothing().when(shellService).openShell(any(), any(Path.class));
+
+        CloneCommand command = new CloneCommand(shellService);
+        CommandLine cmd = new CommandLine(command);
+
+        String originalUserDir = System.getProperty("user.dir");
+        System.setProperty("user.dir", tempDir.toString());
+        Path repoDir = null;
+        try {
+            String url = trimTrailingSlash(originDir.toUri().toString()) + "#dev";
+            int exit = cmd.execute(url);
+            assertEquals(0, exit);
+
+            repoDir = Path.of("").toAbsolutePath()
+                    .resolve(GitUrlUtils.deriveRepoName(url));
+            try (Git clone = Git.open(repoDir.toFile())) {
+                assertEquals("dev", clone.getRepository().getBranch());
+            }
+
+            verify(shellService).openShell(eq(List.of()), eq(repoDir));
+        } finally {
+            if (originalUserDir != null) {
+                System.setProperty("user.dir", originalUserDir);
+            }
+            deleteDirectory(repoDir);
+        }
+    }
+
+    @Test
+    void shouldSkipCloneWhenRepoDirExists() throws Exception {
+        Path originDir = tempDir.resolve("origin-exists.git");
+        Files.createDirectories(originDir);
+
+        try (Git origin = initRepository(originDir)) {
+            Files.writeString(originDir.resolve("README.md"), "hello\n");
+            commitAll(origin, "init");
+        }
+
+        ShellService shellService = Mockito.mock(ShellService.class);
+        doNothing().when(shellService).openShell(any(), any(Path.class));
+
+        CloneCommand command = new CloneCommand(shellService);
+        CommandLine cmd = new CommandLine(command);
+
+        String originalUserDir = System.getProperty("user.dir");
+        System.setProperty("user.dir", tempDir.toString());
+        Path repoDir = null;
+        try {
+            String url = trimTrailingSlash(originDir.toUri().toString());
+            repoDir = Path.of("").toAbsolutePath()
+                    .resolve(GitUrlUtils.deriveRepoName(url));
+            Files.createDirectories(repoDir);
+
+            int exit = cmd.execute(url);
+            assertEquals(0, exit);
+            assertTrue(Files.exists(repoDir));
+            assertTrue(Files.notExists(repoDir.resolve(".git")));
+
+            verify(shellService).openShell(eq(List.of()), eq(repoDir));
+        } finally {
+            if (originalUserDir != null) {
+                System.setProperty("user.dir", originalUserDir);
+            }
+            deleteDirectory(repoDir);
+        }
+    }
+
+    @Test
+    void shouldReturnFailureWhenShellFails() throws Exception {
+        Path originDir = tempDir.resolve("origin-shell.git");
+        Files.createDirectories(originDir);
+
+        try (Git origin = initRepository(originDir)) {
+            Files.writeString(originDir.resolve("README.md"), "hello\n");
+            commitAll(origin, "init");
+        }
+
+        ShellService shellService = Mockito.mock(ShellService.class);
+        Mockito.doThrow(new IllegalStateException("boom"))
+                .when(shellService).openShell(any(), any(Path.class));
+
+        CloneCommand command = new CloneCommand(shellService);
+        CommandLine cmd = new CommandLine(command);
+
+        String originalUserDir = System.getProperty("user.dir");
+        System.setProperty("user.dir", tempDir.toString());
+        Path repoDir = null;
+        try {
+            String url = trimTrailingSlash(originDir.toUri().toString());
+            repoDir = Path.of("").toAbsolutePath()
+                    .resolve(GitUrlUtils.deriveRepoName(url));
+
+            int exit = cmd.execute(url);
+            assertEquals(1, exit);
+        } finally {
+            if (originalUserDir != null) {
+                System.setProperty("user.dir", originalUserDir);
+            }
+            deleteDirectory(repoDir);
+        }
+    }
+
+    @Test
+    void shouldTreatBlankBranchAsUnset() throws Exception {
+        Path originDir = tempDir.resolve("origin-blank.git");
+        Files.createDirectories(originDir);
+
+        try (Git origin = initRepository(originDir)) {
+            Files.writeString(originDir.resolve("README.md"), "hello\n");
+            commitAll(origin, "init");
+            origin.checkout().setCreateBranch(true).setName("dev").call();
+            Files.writeString(originDir.resolve("DEV.md"), "dev\n");
+            commitAll(origin, "dev commit");
+        }
+
+        ShellService shellService = Mockito.mock(ShellService.class);
+        doNothing().when(shellService).openShell(any(), any(Path.class));
+
+        CloneCommand command = new CloneCommand(shellService);
+
+        String originalUserDir = System.getProperty("user.dir");
+        System.setProperty("user.dir", tempDir.toString());
+        Path repoDir = null;
+        try {
+            String url = trimTrailingSlash(originDir.toUri().toString()) + "#dev";
+            setField(command, "url", url);
+            setField(command, "branch", " ");
+
+            int exit = command.call();
+            assertEquals(0, exit);
+
+            repoDir = Path.of("").toAbsolutePath()
+                    .resolve(GitUrlUtils.deriveRepoName(url));
+            try (Git clone = Git.open(repoDir.toFile())) {
+                assertEquals("dev", clone.getRepository().getBranch());
+            }
+        } finally {
+            if (originalUserDir != null) {
+                System.setProperty("user.dir", originalUserDir);
+            }
+            deleteDirectory(repoDir);
+        }
+    }
+
+    @Test
+    void shouldRejectDirsWhenUserBlank() {
+        ShellService shellService = Mockito.mock(ShellService.class);
+        CloneCommand command = new CloneCommand(shellService);
+        CommandLine cmd = new CommandLine(command);
+
+        int exit = cmd.execute("--dirs", "https://github.com/ /project.git");
+        assertEquals(1, exit);
+    }
+
+    @Test
+    void shouldRejectDirsWhenParentIsNotDirectory() {
+        ShellService shellService = Mockito.mock(ShellService.class);
+        CloneCommand command = new CloneCommand(shellService);
+        CommandLine cmd = new CommandLine(command);
+
+        Path parentDir = Path.of("").toAbsolutePath().resolve("example");
+        try (MockedStatic<Files> files = Mockito.mockStatic(Files.class)) {
+            files.when(() -> Files.createDirectories(parentDir)).thenReturn(parentDir);
+            files.when(() -> Files.isDirectory(parentDir)).thenReturn(false);
+
+            int exit = cmd.execute("--dirs", "https://github.com/example/project.git");
+            assertEquals(1, exit);
+        }
+    }
+
+    @Test
     void shouldRejectDirsWhenUserMissing() throws Exception {
         Path originDir = tempDir.resolve("origin-dir.git");
         Files.createDirectories(originDir);
@@ -153,5 +339,11 @@ class CloneCommandTest {
         } catch (Exception e) {
             // Best-effort cleanup for test artifacts.
         }
+    }
+
+    private static void setField(Object target, String name, Object value) throws Exception {
+        Field field = target.getClass().getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(target, value);
     }
 }
