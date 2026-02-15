@@ -1,0 +1,157 @@
+package com.github.jmoalves.levain.cli.commands;
+
+import com.github.jmoalves.levain.service.ShellService;
+import com.github.jmoalves.levain.util.GitUrlUtils;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+import picocli.CommandLine;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
+class CloneCommandTest {
+
+    @TempDir
+    Path tempDir;
+
+    @Test
+    void shouldCloneWithOptionsAndOpenShell() throws Exception {
+        Path originDir = tempDir.resolve("origin-test.git");
+        Files.createDirectories(originDir);
+
+        String branchName;
+        try (Git origin = initRepository(originDir)) {
+            Files.writeString(originDir.resolve("README.md"), "hello\n");
+            commitAll(origin, "init");
+            branchName = origin.getRepository().getBranch();
+        }
+
+        ShellService shellService = Mockito.mock(ShellService.class);
+        doNothing().when(shellService).openShell(any(), any(Path.class));
+
+        CloneCommand command = new CloneCommand(shellService);
+        CommandLine cmd = new CommandLine(command);
+
+        String url = trimTrailingSlash(originDir.toUri().toString());
+        int exit = cmd.execute("--branch", branchName, "--depth", "1", "--recursive", url);
+        assertEquals(0, exit);
+
+        Path expectedRepoDir = Path.of("").toAbsolutePath()
+                .resolve(GitUrlUtils.deriveRepoName(url));
+        assertTrue(Files.exists(expectedRepoDir.resolve(".git")));
+
+        ArgumentCaptor<Path> repoCaptor = ArgumentCaptor.forClass(Path.class);
+        verify(shellService).openShell(eq(List.of()), repoCaptor.capture());
+        assertEquals(expectedRepoDir, repoCaptor.getValue());
+        deleteDirectory(expectedRepoDir);
+    }
+
+    @Test
+    void shouldRejectInvalidGitUrl() throws Exception {
+        ShellService shellService = Mockito.mock(ShellService.class);
+        CloneCommand command = new CloneCommand(shellService);
+        CommandLine cmd = new CommandLine(command);
+
+        int exit = cmd.execute("https://github.com/example/project");
+        assertEquals(1, exit);
+
+        verify(shellService, never()).openShell(any(), any(Path.class));
+    }
+
+    @Test
+    void shouldUseDirsOptionWhenUserPresent() throws Exception {
+        ShellService shellService = Mockito.mock(ShellService.class);
+        doNothing().when(shellService).openShell(any(), any(Path.class));
+
+        CloneCommand command = new CloneCommand(shellService);
+        CommandLine cmd = new CommandLine(command);
+
+        String originalUserDir = System.getProperty("user.dir");
+        System.setProperty("user.dir", tempDir.toString());
+        try {
+            Path repoDir = Path.of("").toAbsolutePath().resolve("example").resolve("project");
+            Files.createDirectories(repoDir);
+            int exit = cmd.execute("--dirs", "https://github.com/example/project.git");
+            assertEquals(0, exit);
+
+            verify(shellService).openShell(eq(List.of()), eq(repoDir));
+        } finally {
+            if (originalUserDir != null) {
+                System.setProperty("user.dir", originalUserDir);
+            }
+        }
+    }
+
+    @Test
+    void shouldRejectDirsWhenUserMissing() throws Exception {
+        Path originDir = tempDir.resolve("origin-dir.git");
+        Files.createDirectories(originDir);
+
+        try (Git origin = initRepository(originDir)) {
+            Files.writeString(originDir.resolve("README.md"), "hello\n");
+            commitAll(origin, "init");
+        }
+
+        ShellService shellService = Mockito.mock(ShellService.class);
+        CloneCommand command = new CloneCommand(shellService);
+        CommandLine cmd = new CommandLine(command);
+
+        int exit = cmd.execute("--dirs", trimTrailingSlash(originDir.toUri().toString()));
+        assertEquals(1, exit);
+
+        verify(shellService, never()).openShell(any(), any(Path.class));
+    }
+
+    private static Git initRepository(Path originDir) throws GitAPIException {
+        return Git.init().setDirectory(originDir.toFile()).call();
+    }
+
+    private static void commitAll(Git git, String message) throws GitAPIException {
+        git.add().addFilepattern(".").call();
+        git.commit()
+                .setMessage(message)
+                .setAuthor("Test User", "test@example.com")
+                .call();
+    }
+
+    private static String trimTrailingSlash(String url) {
+        if (url == null) {
+            return null;
+        }
+        if (url.endsWith("/")) {
+            return url.substring(0, url.length() - 1);
+        }
+        return url;
+    }
+
+    private static void deleteDirectory(Path dir) {
+        if (dir == null || !Files.exists(dir)) {
+            return;
+        }
+        try (var walk = java.nio.file.Files.walk(dir)) {
+            walk.sorted((a, b) -> b.compareTo(a))
+                    .forEach(path -> {
+                        try {
+                            Files.deleteIfExists(path);
+                        } catch (Exception e) {
+                            // Best-effort cleanup for test artifacts.
+                        }
+                    });
+        } catch (Exception e) {
+            // Best-effort cleanup for test artifacts.
+        }
+    }
+}
