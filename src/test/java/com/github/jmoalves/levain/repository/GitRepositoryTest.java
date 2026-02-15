@@ -7,10 +7,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -150,6 +152,34 @@ class GitRepositoryTest {
         assertTrue(badRepo.listRecipes().isEmpty());
     }
 
+    @Test
+    void shouldUseEnvCacheDirectoryWhenConfigured() throws Exception {
+        String originalProp = System.getProperty("levain.cache.dir");
+        String originalEnv = System.getenv("LEVAIN_CACHE_DIR");
+        try {
+            System.clearProperty("levain.cache.dir");
+            updateEnv("LEVAIN_CACHE_DIR", tempDir.toString());
+
+            String cacheDir = invokeGetDefaultCacheDirectory(repository, "https://example.com/repo");
+
+            assertTrue(cacheDir.startsWith(tempDir.toString()));
+        } finally {
+            if (originalProp == null) {
+                System.clearProperty("levain.cache.dir");
+            } else {
+                System.setProperty("levain.cache.dir", originalProp);
+            }
+            restoreEnv("LEVAIN_CACHE_DIR", originalEnv);
+        }
+    }
+
+    @Test
+    void shouldReturnEmptyRecipesWhenLocalRepositoryMissing() throws Exception {
+        Map<String, Recipe> recipes = invokeLoadRecipesFromLocalRepository(repository);
+
+        assertTrue(recipes.isEmpty());
+    }
+
     private static Git initRepository(Path originDir) throws GitAPIException {
         return Git.init().setDirectory(originDir.toFile()).call();
     }
@@ -160,5 +190,35 @@ class GitRepositoryTest {
                 .setMessage(message)
                 .setAuthor("Test User", "test@example.com")
                 .call();
+    }
+
+    private static String invokeGetDefaultCacheDirectory(GitRepository repo, String url) throws Exception {
+        Method method = GitRepository.class.getDeclaredMethod("getDefaultCacheDirectory", String.class);
+        method.setAccessible(true);
+        return (String) method.invoke(repo, url);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Recipe> invokeLoadRecipesFromLocalRepository(GitRepository repo) throws Exception {
+        Method method = GitRepository.class.getDeclaredMethod("loadRecipesFromLocalRepository");
+        method.setAccessible(true);
+        return (Map<String, Recipe>) method.invoke(repo);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void updateEnv(String key, String value) throws Exception {
+        Map<String, String> env = System.getenv();
+        java.lang.reflect.Field field = env.getClass().getDeclaredField("m");
+        field.setAccessible(true);
+        Map<String, String> mutable = (Map<String, String>) field.get(env);
+        if (value == null) {
+            mutable.remove(key);
+        } else {
+            mutable.put(key, value);
+        }
+    }
+
+    private static void restoreEnv(String key, String original) throws Exception {
+        updateEnv(key, original);
     }
 }

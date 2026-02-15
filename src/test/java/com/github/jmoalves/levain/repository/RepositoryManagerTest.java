@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -135,6 +136,16 @@ class RepositoryManagerTest {
     }
 
     @Test
+    void shouldListRecipesWithoutResourceRepository() {
+        MockRepository mockRepo = new MockRepository("mock", List.of(createRecipe("alpha"), createRecipe("beta")));
+        manager.addRepository(mockRepo);
+
+        List<Recipe> recipes = manager.listRecipes();
+
+        assertEquals(2, recipes.size());
+    }
+
+    @Test
     void shouldResolveFromFirstMatchingRepository() {
         // Add multiple repositories - first match wins
         ResourceRepository resourceRepo = new ResourceRepository();
@@ -145,6 +156,20 @@ class RepositoryManagerTest {
 
         Optional<Recipe> recipe = manager.resolveRecipe("jdk-21");
         assertTrue(recipe.isPresent());
+    }
+
+    @Test
+    void shouldResolveFromNonJarWhenJarMissing() {
+        ResourceRepository resourceRepo = new ResourceRepository();
+        MockRepository mockRepo = new MockRepository("mock", List.of(createRecipe("unique")));
+
+        manager.addRepository(resourceRepo);
+        manager.addRepository(mockRepo);
+
+        Optional<Recipe> recipe = manager.resolveRecipe("unique");
+
+        assertTrue(recipe.isPresent());
+        assertEquals("unique", recipe.get().getName());
     }
 
     @Test
@@ -162,6 +187,31 @@ class RepositoryManagerTest {
         assertTrue(fromJar.get() instanceof ResourceRepository);
         assertTrue(fromMock.isPresent());
         assertTrue(fromMock.get() instanceof MockRepository);
+    }
+
+    @Test
+    void shouldReturnEmptyWhenRepositoryNotFound() {
+        MockRepository mockRepo = new MockRepository("mock");
+        manager.addRepository(mockRepo);
+
+        Optional<Repository> repo = manager.findRepositoryForRecipe("missing");
+
+        assertTrue(repo.isEmpty());
+    }
+
+    @Test
+    void shouldReturnYamlFromFirstRepositoryWithContent() {
+        Repository emptyRepo = new InMemoryRepository(Optional.empty(), Optional.empty());
+        Repository yamlRepo = new InMemoryRepository(Optional.of("name: demo\n"), Optional.of("demo.levain.yaml"));
+
+        manager.addRepository(emptyRepo);
+        manager.addRepository(yamlRepo);
+
+        Optional<String> yaml = manager.getRecipeYamlContent("demo");
+        Optional<String> fileName = manager.getRecipeFileName("demo");
+
+        assertTrue(yaml.isPresent());
+        assertTrue(fileName.isPresent());
     }
 
     @Test
@@ -190,10 +240,147 @@ class RepositoryManagerTest {
         assertFalse(manager.isInstalled("missing"));
     }
 
+    @Test
+    void shouldReturnFalseWhenRegistryMissing() {
+        assertFalse(manager.isInstalled("missing"));
+    }
+
+    @Test
+    void shouldContinueInitWhenRepositoryThrows() throws Exception {
+        Repository throwingRepo = new ThrowingRepository();
+        Repository okRepo = new InMemoryRepository(Optional.empty(), Optional.empty());
+
+        addRepositoryWithoutInit(throwingRepo);
+        addRepositoryWithoutInit(okRepo);
+
+        manager.init();
+
+        assertEquals(2, manager.getRepositoryCount());
+    }
+
     private Recipe createRecipe(String name) {
         Recipe recipe = new Recipe();
         recipe.setName(name);
         recipe.setVersion("1.0.0");
         return recipe;
+    }
+
+    private void addRepositoryWithoutInit(Repository repository) throws Exception {
+        java.lang.reflect.Field field = RepositoryManager.class.getDeclaredField("repositories");
+        field.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<Repository> repositories = (List<Repository>) field.get(manager);
+        repositories.add(repository);
+    }
+
+    private static class ThrowingRepository implements Repository {
+        @Override
+        public void init() {
+            throw new IllegalStateException("boom");
+        }
+
+        @Override
+        public boolean isInitialized() {
+            return false;
+        }
+
+        @Override
+        public String getName() {
+            return "throwing";
+        }
+
+        @Override
+        public String getUri() {
+            return "throw://";
+        }
+
+        @Override
+        public List<Recipe> listRecipes() {
+            return List.of();
+        }
+
+        @Override
+        public Optional<Recipe> resolveRecipe(String recipeName) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<String> getRecipeYamlContent(String recipeName) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<String> getRecipeFileName(String recipeName) {
+            return Optional.empty();
+        }
+
+        @Override
+        public int size() {
+            return 0;
+        }
+
+        @Override
+        public String describe() {
+            return "ThrowingRepository";
+        }
+    }
+
+    private static class InMemoryRepository implements Repository {
+        private final Optional<String> yamlContent;
+        private final Optional<String> fileName;
+
+        private InMemoryRepository(Optional<String> yamlContent, Optional<String> fileName) {
+            this.yamlContent = yamlContent;
+            this.fileName = fileName;
+        }
+
+        @Override
+        public void init() {
+        }
+
+        @Override
+        public boolean isInitialized() {
+            return true;
+        }
+
+        @Override
+        public String getName() {
+            return "in-memory";
+        }
+
+        @Override
+        public String getUri() {
+            return "mem://";
+        }
+
+        @Override
+        public List<Recipe> listRecipes() {
+            return new ArrayList<>();
+        }
+
+        @Override
+        public Optional<Recipe> resolveRecipe(String recipeName) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<String> getRecipeYamlContent(String recipeName) {
+            return yamlContent;
+        }
+
+        @Override
+        public Optional<String> getRecipeFileName(String recipeName) {
+            return fileName;
+        }
+
+        @Override
+        public int size() {
+            return 0;
+        }
+
+        @Override
+        public String describe() {
+            return "InMemoryRepository";
+        }
     }
 }
