@@ -69,23 +69,41 @@ public class CopyAction implements Action {
             FileUtils.throwIfNotExists(srcResolved);
         }
 
-        if (!Files.exists(dstResolved.getParent())) {
-            Files.createDirectories(dstResolved.getParent());
+        boolean isDirectoryTarget = isDirectoryPath(dstArg, dstResolved);
+        Path targetPath = dstResolved;
+        if (isDirectoryTarget) {
+            Files.createDirectories(dstResolved);
+            String fileName = isLocalSource
+                    ? srcResolved.getFileName().toString()
+                    : FileUtils.getFileNameFromUrl(srcArg);
+            targetPath = dstResolved.resolve(fileName);
+        }
+
+        Path parent = targetPath.getParent();
+        if (parent != null && !Files.exists(parent)) {
+            Files.createDirectories(parent);
         }
 
         if (verbose) {
-            logger.info("COPY {} => {}", isLocalSource ? srcResolved : srcArg, dstResolved);
+            logger.info("COPY {} => {}", isLocalSource ? srcResolved : srcArg, targetPath);
         } else {
-            logger.debug("COPY {} => {}", isLocalSource ? srcResolved : srcArg, dstResolved);
+            logger.debug("COPY {} => {}", isLocalSource ? srcResolved : srcArg, targetPath);
         }
 
         // For local sources, use direct file copy
         if (isLocalSource) {
-            Files.copy(srcResolved, dstResolved, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(srcResolved, targetPath, StandardCopyOption.REPLACE_EXISTING);
         } else {
             // For remote sources, use FileCache to download, then copy
             Path cachedSrc = fileCache.get(srcArg);
-            Files.copy(cachedSrc, dstResolved, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(cachedSrc, targetPath, StandardCopyOption.REPLACE_EXISTING);
         }
+    }
+
+    private boolean isDirectoryPath(String arg, Path resolved) {
+        if (Files.exists(resolved)) {
+            return Files.isDirectory(resolved);
+        }
+        return arg.endsWith("/") || arg.endsWith("\\");
     }
 }

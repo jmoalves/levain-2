@@ -245,6 +245,14 @@ public class LevainShellAction implements Action {
                 parsed.saveVar = args.get(++i);
                 continue;
             }
+            if (arg.startsWith("--saveVar=")) {
+                String value = arg.substring("--saveVar=".length());
+                if (value.isBlank()) {
+                    throw new IllegalArgumentException("--saveVar requires a variable name");
+                }
+                parsed.saveVar = value;
+                continue;
+            }
             if ("--stripCRLF".equals(arg)) {
                 parsed.stripCRLF = true;
                 continue;

@@ -220,6 +220,28 @@ class CopyActionTest {
     }
 
     @Test
+    void testCopyRemoteFileWithVerboseFlag() throws Exception {
+        FileCache cache = Mockito.mock(FileCache.class);
+        CopyAction remoteAction = new CopyAction(cache);
+
+        Path cached = tempDir.resolve("cached.txt");
+        Files.writeString(cached, "remote verbose");
+
+        String remoteUrl = "https://example.com/files/remote.txt";
+        Mockito.when(cache.get(remoteUrl)).thenReturn(cached);
+
+        Path baseDir = tempDir.resolve("base");
+        Files.createDirectories(baseDir);
+
+        ActionContext context = createContext(tempDir, baseDir);
+        remoteAction.execute(context, List.of("--verbose", remoteUrl, "dest.txt"));
+
+        Path dst = baseDir.resolve("dest.txt");
+        assertTrue(Files.exists(dst));
+        assertEquals("remote verbose", Files.readString(dst));
+    }
+
+    @Test
     void testCopyWithoutVerboseFlag() throws Exception {
         Path src = tempDir.resolve("source.txt");
         Files.writeString(src, "quiet test");
@@ -253,6 +275,61 @@ class CopyActionTest {
         Path dst = baseDir.resolve("dest.txt");
         assertTrue(Files.exists(dst));
         assertEquals("remote", Files.readString(dst));
+    }
+
+    @Test
+    void testCopyLocalFileToExistingDirectory() throws Exception {
+        Path src = tempDir.resolve("source.txt");
+        Files.writeString(src, "dir target");
+
+        Path baseDir = tempDir.resolve("base-dir");
+        Path targetDir = baseDir.resolve("output");
+        Files.createDirectories(targetDir);
+
+        ActionContext context = createContext(tempDir, baseDir);
+        action.execute(context, List.of(src.toString(), "output"));
+
+        Path dst = targetDir.resolve("source.txt");
+        assertTrue(Files.exists(dst));
+        assertEquals("dir target", Files.readString(dst));
+    }
+
+    @Test
+    void testCopyRemoteFileToDirectoryWithTrailingSlash() throws Exception {
+        FileCache cache = Mockito.mock(FileCache.class);
+        CopyAction remoteAction = new CopyAction(cache);
+
+        Path cached = tempDir.resolve("cached.txt");
+        Files.writeString(cached, "remote-dir");
+
+        String remoteUrl = "https://example.com/files/cached.txt";
+        Mockito.when(cache.get(remoteUrl)).thenReturn(cached);
+
+        Path baseDir = tempDir.resolve("base");
+        Files.createDirectories(baseDir);
+
+        ActionContext context = createContext(tempDir, baseDir);
+        remoteAction.execute(context, List.of(remoteUrl, "downloads/"));
+
+        Path dst = baseDir.resolve("downloads").resolve("cached.txt");
+        assertTrue(Files.exists(dst));
+        assertEquals("remote-dir", Files.readString(dst));
+    }
+
+    @Test
+    void testCopyLocalFileToDirectoryWithBackslashSuffix() throws Exception {
+        Path src = tempDir.resolve("source.txt");
+        Files.writeString(src, "backslash dir");
+
+        Path baseDir = tempDir.resolve("base");
+        Files.createDirectories(baseDir);
+
+        ActionContext context = createContext(tempDir, baseDir);
+        action.execute(context, List.of(src.toString(), "output\\"));
+
+        Path dst = baseDir.resolve("output\\").resolve("source.txt");
+        assertTrue(Files.exists(dst));
+        assertEquals("backslash dir", Files.readString(dst));
     }
 
     // ========== Error Handling Tests ==========
@@ -289,6 +366,17 @@ class CopyActionTest {
 
         Exception ex = assertThrows(IllegalArgumentException.class, () -> {
             action.execute(context, List.of("arg1", "arg2", "arg3"));
+        });
+
+        assertTrue(ex.getMessage().contains("must inform"));
+    }
+
+    @Test
+    void testCopyThrowsWhenUnknownFlagPresent() {
+        ActionContext context = createContext(tempDir, tempDir);
+
+        Exception ex = assertThrows(IllegalArgumentException.class, () -> {
+            action.execute(context, List.of("--unknown", "src", "dst"));
         });
 
         assertTrue(ex.getMessage().contains("must inform"));

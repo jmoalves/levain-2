@@ -7,6 +7,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.nio.file.Path;
@@ -17,11 +19,13 @@ import java.nio.file.Files;
 
 import org.junit.jupiter.api.AfterEach;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -66,6 +70,14 @@ class LevainShellActionTest {
     }
 
     @Test
+    void shouldRejectMissingRecipeInContext() {
+        LevainShellAction action = new LevainShellAction(actionExecutor, recipeService, config);
+        ActionContext context = new ActionContext(config, null, tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class, () -> action.execute(context, List.of("echo")));
+    }
+
+    @Test
     void shouldRejectMissingCommand() {
         Recipe recipe = new Recipe();
         recipe.setName("test-pkg");
@@ -77,6 +89,17 @@ class LevainShellActionTest {
     }
 
     @Test
+    void shouldRejectNullArgs() {
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+
+        LevainShellAction action = new LevainShellAction(actionExecutor, recipeService, config);
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class, () -> action.execute(context, null));
+    }
+
+    @Test
     void shouldRejectSaveVarWithoutName() {
         Recipe recipe = new Recipe();
         recipe.setName("test-pkg");
@@ -85,6 +108,33 @@ class LevainShellActionTest {
         ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
 
         assertThrows(IllegalArgumentException.class, () -> action.execute(context, List.of("--saveVar")));
+    }
+
+    @Test
+    void shouldAcceptSaveVarEqualsSyntax() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+
+        when(recipeService.resolveRecipe("test-pkg")).thenReturn(List.of(recipe));
+
+        TestLevainShellAction action = new TestLevainShellAction(actionExecutor, recipeService, config);
+        action.nextResult = new LevainShellAction.ProcessResult(0, "value\n");
+
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+        action.execute(context, List.of("--saveVar=out", "echo", "hello"));
+
+        assertEquals("value\n", context.getRecipeVariable("out"));
+    }
+
+    @Test
+    void shouldRejectSaveVarEqualsWithoutValue() {
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+
+        LevainShellAction action = new LevainShellAction(actionExecutor, recipeService, config);
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class, () -> action.execute(context, List.of("--saveVar=")));
     }
 
     @Test
@@ -102,6 +152,25 @@ class LevainShellActionTest {
 
         assertThrows(IllegalStateException.class, () -> action.execute(context, List.of("echo", "ok")));
         verify(actionExecutor, never()).executeCommands(any(), any());
+    }
+
+    @Test
+    void shouldIgnoreNullShellActions() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+        recipe.setCommands(Map.of(
+            "shell", java.util.Arrays.asList(null, "echo ok")
+        ));
+
+        when(recipeService.resolveRecipe("test-pkg")).thenReturn(List.of(recipe));
+
+        TestLevainShellAction action = new TestLevainShellAction(actionExecutor, recipeService, config);
+        action.nextResult = new LevainShellAction.ProcessResult(0, "ok");
+
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+        action.execute(context, List.of("echo", "ok"));
+
+        verify(actionExecutor).executeCommands(eq(java.util.Arrays.asList(null, "echo ok")), any());
     }
 
     @Test
@@ -142,6 +211,27 @@ class LevainShellActionTest {
     }
 
     @Test
+    void shouldUseRecipeDirWhenProvided() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+        recipe.setRecipesDir(tempDir.resolve("recipes").toString());
+        recipe.setCommands(Map.of(
+                "shell", List.of("echo ok")
+        ));
+
+        when(recipeService.resolveRecipe("test-pkg")).thenReturn(List.of(recipe));
+
+        TestLevainShellAction action = new TestLevainShellAction(actionExecutor, recipeService, config);
+        action.nextResult = new LevainShellAction.ProcessResult(0, "ok");
+
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+        action.execute(context, List.of("echo", "ok"));
+
+        verify(actionExecutor).executeCommands(eq(List.of("echo ok")), argThat(ctx ->
+                ctx.getRecipeDir().equals(Path.of(recipe.getRecipesDir()))));
+    }
+
+    @Test
     void shouldSaveVarWithStripCRLF() throws Exception {
         Recipe recipe = new Recipe();
         recipe.setName("test-pkg");
@@ -172,6 +262,22 @@ class LevainShellActionTest {
         action.execute(context, List.of("--saveVar", "out", "echo", "hello"));
 
         assertEquals("hello\n", context.getRecipeVariable("out"));
+    }
+
+    @Test
+    void shouldSaveEmptyStringWhenOutputNull() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+
+        when(recipeService.resolveRecipe("test-pkg")).thenReturn(List.of(recipe));
+
+        TestLevainShellAction action = new TestLevainShellAction(actionExecutor, recipeService, config);
+        action.nextResult = new LevainShellAction.ProcessResult(0, null);
+
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+        action.execute(context, List.of("--saveVar", "out", "echo", "hello"));
+
+        assertEquals("", context.getRecipeVariable("out"));
     }
 
     @Test
@@ -254,6 +360,43 @@ class LevainShellActionTest {
     }
 
     @Test
+    void shouldTreatBlankShellPathAsUnset() throws Exception {
+        System.setProperty("os.name", "Linux");
+        config.setShellPath(" ");
+
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+        when(recipeService.resolveRecipe("test-pkg")).thenReturn(List.of(recipe));
+
+        CapturingLevainShellAction action = new CapturingLevainShellAction(actionExecutor, recipeService, config);
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+        action.execute(context, List.of("echo", "hello"));
+
+        String expectedShell = Files.exists(Path.of("/bin/bash")) ? "/bin/bash" : "/bin/sh";
+        assertEquals(expectedShell, action.capturedCommand.get(0));
+    }
+
+    @Test
+    void shouldUseShWhenBashMissing() throws Exception {
+        System.setProperty("os.name", "Linux");
+        config.setShellPath(null);
+
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+        when(recipeService.resolveRecipe("test-pkg")).thenReturn(List.of(recipe));
+
+        try (MockedStatic<Files> files = Mockito.mockStatic(Files.class, Mockito.CALLS_REAL_METHODS)) {
+            files.when(() -> Files.exists(Path.of("/bin/bash"))).thenReturn(false);
+
+            CapturingLevainShellAction action = new CapturingLevainShellAction(actionExecutor, recipeService, config);
+            ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+            action.execute(context, List.of("echo", "hello"));
+
+            assertEquals("/bin/sh", action.capturedCommand.get(0));
+        }
+    }
+
+    @Test
     void shouldUseRecipeWhenResolveFails() throws Exception {
         Recipe recipe = new Recipe();
         recipe.setName("test-pkg");
@@ -295,6 +438,40 @@ class LevainShellActionTest {
     }
 
     @Test
+    void shouldResolveShellRecipesWhenRecipeNull() throws Exception {
+        LevainShellAction action = new LevainShellAction(actionExecutor, recipeService, config);
+
+        var method = LevainShellAction.class.getDeclaredMethod("resolveShellRecipes", Recipe.class);
+        method.setAccessible(true);
+
+        var thrown = assertThrows(java.lang.reflect.InvocationTargetException.class,
+            () -> method.invoke(action, new Object[] { null }));
+        assertEquals(NullPointerException.class, thrown.getCause().getClass());
+    }
+
+    @Test
+    void shouldReturnWhenRunShellActionsRecipeNull() throws Exception {
+        LevainShellAction action = new LevainShellAction(actionExecutor, recipeService, config);
+
+        var method = LevainShellAction.class.getDeclaredMethod("runShellActions", Recipe.class);
+        method.setAccessible(true);
+
+        assertDoesNotThrow(() -> method.invoke(action, new Object[] { null }));
+    }
+
+    @Test
+    void shouldReturnWhenRunShellActionsCommandsNull() throws Exception {
+        LevainShellAction action = new LevainShellAction(actionExecutor, recipeService, config);
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+
+        var method = LevainShellAction.class.getDeclaredMethod("runShellActions", Recipe.class);
+        method.setAccessible(true);
+
+        assertDoesNotThrow(() -> method.invoke(action, new Object[] { recipe }));
+    }
+
+    @Test
     void shouldPopulatePackageNamesInEnvironment() throws Exception {
         Recipe recipe = new Recipe();
         recipe.setName("test-pkg");
@@ -327,6 +504,32 @@ class LevainShellActionTest {
     }
 
     @Test
+    void shouldSkipPackageNamesWhenEmptyRecipeList() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setName("test-pkg");
+
+        when(recipeService.resolveRecipe("test-pkg")).thenReturn(List.of());
+
+        CapturingLevainShellAction action = new CapturingLevainShellAction(actionExecutor, recipeService, config);
+        ActionContext context = new ActionContext(config, recipe, tempDir, tempDir);
+        action.execute(context, List.of("echo", "ok"));
+
+        assertTrue(action.capturedEnv.get("LEVAIN_PKG_NAMES") == null);
+    }
+
+    @Test
+    void shouldBuildEnvironmentWithNullRecipeList() throws Exception {
+        LevainShellAction action = new LevainShellAction(actionExecutor, recipeService, config);
+
+        var method = LevainShellAction.class.getDeclaredMethod("buildEnvironment", List.class);
+        method.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> env = (Map<String, String>) method.invoke(action, new Object[] { null });
+        assertTrue(env.get("LEVAIN_PKG_NAMES") == null);
+    }
+
+    @Test
     void shouldHandleNullStripLineEnding() throws Exception {
         LevainShellAction action = new LevainShellAction(actionExecutor, recipeService, config);
 
@@ -335,6 +538,21 @@ class LevainShellActionTest {
 
         Object result = method.invoke(action, new Object[] { null });
         assertNull(result);
+    }
+
+    @Test
+    void shouldQuoteForShellWithAndWithoutSpecialChars() throws Exception {
+        LevainShellAction action = new LevainShellAction(actionExecutor, recipeService, config);
+
+        var method = LevainShellAction.class.getDeclaredMethod("quoteForShell", String.class);
+        method.setAccessible(true);
+
+        assertEquals("''", method.invoke(action, new Object[] { null }));
+        assertEquals("plain", method.invoke(action, new Object[] { "plain" }));
+        assertEquals("'hello world'", method.invoke(action, new Object[] { "hello world" }));
+        assertEquals("'has\"quote'", method.invoke(action, new Object[] { "has\"quote" }));
+        assertEquals("'has'\"'\"'quote'", method.invoke(action, new Object[] { "has'quote" }));
+        assertEquals("'path\\dir'", method.invoke(action, new Object[] { "path\\dir" }));
     }
 
     @Test
