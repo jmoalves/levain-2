@@ -3,10 +3,14 @@ package com.github.jmoalves.levain.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -118,5 +122,86 @@ class RecipeLoaderTest {
         String defaultDir = RecipeLoader.getDefaultRecipesDirectory();
         // Should return null or a valid directory path
         assertTrue(defaultDir == null || new File(defaultDir).isAbsolute());
+    }
+
+    @Test
+    void shouldParseRecipeYamlCommands() {
+        String yaml = "version: 1.2.3\n" +
+                "cmd.install:\n" +
+                "  - echo hi\n" +
+                "  - ~\n";
+
+        Recipe recipe = RecipeLoader.parseRecipeYaml(yaml, "demo");
+
+        assertEquals("demo", recipe.getName());
+        assertNotNull(recipe.getCommands());
+        assertEquals(List.of("echo hi"), recipe.getCommands().get("install"));
+    }
+
+    @Test
+    void shouldParseRecipeYamlCommandString() {
+        String yaml = "cmd.env: export FOO=bar\n";
+
+        Recipe recipe = RecipeLoader.parseRecipeYaml(yaml, "demo");
+
+        assertEquals(List.of("export FOO=bar"), recipe.getCommands().get("env"));
+    }
+
+    @Test
+    void shouldThrowWhenRecipeYamlInvalid() {
+        String yaml = "cmd.install: [";
+
+        assertThrows(RuntimeException.class, () -> RecipeLoader.parseRecipeYaml(yaml, "bad"));
+    }
+
+    @Test
+    void shouldRejectDoubleLevainExtension() throws IOException {
+        Path tempDir = Files.createTempDirectory("recipes-double");
+        Files.writeString(tempDir.resolve("dup.levain.yaml.levain.yaml"), "name: dup\n");
+
+        Map<String, Recipe> recipes = recipeLoader.loadRecipesFromDirectory(tempDir.toString());
+
+        assertTrue(recipes.isEmpty());
+    }
+
+    @Test
+    void shouldUseConfiguredRecipesDirectory() throws IOException {
+        String original = System.getProperty("levain.recipes.dir");
+        Path tempDir = Files.createTempDirectory("recipes-configured");
+        try {
+            System.setProperty("levain.recipes.dir", tempDir.toString());
+
+            String resolved = RecipeLoader.getDefaultRecipesDirectory();
+
+            assertEquals(tempDir.toAbsolutePath().toString(), resolved);
+        } finally {
+            if (original == null) {
+                System.clearProperty("levain.recipes.dir");
+            } else {
+                System.setProperty("levain.recipes.dir", original);
+            }
+        }
+    }
+
+    @Test
+    void shouldUseStandardRecipesDirectoryWhenPresent() throws IOException {
+        String originalHome = System.getProperty("user.home");
+        Path tempHome = Files.createTempDirectory("recipes-home");
+        Path standardDir = tempHome.resolve("levain").resolve("levain-pkgs").resolve("recipes");
+        Files.createDirectories(standardDir);
+        try {
+            System.setProperty("user.home", tempHome.toString());
+            System.clearProperty("levain.recipes.dir");
+
+            String resolved = RecipeLoader.getDefaultRecipesDirectory();
+
+            assertEquals(standardDir.toString(), resolved);
+        } finally {
+            if (originalHome == null) {
+                System.clearProperty("user.home");
+            } else {
+                System.setProperty("user.home", originalHome);
+            }
+        }
     }
 }

@@ -285,6 +285,36 @@ class DependencyResolverTest {
     }
 
     @Test
+    void testResolveAndSortWithMissingHandlesNullInput() {
+        DependencyResolver.ResolutionResult result = resolver.resolveAndSortWithMissing(null);
+
+        assertTrue(result.recipes().isEmpty());
+        assertTrue(result.missing().isEmpty());
+    }
+
+    @Test
+    void testResolveAndSortWithMissingWhenRecipeMissing() {
+        when(recipeService.loadRecipe("missing")).thenReturn(null);
+
+        DependencyResolver.ResolutionResult result = resolver.resolveAndSortWithMissing(List.of("missing"));
+
+        assertTrue(result.recipes().isEmpty());
+        assertEquals(Set.of("missing"), Set.copyOf(result.missing()));
+    }
+
+    @Test
+    void testResolveAndSortWithMissingDetectsCircularDependencies() {
+        Recipe recipeA = createRecipe("A", "1.0.0", List.of("B"));
+        Recipe recipeB = createRecipe("B", "1.0.0", List.of("A"));
+
+        when(recipeService.loadRecipe("A")).thenReturn(recipeA);
+        when(recipeService.loadRecipe("B")).thenReturn(recipeB);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> resolver.resolveAndSortWithMissing(List.of("A")));
+    }
+
+    @Test
     void testFormatInstallationPlan() {
         Recipe dependency = createRecipe("dep", "1.0.0");
         Recipe main = createRecipe("main", "1.0.0", List.of("dep"));
