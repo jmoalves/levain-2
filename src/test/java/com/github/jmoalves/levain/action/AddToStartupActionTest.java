@@ -79,6 +79,50 @@ class AddToStartupActionTest {
     }
 
     @Test
+    void shouldCopyLnkShortcutWithExtensionName() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            Path startup = tempDir.resolve("Startup");
+            TestAddToStartupAction action = new TestAddToStartupAction(startup);
+            ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+            Path target = tempDir.resolve("tool.lnk");
+            Files.writeString(target, "shortcut");
+
+            action.execute(context, List.of(target.toString(), "Custom.lnk"));
+
+            Path shortcut = startup.resolve("Custom.lnk");
+            assertTrue(Files.exists(shortcut));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldCreateShortcutWhenTargetHasNoExtension() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            Path startup = tempDir.resolve("Startup");
+            TestAddToStartupAction action = new TestAddToStartupAction(startup);
+            ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+            Path target = tempDir.resolve("tool");
+            Files.writeString(target, "echo test");
+
+            action.execute(context, List.of(target.toString()));
+
+            Path shortcut = startup.resolve("tool.lnk");
+            assertTrue(Files.exists(shortcut));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
     void shouldRejectMissingArgs() {
         AddToStartupAction action = new AddToStartupAction();
         ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);

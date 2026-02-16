@@ -123,6 +123,50 @@ class AddToStartMenuActionTest {
         }
     }
 
+    @Test
+    void shouldUseBaseDirWhenGroupBlank() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            Path startMenu = tempDir.resolve("Programs");
+            TestAddToStartMenuAction action = new TestAddToStartMenuAction(startMenu);
+            ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+            Path target = tempDir.resolve("tool.cmd");
+            Files.writeString(target, "echo test");
+
+            action.execute(context, List.of(target.toString(), " "));
+
+            Path shortcut = startMenu.resolve("tool.lnk");
+            assertTrue(Files.exists(shortcut));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldCreateShortcutWhenTargetHasNoExtension() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            Path startMenu = tempDir.resolve("Programs");
+            TestAddToStartMenuAction action = new TestAddToStartMenuAction(startMenu);
+            ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+            Path target = tempDir.resolve("tool");
+            Files.writeString(target, "echo test");
+
+            action.execute(context, List.of(target.toString()));
+
+            Path shortcut = startMenu.resolve("tool.lnk");
+            assertTrue(Files.exists(shortcut));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
     private static class TestAddToStartMenuAction extends AddToStartMenuAction {
         private final Path startMenuDir;
 

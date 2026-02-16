@@ -345,6 +345,30 @@ class InstallServiceTest {
     }
 
     @Test
+    void testBuildInstallationPlanSkipsBlankRequestedNames() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        when(registry.isInstalled("pkg-a")).thenReturn(true);
+        when(registry.getMetadata("pkg-a")).thenReturn(Optional.of(new RecipeMetadata()));
+        setRegistry(installService, registry);
+
+        Path baseDir = Path.of("/tmp/levain-plan/pkg-a");
+        Files.createDirectories(baseDir);
+        when(config.getLevainHome()).thenReturn(baseDir.getParent());
+
+        Recipe recipeA = new Recipe();
+        recipeA.setName("pkg-a");
+
+        List<String> requested = java.util.Arrays.asList(" ", null, "pkg-a");
+        when(dependencyResolver.resolveAndSortWithMissing(requested))
+            .thenReturn(new ResolutionResult(List.of(recipeA), List.of()));
+
+        InstallService.PlanResult result = installService.buildInstallationPlan(requested, false);
+
+        assertTrue(result.plan().isEmpty());
+        assertEquals(List.of("pkg-a"), result.alreadyInstalled());
+    }
+
+    @Test
     void testFormatInstallationPlanIncludesInstalledMarker() {
         Recipe recipeA = new Recipe();
         recipeA.setName("pkg-a");

@@ -11,8 +11,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.io.IOException;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -124,6 +126,72 @@ class AddToDesktopActionTest {
         }
     }
 
+    @Test
+    void shouldCopyUrlShortcutWhenNameHasExtension() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            Path desktop = tempDir.resolve("Desktop");
+            TestAddToDesktopAction action = new TestAddToDesktopAction(desktop);
+            ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+            Path target = tempDir.resolve("site.url");
+            Files.writeString(target, "[InternetShortcut]\nURL=https://example.com");
+
+            action.execute(context, List.of(target.toString(), "Custom.url"));
+
+            Path shortcut = desktop.resolve("Custom.url");
+            assertTrue(Files.exists(shortcut));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldResolveDesktopDirFromUserProfile() throws Exception {
+        Map<String, String> original = snapshotEnv("USERPROFILE");
+        String originalHome = System.getProperty("user.home");
+        try {
+            setEnvVar("USERPROFILE", tempDir.toString());
+            System.setProperty("user.home", tempDir.resolve("other-home").toString());
+
+            AddToDesktopAction action = new AddToDesktopAction();
+            Path resolved = action.resolveDesktopDir();
+
+            assertEquals(tempDir.resolve("Desktop"), resolved);
+        } finally {
+            restoreEnv(original);
+            if (originalHome == null) {
+                System.clearProperty("user.home");
+            } else {
+                System.setProperty("user.home", originalHome);
+            }
+        }
+    }
+
+    @Test
+    void shouldCreateShortcutWhenTargetHasNoExtension() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            Path desktop = tempDir.resolve("Desktop");
+            TestAddToDesktopAction action = new TestAddToDesktopAction(desktop);
+            ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+            Path target = tempDir.resolve("tool");
+            Files.writeString(target, "echo test");
+
+            action.execute(context, List.of(target.toString()));
+
+            Path shortcut = desktop.resolve("tool.lnk");
+            assertTrue(Files.exists(shortcut));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
     private static class TestAddToDesktopAction extends AddToDesktopAction {
         private final Path desktopDir;
 
@@ -140,6 +208,48 @@ class AddToDesktopActionTest {
         protected void createShortcut(Path target, Path shortcut) throws IOException {
             Files.createDirectories(shortcut.getParent());
             Files.writeString(shortcut, "shortcut");
+        }
+    }
+
+    private static Map<String, String> snapshotEnv(String... keys) {
+        Map<String, String> snapshot = new java.util.LinkedHashMap<>();
+        if (keys == null) {
+            return snapshot;
+        }
+        for (String key : keys) {
+            if (key == null || snapshot.containsKey(key)) {
+                continue;
+            }
+            snapshot.put(key, System.getenv(key));
+        }
+        return snapshot;
+    }
+
+    private static void restoreEnv(Map<String, String> snapshot) {
+        for (Map.Entry<String, String> entry : snapshot.entrySet()) {
+            if (entry.getValue() == null) {
+                setEnvVar(entry.getKey(), null);
+            } else {
+                setEnvVar(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean setEnvVar(String key, String value) {
+        try {
+            Map<String, String> env = System.getenv();
+            java.lang.reflect.Field field = env.getClass().getDeclaredField("m");
+            field.setAccessible(true);
+            Map<String, String> writableEnv = (Map<String, String>) field.get(env);
+            if (value == null) {
+                writableEnv.remove(key);
+            } else {
+                writableEnv.put(key, value);
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 }

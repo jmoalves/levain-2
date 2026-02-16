@@ -184,6 +184,25 @@ class ShellServiceTest {
     }
 
     @Test
+    @DisplayName("Should omit package names when no recipes provided")
+    void testBuildEnvironmentWithoutRecipes() throws Exception {
+        Config config = Mockito.mock(Config.class);
+        when(config.getVariables()).thenReturn(Map.of());
+        when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain"));
+
+        ShellService service = new ShellService();
+        setField(service, "config", config);
+
+        var method = ShellService.class.getDeclaredMethod("buildEnvironment", List.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, String> env = (Map<String, String>) method.invoke(service, (Object) null);
+
+        assertEquals("/tmp/levain", env.get("levainHome"));
+        assertTrue(!env.containsKey("LEVAIN_PKG_NAMES"));
+    }
+
+    @Test
     @DisplayName("Should use default package list in shell command")
     void testBuildShellCommandDefaultsToDefaultPackage() throws Exception {
         ShellService service = new ShellService();
@@ -195,6 +214,19 @@ class ShellServiceTest {
 
         assertEquals("/bin/bash", command.get(0));
         assertTrue(command.get(2).contains("default"));
+    }
+
+    @Test
+    @DisplayName("Should build shell command with package list")
+    void testBuildShellCommandWithPackages() throws Exception {
+        ShellService service = new ShellService();
+
+        var method = ShellService.class.getDeclaredMethod("buildShellCommand", List.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<String> command = (List<String>) method.invoke(service, List.of("jdk-21", "maven"));
+
+        assertTrue(command.get(2).contains("jdk-21, maven"));
     }
 
     @Test

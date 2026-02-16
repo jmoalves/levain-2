@@ -100,4 +100,14 @@ class CheckPortActionTest {
         assertThrows(IllegalArgumentException.class,
                 () -> action.execute(null, List.of("--host=localhost", "--port=8080", "otherhost")));
     }
+
+    @Test
+    void shouldAcceptHostAndPortPositionals() throws Exception {
+        CheckPortAction action = new CheckPortAction();
+
+        try (ServerSocket server = new ServerSocket(0)) {
+            int port = server.getLocalPort();
+            assertDoesNotThrow(() -> action.execute(null, List.of("localhost", String.valueOf(port))));
+        }
+    }
 }

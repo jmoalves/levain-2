@@ -110,6 +110,22 @@ class CheckUrlActionTest {
                 () -> action.execute(null, List.of("--timeout=abc", "http://localhost")));
     }
 
+    @Test
+    void shouldAcceptConfiguredStatusList() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/ok", exchange -> respond(exchange, 200));
+        server.start();
+
+        String base = "http://localhost:" + server.getAddress().getPort();
+        CheckUrlAction action = new CheckUrlAction();
+
+        try {
+            assertDoesNotThrow(() -> action.execute(null, List.of("--status=200,302", base + "/ok")));
+        } finally {
+            server.stop(0);
+        }
+    }
+
     private void respond(HttpExchange exchange, int status) throws IOException {
         exchange.sendResponseHeaders(status, -1);
         exchange.close();

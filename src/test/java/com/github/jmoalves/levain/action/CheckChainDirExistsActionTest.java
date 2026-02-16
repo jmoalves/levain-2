@@ -77,4 +77,12 @@ class CheckChainDirExistsActionTest {
         assertThrows(IllegalArgumentException.class,
                 () -> action.execute(context, List.of("--default")));
     }
+
+    @Test
+    void shouldRejectMissingContext() {
+        CheckChainDirExistsAction action = new CheckChainDirExistsAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("path")));
+    }
 }

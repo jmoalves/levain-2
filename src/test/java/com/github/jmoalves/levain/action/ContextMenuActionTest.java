@@ -137,6 +137,95 @@ class ContextMenuActionTest {
         }
     }
 
+    @Test
+    void shouldUseIdAsLabelWhenPositionalsMissing() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            RecordingContextMenuAction action = new RecordingContextMenuAction();
+            action.execute(null, List.of("--target=files", "--id=my-id", "--cmd=run"));
+
+            assertTrue(action.commands.stream().anyMatch(cmd -> cmd.contains("\\*\\shell\\my-id")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldHandleBackgroundTargetFromPositional() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            RecordingContextMenuAction action = new RecordingContextMenuAction();
+            action.execute(null, List.of("background", "Open", "cmd"));
+
+            assertTrue(action.commands.stream().anyMatch(cmd -> cmd.contains("Directory\\Background\\shell")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldHandleAllTargetAlias() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            RecordingContextMenuAction action = new RecordingContextMenuAction();
+            action.execute(null, List.of("--target=all", "Open", "cmd"));
+
+            assertTrue(action.commands.stream().anyMatch(cmd -> cmd.contains("\\*\\shell")));
+            assertTrue(action.commands.stream().anyMatch(cmd -> cmd.contains("Directory\\shell")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldRejectMissingNameValue() {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            ContextMenuAction action = new ContextMenuAction();
+            assertThrows(IllegalArgumentException.class,
+                    () -> action.execute(null, List.of("--name")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldRejectMissingIdValue() {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            ContextMenuAction action = new ContextMenuAction();
+            assertThrows(IllegalArgumentException.class,
+                    () -> action.execute(null, List.of("--id")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldJoinCommandFromExtraPositionals() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            RecordingContextMenuAction action = new RecordingContextMenuAction();
+            action.execute(null, List.of("--target", "files", "Label", "cmd", "arg"));
+
+            assertTrue(action.commands.stream().anyMatch(cmd -> cmd.contains("/d cmd arg")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
     private static class RecordingContextMenuAction extends ContextMenuAction {
         private final List<String> commands = new ArrayList<>();
 
