@@ -275,6 +275,213 @@ class ShellServiceTest {
         method.invoke(service, List.of("/bin/true"), Map.of(), null);
     }
 
+    @Test
+    @DisplayName("Should handle recipe load failure gracefully")
+    void testOpenShellHandlesRecipeLoadFailure() throws Exception {
+        Config config = Mockito.mock(Config.class);
+        when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain"));
+        when(config.getVariables()).thenReturn(new HashMap<>());
+
+        ActionExecutor actionExecutor = Mockito.mock(ActionExecutor.class);
+        RecipeService recipeService = Mockito.mock(RecipeService.class);
+        when(recipeService.loadRecipe("bad-package")).thenThrow(new RuntimeException("Recipe not found"));
+
+        TestShellService service = new TestShellService(config, actionExecutor, recipeService);
+        
+        // Should not throw - it logs warning and continues
+        service.openShell(List.of("bad-package"));
+        
+        assertNotNull(service.capturedCommand);
+    }
+
+    @Test
+    @DisplayName("Should build environment with null recipes")
+    void testBuildEnvironmentWithNullRecipes() throws Exception {
+        Config config = Mockito.mock(Config.class);
+        when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain"));
+        when(config.getVariables()).thenReturn(new HashMap<>());
+
+        ShellService service = new ShellService();
+        setField(service, "config", config);
+
+        var method = ShellService.class.getDeclaredMethod("buildEnvironment", List.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, String> env = (Map<String, String>) method.invoke(service, (Object) null);
+
+        assertNotNull(env);
+        assertEquals("/tmp/levain", env.get("levainHome"));
+    }
+
+    @Test
+    @DisplayName("Should build environment with empty recipe list")
+    void testBuildEnvironmentWithEmptyRecipeList() throws Exception {
+        Config config = Mockito.mock(Config.class);
+        when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain"));
+        when(config.getVariables()).thenReturn(new HashMap<>());
+
+        ShellService service = new ShellService();
+        setField(service, "config", config);
+
+        var method = ShellService.class.getDeclaredMethod("buildEnvironment", List.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, String> env = (Map<String, String>) method.invoke(service, List.of());
+
+        assertNotNull(env);
+        assertEquals("/tmp/levain", env.get("levainHome"));
+    }
+
+    @Test
+    @DisplayName("Should filter null and blank recipe names in environment")
+    void testBuildEnvironmentFiltersNullAndBlankNames() throws Exception {
+        Config config = Mockito.mock(Config.class);
+        when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain"));
+        when(config.getVariables()).thenReturn(new HashMap<>());
+
+        ShellService service = new ShellService();
+        setField(service, "config", config);
+
+        Recipe r1 = new Recipe();
+        r1.setName("valid-pkg");
+        Recipe r2 = new Recipe();
+        r2.setName(null);
+        Recipe r3 = new Recipe();
+        r3.setName("  ");
+        Recipe r4 = new Recipe();
+        r4.setName("another-pkg");
+
+        var method = ShellService.class.getDeclaredMethod("buildEnvironment", List.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, String> env = (Map<String, String>) method.invoke(service, List.of(r1, r2, r3, r4));
+
+        assertEquals("valid-pkg;another-pkg", env.get("LEVAIN_PKG_NAMES"));
+    }
+
+    @Test
+    @DisplayName("Should build shell command with null packages")
+    void testBuildShellCommandWithNullPackages() throws Exception {
+        ShellService service = new ShellService();
+
+        var method = ShellService.class.getDeclaredMethod("buildShellCommand", List.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<String> command = (List<String>) method.invoke(service, (Object) null);
+
+        assertTrue(command.get(2).contains("default"));
+    }
+
+    @Test
+    @DisplayName("Should build shell command with empty packages")
+    void testBuildShellCommandWithEmptyPackages() throws Exception {
+        ShellService service = new ShellService();
+
+        var method = ShellService.class.getDeclaredMethod("buildShellCommand", List.class);
+        method.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<String> command = (List<String>) method.invoke(service, List.of());
+
+        assertTrue(command.get(2).contains("default"));
+    }
+
+    @Test
+    @DisplayName("Should recognize levainShell action without arguments")
+    void testIsLevainShellActionWithoutArgs() throws Exception {
+        ShellService service = new ShellService();
+
+        var method = ShellService.class.getDeclaredMethod("isLevainShellAction", String.class);
+        method.setAccessible(true);
+
+        assertTrue((Boolean) method.invoke(service, "levainShell"));
+    }
+
+    @Test
+    @DisplayName("Should execute shell actions when cmd.shell exists")
+    void testExecuteShellActionsWithShellCommands() throws Exception {
+        Config config = Mockito.mock(Config.class);
+        when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain"));
+
+        ActionExecutor actionExecutor = Mockito.mock(ActionExecutor.class);
+
+        ShellService service = new ShellService();
+        setField(service, "config", config);
+        setField(service, "actionExecutor", actionExecutor);
+
+        Recipe recipe = new Recipe();
+        recipe.setName("tooling");
+        Map<String, List<String>> commands = new HashMap<>();
+        commands.put("shell", List.of("setVar foo bar"));
+        recipe.setCommands(commands);
+
+        var method = ShellService.class.getDeclaredMethod("executeShellActions", Recipe.class);
+        method.setAccessible(true);
+        method.invoke(service, recipe);
+
+        verify(actionExecutor).executeCommands(eq(List.of("setVar foo bar")), any(ActionContext.class));
+    }
+
+    @Test
+    @DisplayName("Should execute env actions when cmd.env exists")
+    void testExecuteShellActionsWithEnvCommands() throws Exception {
+        Config config = Mockito.mock(Config.class);
+        when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain"));
+
+        ActionExecutor actionExecutor = Mockito.mock(ActionExecutor.class);
+
+        ShellService service = new ShellService();
+        setField(service, "config", config);
+        setField(service, "actionExecutor", actionExecutor);
+
+        Recipe recipe = new Recipe();
+        recipe.setName("tooling");
+        Map<String, List<String>> commands = new HashMap<>();
+        commands.put("env", List.of("setEnv PATH /opt/bin"));
+        recipe.setCommands(commands);
+
+        var method = ShellService.class.getDeclaredMethod("executeShellActions", Recipe.class);
+        method.setAccessible(true);
+        method.invoke(service, recipe);
+
+        verify(actionExecutor).executeCommands(eq(List.of("setEnv PATH /opt/bin")), any(ActionContext.class));
+    }
+
+    @Test
+    @DisplayName("Should reject levainShell actions in shell commands")
+    void testExecuteShellActionsRejectsLevainShell() throws Exception {
+        Config config = Mockito.mock(Config.class);
+        when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain"));
+
+        ActionExecutor actionExecutor = Mockito.mock(ActionExecutor.class);
+
+        ShellService service = new ShellService();
+        setField(service, "config", config);
+        setField(service, "actionExecutor", actionExecutor);
+
+        Recipe recipe = new Recipe();
+        recipe.setName("tooling");
+        Map<String, List<String>> commands = new HashMap<>();
+        commands.put("shell", List.of("setVar foo bar", "levainShell echo test", "setVar baz qux"));
+        recipe.setCommands(commands);
+
+        var method = ShellService.class.getDeclaredMethod("executeShellActions", Recipe.class);
+        method.setAccessible(true);
+        
+        Exception exception = assertThrows(Exception.class, () -> method.invoke(service, recipe));
+        assertTrue(exception.getCause() instanceof IllegalStateException);
+        assertTrue(exception.getCause().getMessage().contains("levainShell action is not allowed"));
+    }
+
+    @Test
+    @DisplayName("Should run process with null working directory")
+    void testRunProcessWithNullWorkingDir() throws Exception {
+        ShellService service = new ShellService();
+
+        var method = ShellService.class.getDeclaredMethod("runProcess", List.class, Map.class, Path.class);
+        method.setAccessible(true);
+        method.invoke(service, List.of("/bin/true"), new HashMap<>(), null);
+    }
+
     private static void setField(Object target, String name, Object value) throws Exception {
         Field field = ShellService.class.getDeclaredField(name);
         field.setAccessible(true);

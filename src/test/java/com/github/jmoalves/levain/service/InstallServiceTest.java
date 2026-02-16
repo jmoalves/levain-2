@@ -451,6 +451,167 @@ class InstallServiceTest {
         assertTrue(exception.getCause() instanceof RuntimeException);
     }
 
+    @Test
+    void testBuildInstallationPlanWithMissingBaseDir() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        setRegistry(installService, registry);
+
+        Recipe recipe = new Recipe();
+        recipe.setName("missing-dir-pkg");
+        
+        when(dependencyResolver.resolveAndSortWithMissing(List.of("missing-dir-pkg")))
+            .thenReturn(new ResolutionResult(List.of(recipe), List.of()));
+        when(registry.isInstalled("missing-dir-pkg")).thenReturn(true);
+        when(registry.getMetadata("missing-dir-pkg")).thenReturn(Optional.of(new RecipeMetadata()));
+        when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain-nonexist"));
+
+        var result = installService.buildInstallationPlan(List.of("missing-dir-pkg"), false);
+        
+        assertEquals(1, result.plan().size());
+        assertEquals("missing-dir-pkg", result.plan().get(0).getName());
+    }
+
+    @Test
+    void testBuildInstallationPlanWithMissingMetadata() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        setRegistry(installService, registry);
+
+        Recipe recipe = new Recipe();
+        recipe.setName("missing-meta-pkg");
+        
+        when(dependencyResolver.resolveAndSortWithMissing(List.of("missing-meta-pkg")))
+            .thenReturn(new ResolutionResult(List.of(recipe), List.of()));
+        when(registry.isInstalled("missing-meta-pkg")).thenReturn(true);
+        when(registry.getMetadata("missing-meta-pkg")).thenReturn(Optional.empty());
+
+        Path tempDir = Files.createTempDirectory("levain-missing-meta");
+        Path pkgDir = tempDir.resolve("missing-meta-pkg");
+        Files.createDirectory(pkgDir);
+        when(config.getLevainHome()).thenReturn(tempDir);
+
+        var result = installService.buildInstallationPlan(List.of("missing-meta-pkg"), false);
+        
+        assertEquals(1, result.plan().size());
+        assertEquals("missing-meta-pkg", result.plan().get(0).getName());
+    }
+
+    @Test
+    void testBuildInstallationPlanSkipsDirCheckWhenSkipInstallDir() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        setRegistry(installService, registry);
+
+        Recipe recipe = new Recipe();
+        recipe.setName("skip-dir-pkg");
+        recipe.addCustomAttribute("skipInstallDir", "true");
+        
+        when(dependencyResolver.resolveAndSortWithMissing(List.of("skip-dir-pkg")))
+            .thenReturn(new ResolutionResult(List.of(recipe), List.of()));
+        when(registry.isInstalled("skip-dir-pkg")).thenReturn(true);
+
+        var result = installService.buildInstallationPlan(List.of("skip-dir-pkg"), false);
+        
+        // When skipInstallDir is true but metadata is missing, it will reinstall
+        assertEquals(1, result.plan().size());
+        assertEquals(0, result.alreadyInstalled().size());
+    }
+
+    @Test
+    void testInstallSingleRecipeWithoutYamlContent() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        setRegistry(installService, registry);
+
+        Recipe recipe = new Recipe();
+        recipe.setName("no-yaml-pkg");
+        recipe.setCommands(Map.of());
+        
+        when(recipeService.loadRecipe("no-yaml-pkg")).thenReturn(recipe);
+        when(recipeService.getRecipeYamlContent("no-yaml-pkg")).thenReturn(Optional.empty());
+        when(recipeService.findSourceRepository("no-yaml-pkg")).thenReturn(Optional.empty());
+
+        var method = InstallService.class.getDeclaredMethod("installSingleRecipe", String.class);
+        method.setAccessible(true);
+        
+        method.invoke(installService, "no-yaml-pkg");
+        
+        verify(registry).store(org.mockito.Mockito.eq(recipe),
+            org.mockito.Mockito.anyString(), isNull(), isNull());
+    }
+
+    @Test
+    void testInstallRecipeWithBlankMinVersion() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        setRegistry(installService, registry);
+
+        Recipe recipe = new Recipe();
+        recipe.setName("blank-version");
+        recipe.setCommands(Map.of());
+        recipe.addCustomAttribute("levain.minVersion", "   ");
+
+        var method = InstallService.class.getDeclaredMethod("installRecipe",
+            Recipe.class, String.class, String.class, String.class);
+        method.setAccessible(true);
+        
+        assertDoesNotThrow(() -> method.invoke(installService, recipe, "name: blank-version\n", null, null));
+    }
+
+    @Test
+    void testInstallRecipeWithValidMinVersion() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        setRegistry(installService, registry);
+
+        Recipe recipe = new Recipe();
+        recipe.setName("valid-version");
+        recipe.setCommands(Map.of());
+        recipe.addCustomAttribute("levain.minVersion", "1.0.0");
+
+        var method = InstallService.class.getDeclaredMethod("installRecipe",
+            Recipe.class, String.class, String.class, String.class);
+        method.setAccessible(true);
+        
+        assertDoesNotThrow(() -> method.invoke(installService, recipe, "name: valid-version\n", null, null));
+    }
+
+    @Test
+    void testInstallWithForceReinstalls() {
+        Recipe recipe = new Recipe();
+        recipe.setName("force-pkg");
+        
+        when(dependencyResolver.resolveAndSortWithMissing(List.of("force-pkg")))
+            .thenReturn(new ResolutionResult(List.of(recipe), List.of()));
+        when(recipeService.loadRecipe("force-pkg")).thenReturn(recipe);
+        when(recipeService.getRecipeYamlContent("force-pkg")).thenReturn(Optional.of("name: force-pkg\n"));
+
+        installService.install("force-pkg", true);
+        
+        verify(recipeService).loadRecipe("force-pkg");
+    }
+
+    @Test
+    void testInstallFromRepositoryWithoutYamlContentThrows() {
+        Repository mockRepo = org.mockito.Mockito.mock(Repository.class);
+        when(repositoryFactory.createRepository("http://example.com/repo")).thenReturn(mockRepo);
+        
+        Recipe recipe = new Recipe();
+        recipe.setName("no-yaml");
+        when(mockRepo.resolveRecipe("no-yaml")).thenReturn(Optional.of(recipe));
+        when(mockRepo.getRecipeYamlContent("no-yaml")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class,
+            () -> installService.install("no-yaml", "http://example.com/repo"));
+    }
+
+    @Test
+    void testFormatInstallationPlanWithOnlyAlreadyInstalled() {
+        Recipe recipe = new Recipe();
+        recipe.setName("installed-pkg");
+        
+        var result = new InstallService.PlanResult(List.of(), List.of(), List.of("installed-pkg"));
+        
+        String formatted = installService.formatInstallationPlan(result, List.of("installed-pkg"));
+        
+        assertTrue(formatted.contains("installed-pkg"));
+    }
+
     private static void setRegistry(InstallService service, Registry registry) throws Exception {
         Field field = InstallService.class.getDeclaredField("registry");
         field.setAccessible(true);

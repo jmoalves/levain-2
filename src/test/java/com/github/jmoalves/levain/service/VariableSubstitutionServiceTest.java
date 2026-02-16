@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -456,5 +457,159 @@ class VariableSubstitutionServiceTest {
         String result = service.substitute("Value=${pkg.onlypackage}", recipe, Paths.get("/tmp"));
 
         assertEquals("Value=${pkg.onlypackage}", result);
+    }
+
+    @Test
+    @DisplayName("Should handle null context in substitute")
+    void shouldHandleNullContextInSubstitute() {
+        String result = service.substitute("Text ${var}", (ActionContext) null);
+        assertEquals("Text ${var}", result);
+    }
+
+    @Test
+    @DisplayName("Should use recipeVariables from ActionContext")
+    void shouldUseRecipeVariablesFromActionContext() {
+        Recipe recipe = new Recipe();
+        recipe.setName("test");
+        ActionContext context = new ActionContext(config, recipe, Paths.get("/tmp"), Paths.get("/tmp"));
+        context.setRecipeVariable("customVar", "customValue");
+
+        String result = service.substitute("Value=${customVar}", context);
+
+        assertEquals("Value=customValue", result);
+    }
+
+    @Test
+    @DisplayName("Should handle empty recipeVariables in ActionContext")
+    void shouldHandleEmptyRecipeVariablesInActionContext() {
+        Recipe recipe = new Recipe();
+        recipe.setName("test");
+        ActionContext context = new ActionContext(config, recipe, Paths.get("/tmp"), Paths.get("/tmp"));
+
+        String result = service.substitute("Value=${missingVar}", context);
+
+        assertEquals("Value=${missingVar}", result);
+    }
+
+    @Test
+    @DisplayName("Should resolve environment variable as fallback")
+    void shouldResolveEnvironmentVariableAsFallback() {
+        Map<String, String> variables = new HashMap<>();
+        String envVar = System.getenv().keySet().iterator().next();
+        String envValue = System.getenv(envVar);
+
+        String result = service.substitute("Path=${" + envVar + "}", variables);
+
+        assertEquals("Path=" + envValue, result);
+    }
+
+    @Test
+    @DisplayName("Should handle pkg reference with multiple dots in package name")
+    void shouldHandlePkgReferenceWithMultipleDotsInPackageName() {
+        Recipe jdkRecipe = new Recipe();
+        jdkRecipe.setName("oracle.jdk.21");
+        jdkRecipe.setVersion("21.0.1");
+
+        when(recipeService.loadRecipe("oracle.jdk.21")).thenReturn(jdkRecipe);
+
+        Recipe recipe = new Recipe();
+        String result = service.substitute("Java=${pkg.oracle.jdk.21.version}", recipe, Paths.get("/tmp"));
+
+        assertEquals("Java=21.0.1", result);
+    }
+
+    @Test
+    @DisplayName("Should handle dotted variable name without pkg prefix")
+    void shouldHandleDottedVariableWithoutPkgPrefix() {
+        Recipe recipe = new Recipe();
+        recipe.getCustomAttributes().put("levain.email", "test@example.com");
+
+        String result = service.substitute("Email=${levain.email}", recipe, Paths.get("/tmp"));
+
+        assertEquals("Email=test@example.com", result);
+    }
+
+    @Test
+    @DisplayName("Should handle pkg reference for missing recipe")
+    void shouldHandlePkgReferenceForMissingRecipe() {
+        when(recipeService.loadRecipe("nonexistent")).thenReturn(null);
+
+        Recipe recipe = new Recipe();
+        String result = service.substitute("Value=${pkg.nonexistent.version}", recipe, Paths.get("/tmp"));
+
+        assertEquals("Value=${pkg.nonexistent.version}", result);
+    }
+
+    @Test
+    @DisplayName("Should handle pkg reference for missing attribute in recipe")
+    void shouldHandlePkgReferenceForMissingAttributeInRecipe() {
+        Recipe jdkRecipe = new Recipe();
+        jdkRecipe.setName("jdk-missing-attr");
+
+        when(recipeService.loadRecipe("jdk-missing-attr")).thenReturn(jdkRecipe);
+
+        Recipe recipe = new Recipe();
+        String result = service.substitute("Value=${pkg.jdk-missing-attr.nonexistentAttr}", recipe, Paths.get("/tmp"));
+
+        assertEquals("Value=${pkg.jdk-missing-attr.nonexistentAttr}", result);
+    }
+
+    @Test
+    @DisplayName("Should handle non-string custom attributes gracefully")
+    void shouldHandleNonStringCustomAttributesGracefully() {
+        Recipe recipe = new Recipe();
+        recipe.getCustomAttributes().put("complexObj", new Object());
+
+        String result = service.substitute("Value=${complexObj}", recipe, Paths.get("/tmp"));
+
+        assertTrue(result.contains("Value="));
+    }
+
+    @Test
+    @DisplayName("Should substitute baseDir when null")
+    void shouldSubstituteBaseDirWhenNull() {
+        Recipe recipe = new Recipe();
+        recipe.setName("test");
+
+        String result = service.substitute("Base=${baseDir}", recipe, null);
+
+        assertEquals("Base=", result);
+    }
+
+    @Test
+    @DisplayName("Should replace special regex characters in substitution")
+    void shouldReplaceSpecialRegexCharactersInSubstitution() {
+        Map<String, String> variables = new HashMap<>();
+        variables.put("path", "C:\\Program Files\\Tool");
+
+        String result = service.substitute("Path=${path}", variables);
+
+        assertEquals("Path=C:\\Program Files\\Tool", result);
+    }
+
+    @Test
+    @DisplayName("Should handle config variables from Config")
+    void shouldHandleConfigVariablesFromConfig() {
+        Map<String, String> configVars = new HashMap<>();
+        configVars.put("customConfigVar", "configValue");
+        when(config.getVariables()).thenReturn(configVars);
+
+        Recipe recipe = new Recipe();
+        String result = service.substitute("Config=${customConfigVar}", recipe, Paths.get("/tmp"));
+
+        assertEquals("Config=configValue", result);
+    }
+
+    @Test
+    @DisplayName("Should call substituteRecipeCommands without errors")
+    void shouldCallSubstituteRecipeCommandsWithoutErrors() {
+        Recipe recipe = new Recipe();
+        recipe.setName("test");
+        Map<String, List<String>> commands = new HashMap<>();
+        commands.put("install", new ArrayList<>(List.of("echo ${baseDir}")));
+        commands.put("uninstall", new ArrayList<>(List.of("rm -rf ${baseDir}")));
+        recipe.setCommands(commands);
+
+        assertDoesNotThrow(() -> service.substituteRecipeCommands(recipe, Paths.get("/opt/test")));
     }
 }
