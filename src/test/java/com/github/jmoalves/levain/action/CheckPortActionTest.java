@@ -60,4 +60,44 @@ class CheckPortActionTest {
         assertThrows(IllegalArgumentException.class,
                 () -> action.execute(null, List.of("--timeout=200", String.valueOf(port))));
     }
+
+    @Test
+    void shouldRejectMissingArgs() {
+        CheckPortAction action = new CheckPortAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of()));
+    }
+
+    @Test
+    void shouldRejectInvalidTimeout() {
+        CheckPortAction action = new CheckPortAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("--timeout=-1", "8080")));
+    }
+
+    @Test
+    void shouldRejectNonNumericTimeout() {
+        CheckPortAction action = new CheckPortAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("--timeout=abc", "8080")));
+    }
+
+    @Test
+    void shouldRejectPortOutOfRange() {
+        CheckPortAction action = new CheckPortAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("70000")));
+    }
+
+    @Test
+    void shouldRejectMultipleHostsWithPortFlag() {
+        CheckPortAction action = new CheckPortAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("--host=localhost", "--port=8080", "otherhost")));
+    }
 }

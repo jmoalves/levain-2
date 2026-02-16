@@ -82,4 +82,33 @@ class JsonSetActionTest {
         assertThrows(IllegalArgumentException.class,
                 () -> action.execute(context, List.of("file.json", "invalid", "value")));
     }
+
+    @Test
+    void shouldRejectMissingContext() {
+        JsonSetAction action = new JsonSetAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("file.json", "[name]", "value")));
+    }
+
+    @Test
+    void shouldRejectArrayIndexOnObjectRoot() {
+        JsonSetAction action = new JsonSetAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of("settings.json", "[0]", "value")));
+    }
+
+    @Test
+    void shouldRejectArrayIndexWhenExistingIsObject() throws Exception {
+        Path settings = tempDir.resolve("settings.json");
+        Files.writeString(settings, "{\"arr\": {}}\n");
+
+        JsonSetAction action = new JsonSetAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of(settings.toString(), "[arr][0]", "value")));
+    }
 }

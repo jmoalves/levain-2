@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ContextMenuActionTest {
@@ -55,6 +56,82 @@ class ContextMenuActionTest {
 
             assertTrue(action.commands.stream().anyMatch(cmd -> cmd.contains("HKCU\\Software\\Classes\\*\\shell\\My Action")));
             assertTrue(action.commands.stream().anyMatch(cmd -> cmd.contains("Icon")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldRejectMissingArgs() {
+        ContextMenuAction action = new ContextMenuAction();
+        assertThrows(IllegalArgumentException.class, () -> action.execute(null, List.of()));
+    }
+
+    @Test
+    void shouldRejectMissingTargetValue() {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            ContextMenuAction action = new ContextMenuAction();
+            assertThrows(IllegalArgumentException.class,
+                    () -> action.execute(null, List.of("--target")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldRejectInvalidTarget() {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            ContextMenuAction action = new RecordingContextMenuAction();
+            assertThrows(IllegalArgumentException.class,
+                    () -> action.execute(null, List.of("--target=unknown", "Label", "cmd")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldRejectMissingCommand() {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            ContextMenuAction action = new ContextMenuAction();
+            assertThrows(IllegalArgumentException.class,
+                    () -> action.execute(null, List.of("Label")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldRejectMissingIconValue() {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            ContextMenuAction action = new ContextMenuAction();
+            assertThrows(IllegalArgumentException.class,
+                    () -> action.execute(null, List.of("--icon", "Label", "cmd")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldRejectMissingCmdValue() {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            ContextMenuAction action = new ContextMenuAction();
+            assertThrows(IllegalArgumentException.class,
+                    () -> action.execute(null, List.of("--cmd", "Label")));
         } finally {
             System.setProperty("os.name", previous);
         }

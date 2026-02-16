@@ -12,6 +12,7 @@ import java.util.List;
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AddToStartMenuActionTest {
@@ -70,6 +71,52 @@ class AddToStartMenuActionTest {
             action.execute(context, List.of(target.toString(), "dev-env"));
 
             Path shortcut = startMenu.resolve("dev-env").resolve("tool.url");
+            assertTrue(Files.exists(shortcut));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldRejectMissingArgs() {
+        AddToStartMenuAction action = new AddToStartMenuAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class, () -> action.execute(context, List.of()));
+    }
+
+    @Test
+    void shouldRejectMissingTargetOnWindows() {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            AddToStartMenuAction action = new AddToStartMenuAction();
+            ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> action.execute(context, List.of("missing.exe")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldCopyLnkShortcutOnWindows() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            Path startMenu = tempDir.resolve("Programs");
+            TestAddToStartMenuAction action = new TestAddToStartMenuAction(startMenu);
+            ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+            Path target = tempDir.resolve("tool.lnk");
+            Files.writeString(target, "shortcut");
+
+            action.execute(context, List.of(target.toString()));
+
+            Path shortcut = startMenu.resolve("tool.lnk");
             assertTrue(Files.exists(shortcut));
         } finally {
             System.setProperty("os.name", previous);

@@ -64,4 +64,51 @@ class BackupFileActionTest {
         assertThrows(IllegalArgumentException.class,
                 () -> action.execute(context, List.of("--no-overwrite", file.toString())));
     }
+
+    @Test
+    void shouldRejectMissingArgs() {
+        BackupFileAction action = new BackupFileAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of()));
+    }
+
+    @Test
+    void shouldRejectMissingContext() {
+        BackupFileAction action = new BackupFileAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("file.txt")));
+    }
+
+    @Test
+    void shouldRejectMissingSuffixValue() {
+        BackupFileAction action = new BackupFileAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of("--suffix")));
+    }
+
+    @Test
+    void shouldRejectMultiplePaths() {
+        BackupFileAction action = new BackupFileAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of("file1", "file2")));
+    }
+
+    @Test
+    void shouldRejectDirectoryPath() throws Exception {
+        Path dir = tempDir.resolve("config");
+        Files.createDirectories(dir);
+
+        BackupFileAction action = new BackupFileAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of(dir.toString())));
+    }
 }

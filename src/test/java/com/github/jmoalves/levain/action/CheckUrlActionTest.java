@@ -70,6 +70,46 @@ class CheckUrlActionTest {
                 () -> action.execute(null, List.of("--timeout=-1", "http://localhost")));
     }
 
+    @Test
+    void shouldRejectMissingUrl() {
+        CheckUrlAction action = new CheckUrlAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("--status=200")));
+    }
+
+    @Test
+    void shouldRejectUnexpectedArgument() {
+        CheckUrlAction action = new CheckUrlAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("--method=GET", "http://localhost", "extra")));
+    }
+
+    @Test
+    void shouldRejectMissingMethodValue() {
+        CheckUrlAction action = new CheckUrlAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("--method")));
+    }
+
+    @Test
+    void shouldRejectEmptyStatusList() {
+        CheckUrlAction action = new CheckUrlAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("--status=", "http://localhost")));
+    }
+
+    @Test
+    void shouldRejectInvalidTimeoutValue() {
+        CheckUrlAction action = new CheckUrlAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("--timeout=abc", "http://localhost")));
+    }
+
     private void respond(HttpExchange exchange, int status) throws IOException {
         exchange.sendResponseHeaders(status, -1);
         exchange.close();

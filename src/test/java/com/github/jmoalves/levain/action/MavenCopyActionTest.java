@@ -71,6 +71,44 @@ class MavenCopyActionTest {
                 () -> action.execute(context, List.of("org.example:demo:1.0.0:jar", "lib")));
     }
 
+    @Test
+    void shouldUseRepositoryUrlFromRecipeAttributes() throws Exception {
+        Recipe recipe = new Recipe();
+        recipe.setCustomAttributes(Map.of("repository.url", "http://repo.example/alt"));
+        ActionContext context = new ActionContext(new Config(), recipe, tempDir, tempDir);
+
+        RecordingMavenCopyAction action = new RecordingMavenCopyAction();
+        action.execute(context, List.of("org.example:demo:1.0.0:jar", "lib"));
+
+        assertTrue(action.getLastCommand().contains("-DremoteRepositories=http://repo.example/alt"));
+    }
+
+    @Test
+    void shouldRejectMissingRepoValue() {
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+        RecordingMavenCopyAction action = new RecordingMavenCopyAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of("--repo", "org.example:demo:1.0.0:jar", "lib")));
+    }
+
+    @Test
+    void shouldRejectMissingArgs() {
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+        RecordingMavenCopyAction action = new RecordingMavenCopyAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of("org.example:demo:1.0.0:jar")));
+    }
+
+    @Test
+    void shouldRejectMissingContext() {
+        RecordingMavenCopyAction action = new RecordingMavenCopyAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("org.example:demo:1.0.0:jar", "lib")));
+    }
+
     private static class RecordingMavenCopyAction extends MavenCopyAction {
         private List<String> lastCommand = new ArrayList<>();
         private int exitCode = 0;

@@ -13,6 +13,7 @@ import java.util.List;
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AddToDesktopActionTest {
@@ -71,6 +72,52 @@ class AddToDesktopActionTest {
             action.execute(context, List.of(target.toString(), "MyLink"));
 
             Path shortcut = desktop.resolve("MyLink.url");
+            assertTrue(Files.exists(shortcut));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldRejectMissingArgs() {
+        AddToDesktopAction action = new AddToDesktopAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class, () -> action.execute(context, List.of()));
+    }
+
+    @Test
+    void shouldRejectMissingTargetOnWindows() {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            AddToDesktopAction action = new AddToDesktopAction();
+            ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> action.execute(context, List.of("missing.exe")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldCopyUrlShortcutWithBlankName() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            Path desktop = tempDir.resolve("Desktop");
+            TestAddToDesktopAction action = new TestAddToDesktopAction(desktop);
+            ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+            Path target = tempDir.resolve("site.url");
+            Files.writeString(target, "[InternetShortcut]\nURL=https://example.com");
+
+            action.execute(context, List.of(target.toString(), " "));
+
+            Path shortcut = desktop.resolve("site.url");
             assertTrue(Files.exists(shortcut));
         } finally {
             System.setProperty("os.name", previous);

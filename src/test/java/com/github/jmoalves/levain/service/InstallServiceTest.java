@@ -1,6 +1,7 @@
 package com.github.jmoalves.levain.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -275,6 +276,15 @@ class InstallServiceTest {
     }
 
     @Test
+    void testBuildInstallationPlanWithEmptyPackages() {
+        InstallService.PlanResult result = installService.buildInstallationPlan(List.of(), false);
+        assertTrue(result.plan().isEmpty());
+        assertTrue(result.missing().isEmpty());
+        assertTrue(result.alreadyInstalled().isEmpty());
+        verifyNoInteractions(dependencyResolver);
+    }
+
+    @Test
     void testBuildInstallationPlanMarksAlreadyInstalledRequested() throws Exception {
         Registry registry = org.mockito.Mockito.mock(Registry.class);
         when(registry.isInstalled("pkg-a")).thenReturn(true);
@@ -315,6 +325,26 @@ class InstallServiceTest {
     }
 
     @Test
+    void testBuildInstallationPlanSkipsWhenSkipInstallDir() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        when(registry.isInstalled("pkg-a")).thenReturn(true);
+        when(registry.getMetadata("pkg-a")).thenReturn(Optional.of(new RecipeMetadata()));
+        setRegistry(installService, registry);
+
+        Recipe recipeA = new Recipe();
+        recipeA.setName("pkg-a");
+        recipeA.addCustomAttribute("skipInstallDir", true);
+
+        when(dependencyResolver.resolveAndSortWithMissing(List.of("pkg-a")))
+            .thenReturn(new ResolutionResult(List.of(recipeA), List.of()));
+
+        InstallService.PlanResult result = installService.buildInstallationPlan(List.of("pkg-a"), false);
+
+        assertTrue(result.plan().isEmpty());
+        assertEquals(List.of("pkg-a"), result.alreadyInstalled());
+    }
+
+    @Test
     void testFormatInstallationPlanIncludesInstalledMarker() {
         Recipe recipeA = new Recipe();
         recipeA.setName("pkg-a");
@@ -326,6 +356,25 @@ class InstallServiceTest {
 
         assertTrue(formatted.contains("* pkg-a"));
         assertTrue(formatted.contains("pkg-b [installed]"));
+    }
+
+    @Test
+    void testFormatInstallationPlanWithNoRequestedNames() {
+        Recipe recipeA = new Recipe();
+        recipeA.setName("pkg-a");
+
+        InstallService.PlanResult result = new InstallService.PlanResult(
+            List.of(recipeA), List.of(), List.of());
+
+        String formatted = installService.formatInstallationPlan(result, null);
+
+        assertTrue(formatted.contains("+ pkg-a"));
+    }
+
+    @Test
+    void testInstallPlanSkipsNullOrEmptyPlan() {
+        assertDoesNotThrow(() -> installService.installPlan(null));
+        assertDoesNotThrow(() -> installService.installPlan(List.of()));
     }
 
     @Test

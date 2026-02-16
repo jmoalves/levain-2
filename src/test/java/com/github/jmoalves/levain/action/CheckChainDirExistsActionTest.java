@@ -59,4 +59,22 @@ class CheckChainDirExistsActionTest {
         assertThrows(IllegalArgumentException.class,
                 () -> action.execute(context, List.of("--saveVar")));
     }
+
+    @Test
+    void shouldRejectBlankSaveVarValue() {
+        CheckChainDirExistsAction action = new CheckChainDirExistsAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of("--saveVar=", "path")));
+    }
+
+    @Test
+    void shouldRejectMissingDefaultValue() {
+        CheckChainDirExistsAction action = new CheckChainDirExistsAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of("--default")));
+    }
 }
