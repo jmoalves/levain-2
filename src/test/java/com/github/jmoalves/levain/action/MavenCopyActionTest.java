@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MavenCopyActionTest {
@@ -47,13 +48,37 @@ class MavenCopyActionTest {
         assertTrue(command.contains("-DremoteRepositories=http://repo.example/releases"));
     }
 
+    @Test
+    void shouldUseRepoFromConfigWhenMissingInRecipe() throws Exception {
+        Config config = new Config();
+        config.setVariable("nexusCentralRepo", "http://repo.example/config");
+
+        ActionContext context = new ActionContext(config, new Recipe(), tempDir, tempDir);
+        RecordingMavenCopyAction action = new RecordingMavenCopyAction();
+
+        action.execute(context, List.of("org.example:demo:1.0.0:jar", "lib"));
+
+        assertTrue(action.getLastCommand().contains("-DremoteRepositories=http://repo.example/config"));
+    }
+
+    @Test
+    void shouldThrowWhenCommandFails() {
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+        RecordingMavenCopyAction action = new RecordingMavenCopyAction();
+        action.exitCode = 1;
+
+        assertThrows(Exception.class,
+                () -> action.execute(context, List.of("org.example:demo:1.0.0:jar", "lib")));
+    }
+
     private static class RecordingMavenCopyAction extends MavenCopyAction {
         private List<String> lastCommand = new ArrayList<>();
+        private int exitCode = 0;
 
         @Override
         protected int runCommand(List<String> command, Path workingDir) {
             lastCommand = new ArrayList<>(command);
-            return 0;
+            return exitCode;
         }
 
         List<String> getLastCommand() {

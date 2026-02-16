@@ -68,7 +68,7 @@ public class AddToDesktopAction implements Action {
         logger.debug("Created shortcut {} -> {}", target, shortcut);
     }
 
-    private Path resolveDesktopDir() {
+    protected Path resolveDesktopDir() {
         String userProfile = System.getenv("USERPROFILE");
         String userHome = System.getProperty("user.home");
         String base = userProfile != null && !userProfile.isBlank() ? userProfile : userHome;
@@ -78,7 +78,7 @@ public class AddToDesktopAction implements Action {
         return Paths.get(base, "Desktop");
     }
 
-    private void createShortcut(Path target, Path shortcut) throws IOException, InterruptedException {
+    protected void createShortcut(Path target, Path shortcut) throws IOException, InterruptedException {
         String targetPath = escapePowerShell(target.toString());
         String shortcutPath = escapePowerShell(shortcut.toString());
         String workingDir = target.getParent() != null ? escapePowerShell(target.getParent().toString()) : "";

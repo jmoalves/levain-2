@@ -148,6 +148,15 @@ class RecipeLoaderTest {
     }
 
     @Test
+    void shouldIgnoreNonStringCommands() {
+        String yaml = "cmd.install: 123\n";
+
+        Recipe recipe = RecipeLoader.parseRecipeYaml(yaml, "demo");
+
+        assertTrue(recipe.getCommands() == null || !recipe.getCommands().containsKey("install"));
+    }
+
+    @Test
     void shouldThrowWhenRecipeYamlInvalid() {
         String yaml = "cmd.install: [";
 

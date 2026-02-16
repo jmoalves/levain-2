@@ -65,6 +65,19 @@ class DependencyResolverTest {
         assertEquals("package", result.get(0).getName());
     }
 
+    @Test
+    void testResolveWithMissingDependency() {
+        Recipe recipeA = createRecipe("A", "1.0.0", Arrays.asList("missing"));
+
+        when(recipeService.loadRecipe("A")).thenReturn(recipeA);
+        when(recipeService.loadRecipe("missing")).thenThrow(new RuntimeException("not found"));
+
+        DependencyResolver.ResolutionResult result = resolver.resolveAndSortWithMissing(List.of("A"));
+
+        assertTrue(result.recipes().isEmpty());
+        assertEquals(List.of("missing"), result.missing());
+    }
+
     // ========== Linear Dependency Chain Tests ==========
 
     @Test

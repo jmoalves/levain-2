@@ -36,4 +36,23 @@ class EchoActionTest {
         String output = buffer.toString(StandardCharsets.UTF_8);
         assertEquals("hello world" + System.lineSeparator(), output);
     }
+
+    @Test
+    void shouldHandleEmptyArgs() {
+        EchoAction action = new EchoAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        PrintStream original = System.out;
+        System.setOut(new PrintStream(buffer, true, StandardCharsets.UTF_8));
+
+        try {
+            action.execute(context, List.of());
+        } finally {
+            System.setOut(original);
+        }
+
+        String output = buffer.toString(StandardCharsets.UTF_8);
+        assertEquals(System.lineSeparator(), output);
+    }
 }

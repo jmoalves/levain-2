@@ -31,6 +31,24 @@ class CheckPortActionTest {
     }
 
     @Test
+    void shouldSupportHostAndPortFlags() throws Exception {
+        CheckPortAction action = new CheckPortAction();
+
+        try (ServerSocket server = new ServerSocket(0)) {
+            int port = server.getLocalPort();
+            assertDoesNotThrow(() -> action.execute(null, List.of("--host=localhost", "--port", String.valueOf(port))));
+        }
+    }
+
+    @Test
+    void shouldRejectInvalidPortFlag() {
+        CheckPortAction action = new CheckPortAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("--port=bad")));
+    }
+
+    @Test
     void shouldThrowWhenPortClosed() throws Exception {
         CheckPortAction action = new CheckPortAction();
         int port;

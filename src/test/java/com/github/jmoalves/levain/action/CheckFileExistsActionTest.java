@@ -36,4 +36,24 @@ class CheckFileExistsActionTest {
         assertThrows(IllegalArgumentException.class,
                 () -> action.execute(context, List.of(tempDir.resolve("missing.txt").toString())));
     }
+
+    @Test
+    void shouldThrowWhenPathIsDirectory() throws Exception {
+        Path dir = tempDir.resolve("dir");
+        Files.createDirectories(dir);
+
+        CheckFileExistsAction action = new CheckFileExistsAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of(dir.toString())));
+    }
+
+    @Test
+    void shouldRejectMissingContext() {
+        CheckFileExistsAction action = new CheckFileExistsAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("file.txt")));
+    }
 }

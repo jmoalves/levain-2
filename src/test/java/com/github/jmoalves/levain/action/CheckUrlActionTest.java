@@ -32,6 +32,44 @@ class CheckUrlActionTest {
         }
     }
 
+    @Test
+    void shouldFallbackToGetWhenHeadNotAllowed() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/head", exchange -> {
+            if ("HEAD".equals(exchange.getRequestMethod())) {
+                respond(exchange, 405);
+            } else {
+                respond(exchange, 200);
+            }
+        });
+        server.start();
+
+        String base = "http://localhost:" + server.getAddress().getPort();
+        CheckUrlAction action = new CheckUrlAction();
+
+        try {
+            assertDoesNotThrow(() -> action.execute(null, List.of("--method=HEAD", base + "/head")));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void shouldRejectInvalidStatusList() {
+        CheckUrlAction action = new CheckUrlAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("--status=abc", "http://localhost")));
+    }
+
+    @Test
+    void shouldRejectInvalidTimeout() {
+        CheckUrlAction action = new CheckUrlAction();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(null, List.of("--timeout=-1", "http://localhost")));
+    }
+
     private void respond(HttpExchange exchange, int status) throws IOException {
         exchange.sendResponseHeaders(status, -1);
         exchange.close();

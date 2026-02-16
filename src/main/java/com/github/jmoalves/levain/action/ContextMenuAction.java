@@ -182,7 +182,7 @@ public class ContextMenuAction implements Action {
         return keys;
     }
 
-    private void runRegAdd(List<String> command) throws Exception {
+    protected void runRegAdd(List<String> command) throws Exception {
         ProcessBuilder pb = new ProcessBuilder(command);
         int exit = pb.start().waitFor();
         if (exit != 0) {

@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BackupFileActionTest {
@@ -34,5 +35,33 @@ class BackupFileActionTest {
         Files.writeString(file, "two");
         action.execute(context, List.of(file.toString()));
         assertEquals("two", Files.readString(backup));
+    }
+
+    @Test
+    void shouldCreateBackupWithCustomSuffix() throws Exception {
+        Path file = tempDir.resolve("settings.ini");
+        Files.writeString(file, "data");
+
+        BackupFileAction action = new BackupFileAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        action.execute(context, List.of("--suffix=.orig", file.toString()));
+
+        Path backup = tempDir.resolve("settings.ini.orig");
+        assertTrue(Files.exists(backup));
+    }
+
+    @Test
+    void shouldRejectExistingBackupWhenNoOverwrite() throws Exception {
+        Path file = tempDir.resolve("settings.ini");
+        Files.writeString(file, "data");
+
+        BackupFileAction action = new BackupFileAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        action.execute(context, List.of(file.toString()));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of("--no-overwrite", file.toString())));
     }
 }

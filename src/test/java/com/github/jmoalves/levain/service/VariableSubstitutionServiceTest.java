@@ -23,6 +23,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 import static org.mockito.ArgumentMatchers.anyString;
+import com.github.jmoalves.levain.action.ActionContext;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Variable Substitution Service Tests")
@@ -225,6 +226,53 @@ class VariableSubstitutionServiceTest {
         // Verify recipeService.loadRecipe was never called (not treated as indirect
         // reference)
         verify(recipeService, never()).loadRecipe(anyString());
+    }
+
+    @Test
+    @DisplayName("Should include shellPath when configured")
+    void shouldIncludeShellPath() {
+        when(config.getShellPath()).thenReturn("/bin/zsh");
+
+        Recipe recipe = new Recipe();
+        String result = service.substitute("Shell: ${shellPath}", recipe, Paths.get("/tmp"));
+
+        assertEquals("Shell: /bin/zsh", result);
+    }
+
+    @Test
+    @DisplayName("Should substitute action context variables")
+    void shouldSubstituteActionContextVariables() {
+        Recipe recipe = new Recipe();
+        recipe.setName("demo");
+
+        ActionContext context = new ActionContext(config, recipe, Paths.get("/opt/demo"), Paths.get("/opt/demo"));
+        context.setRecipeVariable("custom", "value");
+
+        String result = service.substitute("Value ${custom} for ${name}", context);
+
+        assertEquals("Value value for demo", result);
+    }
+
+    @Test
+    @DisplayName("Should handle non-string custom attributes")
+    void shouldHandleNonStringCustomAttributes() {
+        Recipe recipe = new Recipe();
+        recipe.addCustomAttribute("count", 3);
+        recipe.addCustomAttribute("enabled", true);
+        recipe.addCustomAttribute("gitHome", "${baseDir}/git");
+        recipe.addCustomAttribute("cmd.install", "echo nope");
+
+        String result = service.substitute("${count}-${enabled}-${gitHome}", recipe, Paths.get("/opt/app"));
+
+        assertEquals("3-true-/opt/app/git", result);
+    }
+
+    @Test
+    @DisplayName("Should ignore invalid pkg references")
+    void shouldIgnoreInvalidPkgReferences() {
+        String result = service.substitute("Value ${pkg.}", Map.of());
+
+        assertEquals("Value ${pkg.}", result);
     }
 
     @Test

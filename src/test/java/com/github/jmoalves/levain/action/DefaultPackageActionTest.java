@@ -34,6 +34,14 @@ class DefaultPackageActionTest {
         assertThrows(IllegalArgumentException.class, () -> action.execute(context, List.of()));
     }
 
+    @Test
+    void shouldRejectBlankPackageName() {
+        DefaultPackageAction action = new DefaultPackageAction();
+        ActionContext context = new ActionContext(new TestConfig(), new Recipe(), Path.of("/tmp"), Path.of("/tmp"));
+
+        assertThrows(IllegalArgumentException.class, () -> action.execute(context, List.of("  ")));
+    }
+
     @Vetoed
     private static class TestConfig extends Config {
         private boolean wasSaved;

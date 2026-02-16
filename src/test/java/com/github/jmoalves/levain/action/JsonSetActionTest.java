@@ -7,11 +7,13 @@ import com.github.jmoalves.levain.model.Recipe;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JsonSetActionTest {
@@ -53,5 +55,31 @@ class JsonSetActionTest {
         assertNotNull(value);
         assertTrue(value.isBoolean());
         assertEquals(false, value.asBoolean());
+    }
+
+    @Test
+    void shouldResetToObjectWhenExistingIsArray() throws Exception {
+        Path settings = tempDir.resolve("settings.json");
+        Files.writeString(settings, "[]");
+
+        JsonSetAction action = new JsonSetAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        action.execute(context, List.of(
+                settings.toString(),
+                "[name]",
+                "demo"));
+
+        JsonNode root = mapper.readTree(settings.toFile());
+        assertEquals("demo", root.path("name").asText());
+    }
+
+    @Test
+    void shouldRejectInvalidPath() {
+        JsonSetAction action = new JsonSetAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of("file.json", "invalid", "value")));
     }
 }

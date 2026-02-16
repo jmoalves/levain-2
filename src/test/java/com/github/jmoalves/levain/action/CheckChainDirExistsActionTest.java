@@ -50,4 +50,13 @@ class CheckChainDirExistsActionTest {
         assertThrows(IllegalArgumentException.class,
                 () -> action.execute(context, List.of("missing1", "missing2")));
     }
+
+    @Test
+    void shouldRejectMissingSaveVarValue() {
+        CheckChainDirExistsAction action = new CheckChainDirExistsAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of("--saveVar")));
+    }
 }

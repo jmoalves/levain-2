@@ -39,4 +39,13 @@ class AssertContainsActionTest {
         assertThrows(IllegalArgumentException.class,
                 () -> action.execute(context, List.of(file.toString(), "missing")));
     }
+
+    @Test
+    void shouldThrowWhenFileMissing() {
+        AssertContainsAction action = new AssertContainsAction();
+        ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> action.execute(context, List.of(tempDir.resolve("missing.txt").toString(), "value")));
+    }
 }
