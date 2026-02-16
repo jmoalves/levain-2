@@ -3,6 +3,7 @@ package com.github.jmoalves.levain.action;
 import com.github.jmoalves.levain.config.Config;
 import com.github.jmoalves.levain.model.Recipe;
 import org.junit.jupiter.api.Test;
+import jakarta.enterprise.inject.Vetoed;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -33,6 +34,7 @@ class DefaultPackageActionTest {
         assertThrows(IllegalArgumentException.class, () -> action.execute(context, List.of()));
     }
 
+    @Vetoed
     private static class TestConfig extends Config {
         private boolean wasSaved;
 
