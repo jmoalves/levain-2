@@ -21,6 +21,16 @@ class CheckPortActionTest {
     }
 
     @Test
+    void shouldSupportPortFlag() throws Exception {
+        CheckPortAction action = new CheckPortAction();
+
+        try (ServerSocket server = new ServerSocket(0)) {
+            int port = server.getLocalPort();
+            assertDoesNotThrow(() -> action.execute(null, List.of("--port=" + port)));
+        }
+    }
+
+    @Test
     void shouldThrowWhenPortClosed() throws Exception {
         CheckPortAction action = new CheckPortAction();
         int port;

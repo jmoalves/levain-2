@@ -33,6 +33,8 @@ public class CheckPortAction implements Action {
         }
 
         int timeoutMs = 2000;
+        String hostArg = null;
+        String portArg = null;
         List<String> positionals = new ArrayList<>();
 
         for (int i = 0; i < args.size(); i++) {
@@ -48,19 +50,49 @@ public class CheckPortAction implements Action {
                 timeoutMs = parseTimeout(args.get(++i));
                 continue;
             }
+            if (arg.startsWith("--port=")) {
+                portArg = arg.substring("--port=".length());
+                continue;
+            }
+            if ("--port".equals(arg)) {
+                if (i + 1 >= args.size()) {
+                    throw new IllegalArgumentException("--port requires a value");
+                }
+                portArg = args.get(++i);
+                continue;
+            }
+            if (arg.startsWith("--host=")) {
+                hostArg = arg.substring("--host=".length());
+                continue;
+            }
+            if ("--host".equals(arg)) {
+                if (i + 1 >= args.size()) {
+                    throw new IllegalArgumentException("--host requires a value");
+                }
+                hostArg = args.get(++i);
+                continue;
+            }
             positionals.add(arg);
         }
 
         String host;
         int port;
-        if (positionals.size() == 1) {
+        if (portArg != null && !portArg.isBlank()) {
+            port = parsePort(portArg);
+            if (!positionals.isEmpty() && hostArg != null) {
+                throw new IllegalArgumentException("checkPort supports a single host value");
+            }
+            host = hostArg != null && !hostArg.isBlank()
+                    ? hostArg
+                    : (positionals.isEmpty() ? "localhost" : positionals.get(0));
+        } else if (positionals.size() == 1) {
             host = "localhost";
             port = parsePort(positionals.get(0));
         } else if (positionals.size() == 2) {
             host = positionals.get(0);
             port = parsePort(positionals.get(1));
         } else {
-            throw new IllegalArgumentException("checkPort requires <port> or <host> <port>");
+            throw new IllegalArgumentException("checkPort requires <port>, <host> <port>, or --port=<port>");
         }
 
         try (Socket socket = new Socket()) {

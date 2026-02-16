@@ -48,6 +48,17 @@ class MkdirActionTest {
     }
 
     @Test
+    @DisplayName("Test 1b: Create directory with --compact flag")
+    void testCreateWithCompactFlag() throws Exception {
+        Path testDir = tempDir.resolve("compact");
+        assertFalse(Files.exists(testDir), "Directory should not exist initially");
+
+        action.execute(context, List.of("--compact", "compact"));
+
+        assertTrue(Files.exists(testDir), "Directory should be created");
+    }
+
+    @Test
     @DisplayName("Test 2: Create multiple directories in single command")
     void testCreateMultipleDirectories() throws Exception {
         Path dir1 = tempDir.resolve("dir1");

@@ -37,11 +37,20 @@ public class MkdirAction implements Action {
 
     @Override
     public void execute(ActionContext context, List<String> args) throws Exception {
-        if (args.isEmpty()) {
+        if (args == null || args.isEmpty()) {
             throw new IllegalArgumentException("mkdir requires at least one directory path");
         }
 
-        for (String dirPath : args) {
+        List<String> paths = args.stream()
+            .filter(arg -> arg != null)
+            .filter(arg -> !"--compact".equals(arg))
+            .toList();
+
+        if (paths.isEmpty()) {
+            throw new IllegalArgumentException("mkdir requires at least one directory path");
+        }
+
+        for (String dirPath : paths) {
             Path dir = FileUtils.resolve(context.getBaseDir(), dirPath);
             
             // Check if path already exists
