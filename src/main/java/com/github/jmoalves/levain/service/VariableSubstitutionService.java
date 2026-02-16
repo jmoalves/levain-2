@@ -64,6 +64,24 @@ public class VariableSubstitutionService {
     }
 
     /**
+     * Substitute variables using an action execution context.
+     * This allows recipe-scoped variables (setVar/checkChainDirExists) to take effect
+     * for subsequent commands.
+     *
+     * @param text    The text containing variable references
+     * @param context The action execution context
+     * @return The text with variables substituted
+     */
+    public String substitute(String text, com.github.jmoalves.levain.action.ActionContext context) {
+        if (text == null || context == null) {
+            return text;
+        }
+
+        Map<String, String> variables = buildVariableContext(context);
+        return substitute(text, variables);
+    }
+
+    /**
      * Substitute variables in a string using the provided variable map.
      * 
      * @param text      The text containing variable references
@@ -152,6 +170,19 @@ public class VariableSubstitutionService {
                     }
                 }
             }
+        }
+
+        return variables;
+    }
+
+    private Map<String, String> buildVariableContext(com.github.jmoalves.levain.action.ActionContext context) {
+        Recipe recipe = context.getRecipe();
+        Path baseDir = context.getBaseDir();
+        Map<String, String> variables = buildVariableContext(recipe, baseDir);
+
+        Map<String, String> recipeVariables = context.getRecipeVariables();
+        if (recipeVariables != null && !recipeVariables.isEmpty()) {
+            variables.putAll(recipeVariables);
         }
 
         return variables;

@@ -1,5 +1,6 @@
 package com.github.jmoalves.levain.action;
 
+import com.github.jmoalves.levain.service.VariableSubstitutionService;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -22,9 +23,11 @@ public class ActionExecutor {
     private static final Pattern TOKEN_PATTERN = Pattern.compile("\"([^\"]*)\"|'([^']*)'|\\S+");
 
     private final Map<String, Action> actions = new HashMap<>();
+    private final VariableSubstitutionService variableSubstitutionService;
 
     @Inject
-    public ActionExecutor(Instance<Action> actionInstances) {
+    public ActionExecutor(Instance<Action> actionInstances, VariableSubstitutionService variableSubstitutionService) {
+        this.variableSubstitutionService = variableSubstitutionService;
         for (Action action : actionInstances) {
             actions.put(action.name(), action);
         }
@@ -40,7 +43,11 @@ public class ActionExecutor {
                 continue;
             }
 
-            List<String> tokens = tokenize(command);
+            String substituted = variableSubstitutionService != null
+                    ? variableSubstitutionService.substitute(command, context)
+                    : command;
+
+            List<String> tokens = tokenize(substituted);
             if (tokens.isEmpty()) {
                 continue;
             }
@@ -48,7 +55,7 @@ public class ActionExecutor {
             String actionName = tokens.get(0);
             Action action = actions.get(actionName);
             if (action == null) {
-                logger.warn("Unknown action '{}', skipping command: {}", actionName, command);
+                logger.warn("Unknown action '{}', skipping command: {}", actionName, substituted);
                 continue;
             }
 

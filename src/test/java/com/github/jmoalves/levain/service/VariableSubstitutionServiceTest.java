@@ -91,7 +91,7 @@ class VariableSubstitutionServiceTest {
     @Test
     @DisplayName("Should handle null variables")
     void shouldHandleNullVariables() {
-        String result = service.substitute("Text ${var}", null);
+        String result = service.substitute("Text ${var}", (Map<String, String>) null);
         assertEquals("Text ${var}", result);
     }
 

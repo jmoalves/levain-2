@@ -2,6 +2,7 @@ package com.github.jmoalves.levain.action;
 
 import com.github.jmoalves.levain.config.Config;
 import com.github.jmoalves.levain.model.Recipe;
+import com.github.jmoalves.levain.service.VariableSubstitutionService;
 import jakarta.enterprise.inject.Instance;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,9 @@ class ActionExecutorTest {
     @Mock
     Action mockAction2;
 
+    @Mock
+    VariableSubstitutionService variableSubstitutionService;
+
     private ActionExecutor actionExecutor;
 
     @BeforeEach
@@ -46,7 +50,10 @@ class ActionExecutorTest {
         when(actionInstances.stream()).thenReturn(Stream.of(mockAction1, mockAction2));
         when(actionInstances.iterator()).thenReturn(Arrays.asList(mockAction1, mockAction2).iterator());
         
-        actionExecutor = new ActionExecutor(actionInstances);
+        when(variableSubstitutionService.substitute(anyString(), any(ActionContext.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+
+        actionExecutor = new ActionExecutor(actionInstances, variableSubstitutionService);
     }
 
     @Test
