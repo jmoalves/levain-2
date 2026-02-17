@@ -218,7 +218,8 @@ public class RollbackService {
     
     /**
      * Parse a backup directory name to extract package name and timestamp.
-     * Format: packagename.backup-yyyyMMdd-HHmmss
+     * Format: packagename.backup-yyyyMMdd-HHmmss[-seqnum]
+     * The sequence number suffix (-001, -002, etc) is optional and ignored for sorting.
      */
     private Optional<BackupInfo> parseBackupDirectory(Path backupPath) {
         String dirName = backupPath.getFileName().toString();
@@ -229,7 +230,14 @@ public class RollbackService {
         }
         
         String packageName = dirName.substring(0, suffixIndex);
-        String timestampStr = dirName.substring(suffixIndex + BACKUP_SUFFIX.length());
+        String afterSuffix = dirName.substring(suffixIndex + BACKUP_SUFFIX.length());
+        
+        // Extract timestamp (first 15 chars: yyyyMMdd-HHmmss)
+        if (afterSuffix.length() < 15) {
+            return Optional.empty();
+        }
+        
+        String timestampStr = afterSuffix.substring(0, 15);
         
         try {
             LocalDateTime timestamp = LocalDateTime.parse(timestampStr, TIMESTAMP_FORMAT);
@@ -243,6 +251,7 @@ public class RollbackService {
     
     /**
      * Parse a backup directory matching a specific package name.
+     * Format: packagename.backup-yyyyMMdd-HHmmss[-seqnum]
      */
     private Optional<BackupInfo> parseBackupDirectory(Path backupPath, String packageName) {
         String dirName = backupPath.getFileName().toString();
@@ -252,7 +261,14 @@ public class RollbackService {
             return Optional.empty();
         }
         
-        String timestampStr = dirName.substring(expectedPrefix.length());
+        String afterPrefix = dirName.substring(expectedPrefix.length());
+        
+        // Extract timestamp (first 15 chars: yyyyMMdd-HHmmss)
+        if (afterPrefix.length() < 15) {
+            return Optional.empty();
+        }
+        
+        String timestampStr = afterPrefix.substring(0, 15);
         
         try {
             LocalDateTime timestamp = LocalDateTime.parse(timestampStr, TIMESTAMP_FORMAT);

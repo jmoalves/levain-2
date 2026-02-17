@@ -167,15 +167,39 @@ public class BackupService {
     }
     
     /**
-     * Generate backup directory path with timestamp.
+     * Generate backup directory path with timestamp and sequence number.
+     * If backup with same timestamp exists, appends sequence number (001, 002, etc).
+     * Format: packagename.backup-yyyyMMdd-HHmmss[-seqnum]
      */
     private Path generateBackupPath(Path currentDir, LocalDateTime timestamp) {
         String dirname = currentDir.getFileName().toString();
         String timestampStr = timestamp.format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
-        String backupDirName = dirname + ".backup-" + timestampStr;
+        String baseBackupName = dirname + ".backup-" + timestampStr;
         
         Path packagesDir = currentDir.getParent();
-        return packagesDir.resolve(backupDirName);
+        Path backupPath = packagesDir.resolve(baseBackupName);
+        
+        // If backup with this timestamp doesn't exist, use it as-is
+        if (!Files.exists(backupPath)) {
+            return backupPath;
+        }
+        
+        // Otherwise, add sequence number
+        int sequence = 1;
+        while (true) {
+            String sequencedName = baseBackupName + String.format("-%03d", sequence);
+            backupPath = packagesDir.resolve(sequencedName);
+            if (!Files.exists(backupPath)) {
+                logger.debug("Backup with timestamp {} already exists, using sequence: {}", 
+                    timestampStr, sequence);
+                return backupPath;
+            }
+            sequence++;
+            if (sequence > 999) {
+                throw new IllegalStateException(
+                    "Too many backups with timestamp " + timestampStr);
+            }
+        }
     }
     
     /**
