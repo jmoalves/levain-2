@@ -238,54 +238,194 @@ cleanupOldBackups(pkgName, keepCount = 3);
 
 ---
 
-## Recommendation for Levain 2
+## Critical Design Constraint Discovered ⚠️
 
-### **Primary Recommendation: Atomic Swap (Option 1)** ⭐
+### Issue 1: baseDir in Generated Config Files
 
-**Why:**
-1. ✅ **Production-proven** pattern used by Kubernetes, Docker, and many tools
-2. ✅ **Cross-platform** compatible (works on Windows, Linux, macOS)
-3. ✅ **Efficient** (move instead of copy)
-4. ✅ **Safe** (atomic operations prevent partial states)
-5. ✅ **Easy rollback** (just swap directories)
-6. ✅ **Space-aware** (only 2x space during install, not permanent)
+**Problem:** Recipes use `${baseDir}` in template actions that generate config files **outside** the installation directory:
+
+```yaml
+# Maven recipe writes baseDir into user's .m2/settings.xml
+- template --replace=/@@localRepo@@/g --with=${baseDir}\repository \
+    ${pkgDir}/settings.xml ${home}\.m2\settings.xml
+
+# DBeaver recipe writes baseDir into AppData config
+- template --replace=/@@odbcLegacyPath@@/g --with=${baseDir} \
+    ${pkgDir}\drivers.xml ${home}/AppData/Roaming/DBeaverData/.../drivers.xml
+```
+
+**Why Atomic Swap Breaks:**
+1. Install to temp: `maven.new-20260217/` with `baseDir=maven.new-20260217/`
+2. Template writes `C:\Users\John\.levain\packages\maven.new-20260217\repository` into `~/.m2/settings.xml`
+3. Atomic rename: `maven.new-20260217/` → `maven/`
+4. ❌ Config file now points to **non-existent** path `maven.new-20260217/`
+
+**Impact:** ~25 recipes use `template` with `${baseDir}`, invalidating atomic swap approach.
+
+### Issue 2: Windows File Locking
+
+**Problem:** Files in use cannot be moved/renamed on Windows, but **can** be copied.
+
+**Example:**
+- User runs Maven from `~/.levain/packages/maven/bin/mvn.bat`
+- `Files.move(maven/, maven.backup/)` → ❌ **FAILS** (file locked)
+- Copy succeeds, but delete may fail (acceptable - backup exists)
+
+**Why Original Levain Uses Copy+Delete:**
+1. Copy always succeeds even if files are locked
+2. Delete might fail, but that's after backup is safe
+3. Windows file locking is common (running programs from install dir)
+
+---
+
+## Revised Recommendation
+
+### **Hybrid Approach: Improved Copy-Based Backup with Rollback** ⭐
+
+**Compromise:** Keep original copy-based approach but add improvements from atomic swap strategy.
 
 ### Implementation Plan
 
-#### Phase 1: Core Backup Service
+#### Phase 1: Core Backup Service (Improved Copy-Based)
 ```java
 public class BackupService {
     private final Config config;
     private final Path backupRoot;
     
     public BackupResult backupAndInstall(Recipe recipe, Path targetDir) {
-        // 1. Create temp installation directory
-        Path tempDir = createTempInstallDir(recipe);
-        
-        // 2. Install to temp location (isolated)
-        installService.installTo(recipe, tempDir);
-        
-        // 3. Verify installation
-        verifyInstallation(tempDir, recipe);
-        
-        // 4. Atomic swap
-        return atomicSwap(targetDir, tempDir);
-    }
-    
-    private BackupResult atomicSwap(Path current, Path newInstall) {
-        Path backup = generateBackupPath(current);
+        BackupResult backup = null;
         
         try {
-            // Atomic operations (all or nothing)
-            if (Files.exists(current)) {
-                Files.move(current, backup, ATOMIC_MOVE);
+            // 1. Backup existing installation (if exists)
+            if (Files.exists(targetDir)) {
+                backup = backupCurrentInstallation(targetDir);
             }
-            Files.move(newInstall, current, ATOMIC_MOVE);
             
-            return new BackupResult(true, backup);
-        } catch (AtomicMoveNotSupportedException e) {
-            // Fallback: Copy + Delete (not atomic but safe)
-            return fallbackSwap(current, newInstall, backup);
+            // 2. Clear installation directory for fresh install
+            if (Files.exists(targetDir)) {
+                deleteInstallationDirectory(targetDir); // May fail if files locked
+            }
+            
+            // 3. Install to FINAL location (not temp)
+            // baseDir resolves to correct path in generated configs
+            installService.installTo(recipe, targetDir);
+            
+            // 4. Verify installation succeeded
+            verifyInstallation(targetDir, recipe);
+            
+            // 5. Success - mark backup as successful
+            if (backup != null) {
+                markBackupAsSuccessful(backup);
+            }
+            
+            return backup;
+            
+        } catch (Exception e) {
+            // Installation failed - restore from backup if exists
+            if (backup != null && backup.canRestore()) {
+                log.warn("Installation failed, restoring from backup...");
+                restoreFromBackup(backup, targetDir);
+            }
+            throw new InstallationException("Installation failed", e);
+        }
+    
+    public void rollback(String packageName, String timestamp) {
+        Path current = getPackageDir(packageName);
+        Path backup = getBackupDir(packageName, timestamp);
+        
+        if (!Files.exists(backup)) {
+            throw new RollbackException("Backup not found: " + backup);
+        }
+        
+        log.info("Rolling back {} to backup from {}", packageName, timestamp);
+        
+        // 1. Delete current installation
+        if (Files.exists(current)) {
+            try {
+                deleteRecursively(current);
+            } catch (IOException e) {
+                // Try rename if delete fails
+                Path deletedDir = current.resolveSibling(
+                    ".deleted." + current.getFileName() + "." + System.currentTimeMillis());
+                Files.move(current, deletedDir);
+            }
+        }
+        
+        // 2. Copy backup to current location
+        copyDirectory(backup, current);
+        
+        // 3. Verify rollback succeeded
+        if (!Files.exists(current)) {
+            throw new RollbackException("Rollback failed - current dir does not exist");
+        }
+        
+        log.info("Successfully rolled back {} to {}", packageName, timestamp);
+    }
+    
+    public List<BackupInfo> listBackups(String packageName) {
+        Path packagesDir = getPackagesDir();
+        Pattern backupPattern = Pattern.compile(
+            Pattern.quote(packageName) + "\\.backup-(\\d{8}-\\d{6})");
+        
+        return Files.list(packagesDir)
+            .filter(Files::isDirectory)
+            .map(path -> {
+                Matcher m = backupPattern.matcher(path.getFileName().toString());
+                if (m.matches()) {
+                    String timestamp = m.group(1);
+                    long size = calculateDirectorySize(path);
+                    return new BackupInfo(packageName, timestamp, path, size);
+                }
+                return null;
+            })
+            .filter(Objects::nonNull)
+            .sorted(Comparator.comparing(BackupInfo::timestamp).reversed())
+            .collect(Collectors.toList());
+    }
+    
+    public void restoreFromBackup(BackupResult backup, Path targetDir) {
+        if (!Files.exists(backup.getBackupPath())) {
+            throw new RollbackException("Backup no longer exists: " + backup);
+        }
+        
+        log.info("Restoring from backup: {}", backup.getBackupPath());
+        
+        // Delete failed installation
+        if (Files.exists(targetDir)) {
+            deleteRecursively(targetDir);
+        }
+        
+        // Restore from backup
+        copyDirectory(backup.getBackupPath(), targetDir);
+        
+        log.info("Restored from backup successfully");
+        // Verify backup integrity
+        verifyBackupIntegrity(currentDir, backupDir);
+        
+        return new BackupResult(backupDir, currentDir);
+    }
+    
+    private void deleteInstallationDirectory(Path dir) {
+        try {
+            // Try to delete - may fail if files are locked (Windows)
+            deleteRecursively(dir);
+        } catch (IOException e) {
+            log.warn("Unable to fully delete {}. Some files may be in use.", dir);
+            log.debug("Delete error: {}", e.getMessage());
+            
+            // Rename to .deleted for cleanup later
+            Path deletedDir = dir.resolveSibling(
+                ".deleted." + dir.getFileName() + "." + System.currentTimeMillis());
+            try {
+                Files.move(dir, deletedDir);
+                log.info("Renamed old installation to {} for later cleanup", deletedDir);
+            } catch (IOException renameError) {
+                // Can't even rename - files are locked
+                // Installation will fail, backup will be restored
+                throw new InstallationException(
+                    "Cannot delete or rename old installation. " +
+                    "Please close any programs using files in: " + dir, e);
+            }
         }
     }
 }
@@ -306,54 +446,52 @@ public class RollbackService {
         Path temp = createTempDir();
         Files.move(current, temp, ATOMIC_MOVE);
         Files.move(backup, current, ATOMIC_MOVE);
-        Files.move(temp, backup, ATOMIC_MOVE);
-        
-        log.info("Rolled back {} to {}", packageName, timestamp);
-    }
-    
-    public List<BackupInfo> listBackups(String packageName) {
-        // List all backup-{timestamp} directories
-    }
-}
+        Files.move(temp, backup, ATOMIC_MOVE);always final location)
+    maven.backup-20260217-1430/ # Backup from 2:30 PM (full copy)
+    maven.backup-20260217-1200/ # Backup from 12:00 PM (full copy)
+    .deleted.maven.1708181234/  # Old version being deleted (Windows locked files)
+    node/
+    node.backup-20260216-0900/
+  temp/
+    # No installation temp dirs - install directly to final location
 ```
 
-#### Phase 3: Automatic Cleanup
-```java
-public class BackupCleanupService {
-    public void cleanupOldBackups(String packageName, int keepCount) {
-        List<Path> backups = findBackups(packageName);
-        
-        // Sort by timestamp (newest first)
-        backups.sort(Comparator.comparing(this::extractTimestamp).reversed());
-        
-        // Keep only the most recent N backups
-        backups.stream()
-            .skip(keepCount)
-            .forEach(this::deleteBackup);
-    }
-    
-    public void cleanupByAge(Duration maxAge) {
-        Instant cutoff = Instant.now().minus(maxAge);
-        
-        findAllBackups().stream()
-            .filter(backup -> isOlderThan(backup, cutoff))
-            .forEach(this::deleteBackup);
-    }
-}
-```
+**Key Changes from Atomic Swap:**
+- IWhy Copy-Based is Actually Better for Levain
 
-### Configuration
-```yaml
-# config.yaml
-backup:
-  enabled: true
-  strategy: atomic-swap  # or: full-copy, none
-  keepCount: 3           # Keep last 3 backups
-  maxAge: 30d            # Delete backups older than 30 days
-  retentionPolicy: count # or: age, both
-  atomicFallback: true   # Fall back to copy if atomic move fails
-```
+### Advantages Over Atomic Swap
 
+1. **Handles locked files gracefully** (Windows programs running from install dir)
+   - Copy succeeds even if files are in use
+   - Delete may fail, but backup is safe
+   
+2. **Supports ${baseDir} in generated configs**
+   - Install directly to final location
+   - Template actions write correct paths
+   - No post-swap fixup needed
+
+3. **Simpler failure recovery**
+   - Backup exists before installation starts
+   - Failed install → just restore from backup
+   - No partial state issues
+
+4. **No cross-filesystem limitations**
+   - Copy works across filesystems
+   - Atomic move requires same filesystem
+
+### Trade-offs Accepted
+
+| Aspect | Copy-Based | Atomic Swap | Winner |
+|--------|------------|-------------|---------|
+| **Speed** | ~30s (Maven) | ~1s | Atomic |
+| **Windows compatibility** | ✓ Handles locked files | ✗ Fails on locked files | Copy |
+| **Config file paths** | ✓ Correct paths | ✗ Wrong paths | Copy |
+| **Disk space** | 2x during install | 2x during install | Tie |
+| **Rollback speed** | ~30s (copy back) | ~1s (rename) | Atomic |
+| **Complexity** | Simple | Complex | Copy |
+| **Cross-filesystem** | ✓ Works | ✗ Fails | Copy |
+
+**Verdict:** Copy-based is better for Levain's use case despite slower performance.
 ### Directory Structure
 ```
 ~/.levain/
@@ -417,30 +555,48 @@ public class CopyBackupService {
 ---
 
 ## Testing Strategy
+Enhanced Copy-Based Backup Strategy**
 
-### Unit Tests
-```java
-@Test
-void shouldInstallToTempBeforeSwap()
-void shouldSwapAtomically()
-void shouldPreserveBackupOnFailure()
-void shouldRollbackSuccessfully()
-void shouldCleanupOldBackups()
-void shouldFallbackIfAtomicNotSupported()
-void shouldVerifyDiskSpaceBeforeBackup()
-```
+**Reasoning:**
+1. ✅ **Handles ${baseDir} in generated configs** - Critical for 779 production recipes
+2. ✅ **Windows file locking compatible** - Copy succeeds when move fails
+3. ✅ **Simpler implementation** - Fewer edge cases than atomic swap
+4. ✅ **Cross-filesystem support** - No same-filesystem requirement
+5. ✅ **Safe failure recovery** - Backup exists before installation starts
+6. ✅ **Production-tested** - Original Levain uses this successfully
 
-### Integration Tests
-```java
-@Test
-void shouldHandleProcessCrashDuringInstall()
-void shouldRecoverFromPartialSwap()
-void shouldWorkAcrossFilesystems()
-void shouldHandleWindowsFileLocking()
-void shouldPreservePermissions()
-```
+**Why NOT Atomic Swap:**
+- ❌ Breaks ${baseDir} resolution in template actions
+- ❌ Fails on Windows when files are in use
+- ❌ Requires complex post-swap path fixup
+- ❌ Needs same filesystem for atomic moves
 
-### Edge Cases
+### Implementation Priority
+1. ✅ **Phase 1:** Copy-based backup with progress reporting (2 days)
+2. ✅ **Phase 2:** Rollback support (1 day)
+3. ✅ **Phase 3:** Automatic cleanup (1 day)
+4. ✅ **Phase 4:** Disk space checks and verification (1 day)
+5. ✅ **Phase 5:** Handle locked files gracefully (1 day)
+
+**Total effort:** 6-7 days with comprehensive testing
+
+### Key Improvements Over Original Levain
+- ✅ Disk space validation before backup
+- ✅ Progress reporting for large packages
+- ✅ Backup integrity verification
+- ✅ Automatic rollback on installation failure
+- ✅ Configurable retention policy
+- ✅ Graceful handling of locked files (Windows)
+- ✅ Programmatic rollback command
+
+### Acceptance Criteria
+- ✅ Installation fails safely (old version backed up and restorable)
+- ✅ Rollback command works reliably
+- ✅ Backups cleaned automatically by retention policy
+- ✅ Works on Windows (with locked files), Linux, macOS
+- ✅ Disk space validated before operations
+- ✅ ${baseDir} resolves correctly in all recipes
+- ✅ Progress reporting for operations > 5 second
 - Installation to non-existent package (no backup needed)
 - Cross-filesystem installs (atomic move fails)
 - Insufficient disk space
