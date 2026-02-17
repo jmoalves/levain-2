@@ -191,7 +191,100 @@ class AddToDesktopActionTest {
             System.setProperty("os.name", previous);
         }
     }
+    @Test
+    void shouldUseUserDirWhenNoUserProfileOrHome() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
 
+        try {
+            AddToDesktopAction action = new AddToDesktopAction();
+            Map<String, String> snapshot = snapshotEnv("USERPROFILE");
+            String oldUserHome = System.getProperty("user.home");
+            try {
+                setEnvVar("USERPROFILE", null);
+                System.clearProperty("user.home");
+
+                Path desktopDir = action.resolveDesktopDir();
+
+                assertEquals(System.getProperty("user.dir") + "/Desktop", desktopDir.toString().replace('\\', '/'));
+            } finally {
+                restoreEnv(snapshot);
+                if (oldUserHome != null) {
+                    System.setProperty("user.home", oldUserHome);
+                } else {
+                    System.clearProperty("user.home");
+                }
+            }
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldHandleBlankUserProfile() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            AddToDesktopAction action = new AddToDesktopAction();
+            Map<String, String> snapshot = snapshotEnv("USERPROFILE");
+            try {
+                setEnvVar("USERPROFILE", "   ");
+
+                Path desktopDir = action.resolveDesktopDir();
+
+                assertTrue(desktopDir.toString().endsWith("Desktop"));
+            } finally {
+                restoreEnv(snapshot);
+            }
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldCreateShortcutWithBlankShortcutName() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            Path desktop = tempDir.resolve("Desktop");
+            TestAddToDesktopAction action = new TestAddToDesktopAction(desktop);
+            ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+            Path target = tempDir.resolve("tool.exe");
+            Files.writeString(target, "app");
+
+            action.execute(context, List.of(target.toString(), " "));
+
+            Path shortcut = desktop.resolve("tool.lnk");
+            assertTrue(Files.exists(shortcut));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldAddLnkExtensionWhenMissing() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            Path desktop = tempDir.resolve("Desktop");
+            TestAddToDesktopAction action = new TestAddToDesktopAction(desktop);
+            ActionContext context = new ActionContext(new Config(), new Recipe(), tempDir, tempDir);
+
+            Path target = tempDir.resolve("tool.exe");
+            Files.writeString(target, "app");
+
+            action.execute(context, List.of(target.toString(), "MyApp"));
+
+            Path shortcut = desktop.resolve("MyApp.lnk");
+            assertTrue(Files.exists(shortcut));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
     private static class TestAddToDesktopAction extends AddToDesktopAction {
         private final Path desktopDir;
 

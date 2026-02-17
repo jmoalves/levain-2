@@ -508,14 +508,14 @@ class VariableSubstitutionServiceTest {
     void shouldHandlePkgReferenceWithMultipleDotsInPackageName() {
         Recipe jdkRecipe = new Recipe();
         jdkRecipe.setName("oracle.jdk.21");
-        jdkRecipe.setVersion("21.0.1");
+        jdkRecipe.getCustomAttributes().put("javaHome", "/opt/java");
 
         when(recipeService.loadRecipe("oracle.jdk.21")).thenReturn(jdkRecipe);
 
         Recipe recipe = new Recipe();
-        String result = service.substitute("Java=${pkg.oracle.jdk.21.version}", recipe, Paths.get("/tmp"));
+        String result = service.substitute("Java=${pkg.oracle.jdk.21.javaHome}", recipe, Paths.get("/tmp"));
 
-        assertEquals("Java=21.0.1", result);
+        assertEquals("Java=/opt/java", result);
     }
 
     @Test

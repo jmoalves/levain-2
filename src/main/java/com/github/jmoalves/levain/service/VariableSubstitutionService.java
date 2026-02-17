@@ -263,6 +263,11 @@ public class VariableSubstitutionService {
         try {
             // Try to find and load the recipe
             Recipe refRecipe = recipeService.loadRecipe(packageName);
+            if (refRecipe == null) {
+                logger.warn("Failed to resolve indirect variable {}: recipe not found", indirectRef);
+                return null;
+            }
+
             Map<String, String> refVariables = new HashMap<>();
 
             // Build variable context for referenced recipe
@@ -277,6 +282,21 @@ public class VariableSubstitutionService {
             }
             if (refRecipe.getRecipesDir() != null) {
                 refVariables.put("recipesDir", refRecipe.getRecipesDir());
+            }
+            if (refRecipe.getCustomAttributes() != null) {
+                for (Map.Entry<String, Object> entry : refRecipe.getCustomAttributes().entrySet()) {
+                    String key = entry.getKey();
+                    if (key == null || key.startsWith("cmd.")) {
+                        continue;
+                    }
+                    Object value = entry.getValue();
+                    if (value instanceof String) {
+                        String substitutedValue = substitute((String) value, refVariables);
+                        refVariables.put(key, substitutedValue);
+                    } else if (value instanceof Number || value instanceof Boolean) {
+                        refVariables.put(key, value.toString());
+                    }
+                }
             }
 
             String value = refVariables.get(variableName);

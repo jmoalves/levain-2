@@ -226,6 +226,96 @@ class ContextMenuActionTest {
         }
     }
 
+    @Test
+    void shouldHandleDirectoryTarget() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            RecordingContextMenuAction action = new RecordingContextMenuAction();
+            action.execute(null, List.of("--target", "directory", "Label", "cmd.exe"));
+
+            assertTrue(action.commands.stream().anyMatch(cmd -> cmd.contains("\\Directory\\shell\\")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldHandleFolderTarget() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            RecordingContextMenuAction action = new RecordingContextMenuAction();
+            action.execute(null, List.of("--target", "directories", "--name=MyAction", "--cmd=echo test"));
+
+            assertTrue(action.commands.stream().anyMatch(cmd -> cmd.contains("\\Directory\\shell\\")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldHandleFilesTarget() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            RecordingContextMenuAction action = new RecordingContextMenuAction();
+            action.execute(null, List.of("--target", "file", "Label", "cmd"));
+
+            assertTrue(action.commands.stream().anyMatch(cmd -> cmd.contains("\\*\\shell\\")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldHandleBackgroundTarget() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            RecordingContextMenuAction action = new RecordingContextMenuAction();
+            action.execute(null, List.of("--target=background", "Label", "cmd"));
+
+            assertTrue(action.commands.stream().anyMatch(cmd -> cmd.contains("\\Directory\\Background\\shell\\")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldSimplifyIdForRegistryKey() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            RecordingContextMenuAction action = new RecordingContextMenuAction();
+            action.execute(null, List.of("--id", "My Action!", "--cmd=cmd"));
+
+            assertTrue(action.commands.stream().anyMatch(cmd -> cmd.contains("\\shell\\My Action!")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
+    @Test
+    void shouldHandleIdWithMultipleSpecialChars() throws Exception {
+        String previous = System.getProperty("os.name");
+        System.setProperty("os.name", "Windows 10");
+
+        try {
+            RecordingContextMenuAction action = new RecordingContextMenuAction();
+            action.execute(null, List.of("--id", "Test@#$%", "--cmd=cmd"));
+
+            assertTrue(action.commands.stream().anyMatch(cmd -> cmd.contains("\\shell\\Test@#$%")));
+        } finally {
+            System.setProperty("os.name", previous);
+        }
+    }
+
     private static class RecordingContextMenuAction extends ContextMenuAction {
         private final List<String> commands = new ArrayList<>();
 
