@@ -247,6 +247,159 @@ class EnvironmentUtilsTest {
         assertEquals("\"\"", value);
     }
 
+    @Test
+    void shouldQuoteEmptyValue() throws Exception {
+        var quote = EnvironmentUtils.class.getDeclaredMethod("quote", String.class);
+        quote.setAccessible(true);
+        String value = (String) quote.invoke(null, "");
+        assertEquals("\"\"", value);
+    }
+
+    @Test
+    void shouldQuoteValueWithSpaces() throws Exception {
+        var quote = EnvironmentUtils.class.getDeclaredMethod("quote", String.class);
+        quote.setAccessible(true);
+        String value = (String) quote.invoke(null, "hello world");
+        assertEquals("\"hello world\"", value);
+    }
+
+    @Test
+    void shouldQuoteValueWithTabs() throws Exception {
+        var quote = EnvironmentUtils.class.getDeclaredMethod("quote", String.class);
+        quote.setAccessible(true);
+        String value = (String) quote.invoke(null, "hello\tworld");
+        assertEquals("\"hello\tworld\"", value);
+    }
+
+    @Test
+    void shouldEscapeQuotesInValue() throws Exception {
+        var quote = EnvironmentUtils.class.getDeclaredMethod("quote", String.class);
+        quote.setAccessible(true);
+        String value = (String) quote.invoke(null, "say \"hello\"");
+        assertEquals("\"say \\\"hello\\\"\"", value);
+    }
+
+    @Test
+    void shouldNotQuoteSimpleValue() throws Exception {
+        var quote = EnvironmentUtils.class.getDeclaredMethod("quote", String.class);
+        quote.setAccessible(true);
+        String value = (String) quote.invoke(null, "simple");
+        assertEquals("simple", value);
+    }
+
+    @Test
+    void shouldBuildExportLine() throws Exception {
+        var buildExport = EnvironmentUtils.class.getDeclaredMethod("buildExportLine", String.class, String.class);
+        buildExport.setAccessible(true);
+        String line = (String) buildExport.invoke(null, "MY_VAR", "my value");
+        assertEquals("export MY_VAR=\"my value\"", line);
+    }
+
+    @Test
+    void shouldPersistUnixEnvToNewFile() throws IOException {
+        Path profile = tempDir.resolve("new").resolve(".bashrc");
+        
+        EnvironmentUtils.persistUnixEnv(profile, "NEW_VAR", "test");
+
+        List<String> lines = Files.readAllLines(profile);
+        assertEquals(1, lines.size());
+        assertEquals("export NEW_VAR=test", lines.get(0));
+    }
+
+    @Test
+    void shouldUpdatePathWithEmptyCurrentPath() {
+        String originalOs = System.getProperty("os.name");
+        try {
+            System.setProperty("os.name", "Linux");
+
+            String result = EnvironmentUtils.updatePath("", List.of("a", "b"), true);
+
+            assertEquals("a" + EnvironmentUtils.pathSeparator() + "b", result);
+        } finally {
+            restoreOsName(originalOs);
+        }
+    }
+
+    @Test
+    void shouldUpdatePathWithNullCurrentPath() {
+        String originalOs = System.getProperty("os.name");
+        try {
+            System.setProperty("os.name", "Linux");
+
+            String result = EnvironmentUtils.updatePath(null, List.of("a", "b"), false);
+
+            assertEquals("a" + EnvironmentUtils.pathSeparator() + "b", result);
+        } finally {
+            restoreOsName(originalOs);
+        }
+    }
+
+    @Test
+    void shouldHandleBlankPathPartsInSplit() {
+        String originalOs = System.getProperty("os.name");
+        try {
+            System.setProperty("os.name", "Linux");
+            String sep = EnvironmentUtils.pathSeparator();
+
+            List<String> parts = EnvironmentUtils.splitPath("a" + sep + "  " + sep + "b");
+
+            assertEquals(List.of("a", "b"), parts);
+        } finally {
+            restoreOsName(originalOs);
+        }
+    }
+
+    @Test
+    void shouldResolveProfilePathWhenShellIsNull() throws Exception {
+        String original = System.getenv("SHELL");
+        String originalHome = System.getProperty("user.home");
+        try {
+            updateEnv("SHELL", null);
+            System.setProperty("user.home", tempDir.toString());
+
+            Path resolved = EnvironmentUtils.resolveProfilePath();
+
+            assertEquals(tempDir.resolve(".profile"), resolved);
+        } finally {
+            restoreEnv("SHELL", original);
+            restoreProperty("user.home", originalHome);
+        }
+    }
+
+    @Test
+    void shouldHandleBlankUserHomeInResolveProfile() {
+        String original = System.getProperty("user.home");
+        try {
+            System.setProperty("user.home", "   ");
+
+            Path resolved = EnvironmentUtils.resolveProfilePath();
+
+            assertNull(resolved);
+        } finally {
+            restoreProperty("user.home", original);
+        }
+    }
+
+    @Test
+    void shouldHandleBlankOverrideInResolveProfile() throws Exception {
+        String original = System.getProperty("levain.env.profile");
+        String originalHome = System.getProperty("user.home");
+        String originalShell = System.getenv("SHELL");
+        try {
+            System.setProperty("levain.env.profile", "   ");
+            System.setProperty("user.home", tempDir.toString());
+            updateEnv("SHELL", null);
+
+            Path resolved = EnvironmentUtils.resolveProfilePath();
+
+            assertEquals(tempDir.resolve(".profile"), resolved);
+        } finally {
+            restoreProperty("levain.env.profile", original);
+            restoreProperty("user.home", originalHome);
+            restoreEnv("SHELL", originalShell);
+        }
+    }
+
     private void restoreOsName(String original) {
         restoreProperty("os.name", original);
     }
