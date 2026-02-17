@@ -1,6 +1,7 @@
 package com.github.jmoalves.levain.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -367,6 +368,154 @@ class ConfigTest {
                 System.clearProperty("user.home");
             }
         }
+    }
+
+    @Test
+    @DisplayName("Should have default backup directory")
+    void shouldHaveDefaultBackupDir() {
+        Path backupDir = config.getBackupDir();
+        assertNotNull(backupDir);
+        assertTrue(backupDir.toString().contains(".levain/backup"));
+    }
+
+    @Test
+    @DisplayName("Should set and get backup directory")
+    void shouldSetAndGetBackupDir() {
+        String newBackupDir = "/custom/backup";
+        config.setBackupDir(newBackupDir);
+        assertEquals(newBackupDir, config.getBackupDir().toString());
+    }
+
+    @Test
+    @DisplayName("Should have backup enabled by default")
+    void shouldHaveBackupEnabledByDefault() {
+        assertTrue(config.isBackupEnabled());
+    }
+
+    @Test
+    @DisplayName("Should set and get backup enabled flag")
+    void shouldSetAndGetBackupEnabled() {
+        config.setBackupEnabled(false);
+        assertFalse(config.isBackupEnabled());
+        
+        config.setBackupEnabled(true);
+        assertTrue(config.isBackupEnabled());
+    }
+
+    @Test
+    @DisplayName("Should have default backup keep count")
+    void shouldHaveDefaultBackupKeepCount() {
+        assertEquals(5, config.getBackupKeepCount());
+    }
+
+    @Test
+    @DisplayName("Should set and get backup keep count")
+    void shouldSetAndGetBackupKeepCount() {
+        config.setBackupKeepCount(10);
+        assertEquals(10, config.getBackupKeepCount());
+    }
+
+    @Test
+    @DisplayName("Should have default backup max age days")
+    void shouldHaveDefaultBackupMaxAgeDays() {
+        assertEquals(30, config.getBackupMaxAgeDays());
+    }
+
+    @Test
+    @DisplayName("Should set and get backup max age days")
+    void shouldSetAndGetBackupMaxAgeDays() {
+        config.setBackupMaxAgeDays(60);
+        assertEquals(60, config.getBackupMaxAgeDays());
+    }
+
+    @Test
+    @DisplayName("Should use LEVAIN_BACKUP_DIR when configured")
+    void shouldUseBackupDirFromEnv() throws Exception {
+        String original = System.getenv("LEVAIN_BACKUP_DIR");
+        String originalHome = System.getProperty("user.home");
+        try {
+            updateEnv("LEVAIN_BACKUP_DIR", tempDir.resolve("env-backup").toString());
+            System.setProperty("user.home", tempDir.toString());
+
+            assertEquals(tempDir.resolve("env-backup"), config.getBackupDir());
+        } finally {
+            restoreEnv("LEVAIN_BACKUP_DIR", original);
+            restoreProperty("user.home", originalHome);
+        }
+    }
+
+    @Test
+    @DisplayName("Should serialize backup configuration data")
+    void shouldSerializeBackupConfigurationData() throws Exception {
+        Config.ConfigData configData = new Config.ConfigData();
+        configData.backupDir = "/custom/backup";
+        configData.backupEnabled = true;
+        configData.backupKeepCount = 10;
+        configData.backupMaxAgeDays = 60;
+
+        ObjectMapper mapper = new ObjectMapper();
+        String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(configData);
+
+        assertTrue(json.contains("backupDir"));
+        assertTrue(json.contains("/custom/backup"));
+        assertTrue(json.contains("backupEnabled"));
+        assertTrue(json.contains("backupKeepCount"));
+        assertTrue(json.contains("backupMaxAgeDays"));
+    }
+
+    @Test
+    @DisplayName("Should deserialize backup configuration data")
+    void shouldDeserializeBackupConfigurationData() throws Exception {
+        String json = "{\n" +
+                "  \"backupDir\": \"/custom/backup\",\n" +
+                "  \"backupEnabled\": true,\n" +
+                "  \"backupKeepCount\": 10,\n" +
+                "  \"backupMaxAgeDays\": 60\n" +
+                "}";
+
+        ObjectMapper mapper = new ObjectMapper();
+        Config.ConfigData configData = mapper.readValue(json, Config.ConfigData.class);
+
+        assertEquals("/custom/backup", configData.backupDir);
+        assertTrue(configData.backupEnabled);
+        assertEquals(10, configData.backupKeepCount);
+        assertEquals(60, configData.backupMaxAgeDays);
+    }
+
+    @Test
+    @DisplayName("Should save and reload backup configuration")
+    void shouldSaveAndReloadBackupConfiguration() throws Exception {
+        String originalHome = System.getProperty("user.home");
+        System.setProperty("user.home", tempDir.toString());
+        try {
+            Config localConfig = new Config();
+            localConfig.setBackupDir(tempDir.resolve("backup").toString());
+            localConfig.setBackupEnabled(false);
+            localConfig.setBackupKeepCount(15);
+            localConfig.setBackupMaxAgeDays(90);
+            localConfig.save();
+
+            assertTrue(Files.exists(localConfig.getConfigPath()));
+
+            Config reloaded = new Config();
+            assertEquals(localConfig.getBackupDir(), reloaded.getBackupDir());
+            assertEquals(false, reloaded.isBackupEnabled());
+            assertEquals(15, reloaded.getBackupKeepCount());
+            assertEquals(90, reloaded.getBackupMaxAgeDays());
+        } finally {
+            if (originalHome != null) {
+                System.setProperty("user.home", originalHome);
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("Should describe backup configuration")
+    void shouldDescribeBackupConfiguration() {
+        String description = config.describe();
+        assertNotNull(description);
+        assertTrue(description.contains("backup"));
+        assertTrue(description.contains("enabled"));
     }
 
     @Test

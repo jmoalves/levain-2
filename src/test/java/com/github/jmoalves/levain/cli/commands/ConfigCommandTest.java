@@ -15,6 +15,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.github.jmoalves.levain.cli.commands.config.repo.RepoAddCommand;
+import com.github.jmoalves.levain.cli.commands.config.repo.RepoCommand;
+import com.github.jmoalves.levain.cli.commands.config.repo.RepoListCommand;
+import com.github.jmoalves.levain.cli.commands.config.repo.RepoRemoveCommand;
 import com.github.jmoalves.levain.model.RepositoryConfig;
 import com.github.jmoalves.levain.service.ConfigService;
 
@@ -34,14 +38,14 @@ class ConfigCommandTest {
 
     @Test
     void testRepoCommandCall() {
-        ConfigCommand.RepoCommand command = new ConfigCommand.RepoCommand();
+        RepoCommand command = new RepoCommand();
         assertEquals(0, command.call());
     }
 
     // AddCommand Tests
     @Test
     void testAddCommandSuccess() throws Exception {
-        ConfigCommand.RepoCommand.AddCommand command = new ConfigCommand.RepoCommand.AddCommand(configService);
+        RepoAddCommand command = new RepoAddCommand(configService);
 
         CommandLine cmd = new CommandLine(command);
         int exitCode = cmd.execute("https://github.com/user/repo.git", "test-repo");
@@ -52,7 +56,7 @@ class ConfigCommandTest {
 
     @Test
     void testAddCommandWithoutName() throws Exception {
-        ConfigCommand.RepoCommand.AddCommand command = new ConfigCommand.RepoCommand.AddCommand(configService);
+        RepoAddCommand command = new RepoAddCommand(configService);
 
         CommandLine cmd = new CommandLine(command);
         int exitCode = cmd.execute("https://github.com/user/repo.git");
@@ -63,7 +67,7 @@ class ConfigCommandTest {
 
     @Test
     void testAddCommandFailure() throws Exception {
-        ConfigCommand.RepoCommand.AddCommand command = new ConfigCommand.RepoCommand.AddCommand(configService);
+        RepoAddCommand command = new RepoAddCommand(configService);
 
         doThrow(new RuntimeException("Invalid URI")).when(configService).addRepository(anyString(), any());
 
@@ -77,7 +81,7 @@ class ConfigCommandTest {
     // ListCommand Tests
     @Test
     void testListCommandWithRepositories() throws Exception {
-        ConfigCommand.RepoCommand.ListCommand command = new ConfigCommand.RepoCommand.ListCommand(configService);
+        RepoListCommand command = new RepoListCommand(configService);
 
         List<RepositoryConfig> repos = new ArrayList<>();
         RepositoryConfig repo1 = new RepositoryConfig();
@@ -100,7 +104,7 @@ class ConfigCommandTest {
 
     @Test
     void testListCommandWithNoRepositories() throws Exception {
-        ConfigCommand.RepoCommand.ListCommand command = new ConfigCommand.RepoCommand.ListCommand(configService);
+        RepoListCommand command = new RepoListCommand(configService);
 
         when(configService.getRepositories()).thenReturn(new ArrayList<>());
 
@@ -113,7 +117,7 @@ class ConfigCommandTest {
 
     @Test
     void testListCommandFailure() throws Exception {
-        ConfigCommand.RepoCommand.ListCommand command = new ConfigCommand.RepoCommand.ListCommand(configService);
+        RepoListCommand command = new RepoListCommand(configService);
 
         when(configService.getRepositories()).thenThrow(new RuntimeException("Config error"));
 
@@ -127,7 +131,7 @@ class ConfigCommandTest {
     // RemoveCommand Tests
     @Test
     void testRemoveCommandSuccess() throws Exception {
-        ConfigCommand.RepoCommand.RemoveCommand command = new ConfigCommand.RepoCommand.RemoveCommand(configService);
+        RepoRemoveCommand command = new RepoRemoveCommand(configService);
 
         when(configService.removeRepository("repo1")).thenReturn(true);
 
@@ -140,7 +144,7 @@ class ConfigCommandTest {
 
     @Test
     void testRemoveCommandNotFound() throws Exception {
-        ConfigCommand.RepoCommand.RemoveCommand command = new ConfigCommand.RepoCommand.RemoveCommand(configService);
+        RepoRemoveCommand command = new RepoRemoveCommand(configService);
 
         when(configService.removeRepository("nonexistent")).thenReturn(false);
 
@@ -153,7 +157,7 @@ class ConfigCommandTest {
 
     @Test
     void testRemoveCommandFailure() throws Exception {
-        ConfigCommand.RepoCommand.RemoveCommand command = new ConfigCommand.RepoCommand.RemoveCommand(configService);
+        RepoRemoveCommand command = new RepoRemoveCommand(configService);
 
         when(configService.removeRepository("repo1")).thenThrow(new RuntimeException("Config error"));
 
