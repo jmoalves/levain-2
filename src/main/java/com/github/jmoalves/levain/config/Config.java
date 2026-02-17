@@ -167,6 +167,75 @@ public class Config {
     }
 
     /**
+     * Get the backup directory (for package backups).
+     * Default: ~/.levain/backup
+     */
+    public Path getBackupDir() {
+        String envBackup = System.getenv("LEVAIN_BACKUP_DIR");
+        if ((configData.backupDir == null || configData.backupDir.isEmpty())
+                && envBackup != null && !envBackup.isBlank()) {
+            return Paths.get(envBackup);
+        }
+        if (configData.backupDir == null || configData.backupDir.isEmpty()) {
+            String userHome = System.getProperty("user.home");
+            return Paths.get(userHome).resolve(".levain/backup");
+        }
+        return Paths.get(configData.backupDir);
+    }
+
+    /**
+     * Set the backup directory.
+     */
+    public void setBackupDir(String backupDir) {
+        configData.backupDir = backupDir;
+    }
+
+    /**
+     * Check if backup is enabled.
+     * Default: true
+     */
+    public boolean isBackupEnabled() {
+        return configData.backupEnabled != null ? configData.backupEnabled : true;
+    }
+
+    /**
+     * Set backup enabled flag.
+     */
+    public void setBackupEnabled(boolean enabled) {
+        configData.backupEnabled = enabled;
+    }
+
+    /**
+     * Get the number of backups to keep per package.
+     * Default: 5
+     */
+    public int getBackupKeepCount() {
+        return configData.backupKeepCount != null ? configData.backupKeepCount : 5;
+    }
+
+    /**
+     * Set the number of backups to keep per package.
+     */
+    public void setBackupKeepCount(int count) {
+        configData.backupKeepCount = count;
+    }
+
+    /**
+     * Get the maximum age of backups in days.
+     * Default: 30
+     */
+    public int getBackupMaxAgeDays() {
+        return configData.backupMaxAgeDays != null ? configData.backupMaxAgeDays : 30;
+    }
+
+    /**
+     * Set the maximum age of backups in days.
+     */
+    public void setBackupMaxAgeDays(int days) {
+        configData.backupMaxAgeDays = days;
+    }
+
+    /**
      * Set the cache directory.
      */
     public void setCacheDir(String cacheDir) {
@@ -244,10 +313,12 @@ public class Config {
      */
     public String describe() {
         return String.format(
-                "Config[levainHome=%s, registry=%s, cache=%s]",
+                "Config[levainHome=%s, registry=%s, cache=%s, backup=%s (enabled=%s)]",
                 getLevainHome(),
                 getRegistryDir(),
-                getCacheDir());
+                getCacheDir(),
+                getBackupDir(),
+                isBackupEnabled());
     }
 
     /**
@@ -264,6 +335,18 @@ public class Config {
 
         @JsonProperty("cacheDir")
         public String cacheDir;
+
+        @JsonProperty("backupDir")
+        public String backupDir;
+
+        @JsonProperty("backupEnabled")
+        public Boolean backupEnabled;
+
+        @JsonProperty("backupKeepCount")
+        public Integer backupKeepCount;
+
+        @JsonProperty("backupMaxAgeDays")
+        public Integer backupMaxAgeDays;
 
         @JsonProperty("shellPath")
         public String shellPath;
@@ -288,6 +371,10 @@ public class Config {
                     "levainHome='" + levainHome + '\'' +
                     ", registryDir='" + registryDir + '\'' +
                     ", cacheDir='" + cacheDir + '\'' +
+                    ", backupDir='" + backupDir + '\'' +
+                    ", backupEnabled=" + backupEnabled +
+                    ", backupKeepCount=" + backupKeepCount +
+                    ", backupMaxAgeDays=" + backupMaxAgeDays +
                     ", shellPath='" + shellPath + '\'' +
                     ", defaultPackage='" + defaultPackage + '\'' +
                     ", variables=" + variables +

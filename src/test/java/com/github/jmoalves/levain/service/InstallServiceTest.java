@@ -31,6 +31,7 @@ import com.github.jmoalves.levain.repository.RepositoryFactory;
 import com.github.jmoalves.levain.repository.RecipeMetadata;
 import com.github.jmoalves.levain.repository.Registry;
 import com.github.jmoalves.levain.service.DependencyResolver.ResolutionResult;
+import com.github.jmoalves.levain.service.backup.BackupService;
 
 /**
  * Unit tests for InstallService using JUnit 5 and Mockito.
@@ -56,13 +57,16 @@ class InstallServiceTest {
     @Mock
     private DependencyResolver dependencyResolver;
 
+    @Mock
+    private BackupService backupService;
+
     private InstallService installService;
     private Recipe mockRecipe;
 
     @BeforeEach
     void setUp() {
         installService = new InstallService(recipeService, repositoryFactory, variableSubstitutionService,
-                actionExecutor, config, dependencyResolver);
+                actionExecutor, config, dependencyResolver, backupService);
         lenient().when(config.getLevainHome()).thenReturn(Path.of("/tmp/levain"));
 
         mockRecipe = new Recipe();

@@ -7,6 +7,8 @@ import com.github.jmoalves.levain.config.Config;
 import com.github.jmoalves.levain.repository.Repository;
 import com.github.jmoalves.levain.repository.RepositoryFactory;
 import com.github.jmoalves.levain.repository.Registry;
+import com.github.jmoalves.levain.service.backup.BackupService;
+import com.github.jmoalves.levain.service.backup.BackupResult;
 import com.github.jmoalves.levain.util.VersionNumber;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -36,6 +38,7 @@ public class InstallService {
     private final ActionExecutor actionExecutor;
     private final Config config;
     private final DependencyResolver dependencyResolver;
+    private final BackupService backupService;
     private Registry registry;
 
     @Inject
@@ -44,13 +47,15 @@ public class InstallService {
             VariableSubstitutionService variableSubstitutionService,
             ActionExecutor actionExecutor,
             Config config,
-            DependencyResolver dependencyResolver) {
+            DependencyResolver dependencyResolver,
+            BackupService backupService) {
         this.recipeService = recipeService;
         this.repositoryFactory = repositoryFactory;
         this.variableSubstitutionService = variableSubstitutionService;
         this.actionExecutor = actionExecutor;
         this.config = config;
         this.dependencyResolver = dependencyResolver;
+        this.backupService = backupService;
         this.registry = null; // Lazy initialize in installRecipe
     }
 
@@ -295,6 +300,9 @@ public class InstallService {
      * @param originalYaml The original YAML content to preserve
      */
     private void installRecipe(Recipe recipe, String originalYaml, String sourceRepo, String sourceRepoUri) {
+        BackupResult backupResult = null;
+        Path baseDir = null;
+        
         try {
             logger.info("Processing recipe: {}", recipe.getName());
 
@@ -323,7 +331,29 @@ public class InstallService {
             }
 
             // Create baseDir only if recipe doesn't skip it
-            var baseDir = config.getLevainHome().resolve(recipe.getName());
+            baseDir = config.getLevainHome().resolve(recipe.getName());
+            
+            // Backup before installation if package is already installed
+            if (config.isBackupEnabled() && 
+                !recipe.shouldSkipInstallDir() && 
+                registry.isInstalled(recipe.getName()) && 
+                Files.exists(baseDir)) {
+                
+                logger.info("Creating backup of existing installation: {}", recipe.getName());
+                console.info("  Creating backup before update...");
+                backupResult = backupService.backup(baseDir);
+                
+                if (!backupResult.success()) {
+                    logger.warn("Backup failed: {}. Installation will proceed without backup.", 
+                            backupResult.error());
+                    console.info("  Warning: Backup failed, proceeding without backup");
+                    backupResult = null;
+                } else {
+                    logger.info("Backup created: {}", backupResult.backupPath());
+                    console.info("  Backup created: {}", backupResult.timestamp());
+                }
+            }
+            
             if (!recipe.shouldSkipInstallDir()) {
                 Files.createDirectories(baseDir);
             }
@@ -356,7 +386,27 @@ public class InstallService {
             registry.store(recipe, originalYaml, sourceRepo, sourceRepoUri);
 
             logger.info("Recipe {} stored in registry", recipe.getName());
+            
+            // Installation successful - backup is kept for future rollback/cleanup
+            if (backupResult != null && backupResult.success()) {
+                logger.info("Installation successful, backup retained: {}", backupResult.backupPath());
+            }
         } catch (Exception e) {
+            // Installation failed - attempt to restore from backup
+            if (backupResult != null && backupResult.success() && baseDir != null) {
+                logger.error("Installation failed, attempting to restore from backup", e);
+                console.info("  Installation failed! Restoring from backup...");
+                
+                try {
+                    backupService.restore(backupResult, baseDir);
+                    logger.info("Successfully restored from backup: {}", backupResult.backupPath());
+                    console.info("  Restored from backup successfully");
+                } catch (Exception restoreError) {
+                    logger.error("Failed to restore from backup", restoreError);
+                    console.info("  Warning: Failed to restore from backup: {}", restoreError.getMessage());
+                }
+            }
+            
             throw new RuntimeException("Failed to install recipe " + recipe.getName() + ": " + e.getMessage(), e);
         }
     }
