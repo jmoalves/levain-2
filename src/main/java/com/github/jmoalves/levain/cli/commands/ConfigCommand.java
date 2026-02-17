@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import com.github.jmoalves.levain.cli.commands.config.backup.BackupCommand;
 import com.github.jmoalves.levain.cli.commands.config.repo.RepoCommand;
+import com.github.jmoalves.levain.cli.commands.config.rollback.RollbackCommand;
 
 import picocli.CommandLine.Command;
 
@@ -15,7 +16,8 @@ import picocli.CommandLine.Command;
  */
 @Command(name = "config", description = "Manage Levain configuration", mixinStandardHelpOptions = true, subcommands = {
         RepoCommand.class,
-        BackupCommand.class
+        BackupCommand.class,
+        RollbackCommand.class
 })
 public class ConfigCommand implements Callable<Integer> {
     private static final Logger console = LoggerFactory.getLogger("CONSOLE");
