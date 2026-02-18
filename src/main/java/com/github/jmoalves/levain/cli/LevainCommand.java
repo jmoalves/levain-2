@@ -6,6 +6,7 @@ import com.github.jmoalves.levain.cli.commands.ListCommand;
 import com.github.jmoalves.levain.cli.commands.ShellCommand;
 import com.github.jmoalves.levain.cli.commands.ConfigCommand;
 import com.github.jmoalves.levain.cli.commands.RollbackCommand;
+import com.github.jmoalves.levain.cli.commands.CleanCommand;
 import com.github.jmoalves.levain.config.Config;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -31,6 +32,7 @@ import java.util.concurrent.Callable;
     ShellCommand.class,
     ConfigCommand.class,
     RollbackCommand.class,
+    CleanCommand.class,
     CloneCommand.class
 })
 public class LevainCommand implements Callable<Integer> {

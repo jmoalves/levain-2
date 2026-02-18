@@ -198,9 +198,9 @@ public class RollbackService {
     }
     
     /**
-     * Delete a specific backup.
+     * Delete a specific backup (public for cleanup operations).
      */
-    private void deleteBackup(String packageName, BackupInfo backup) {
+    public void deleteBackup(String packageName, BackupInfo backup) {
         Path backupDir = config.getBackupDir();
         Path backupPath = backupDir.resolve(
             packageName + BACKUP_SUFFIX + backup.timestampStr());
