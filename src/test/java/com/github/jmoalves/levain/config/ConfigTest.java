@@ -98,6 +98,19 @@ class ConfigTest {
     }
 
     @Test
+    @DisplayName("Should default shell update check to true")
+    void shouldDefaultShellUpdateCheckToTrue() {
+        assertTrue(config.isShellCheckForUpdate());
+    }
+
+    @Test
+    @DisplayName("Should set and get shell update check flag")
+    void shouldSetAndGetShellUpdateCheck() {
+        config.setShellCheckForUpdate(false);
+        assertFalse(config.isShellCheckForUpdate());
+    }
+
+    @Test
     @DisplayName("Should set and get default package")
     void shouldSetAndGetDefaultPackage() {
         String packageName = "custom-package";

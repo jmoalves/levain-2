@@ -257,6 +257,21 @@ public class Config {
     }
 
     /**
+     * Check if shell should check for package updates.
+     * Default: true
+     */
+    public boolean isShellCheckForUpdate() {
+        return configData.shellCheckForUpdate != null ? configData.shellCheckForUpdate : true;
+    }
+
+    /**
+     * Set whether shell should check for package updates.
+     */
+    public void setShellCheckForUpdate(boolean enabled) {
+        configData.shellCheckForUpdate = enabled;
+    }
+
+    /**
      * Get the default package name.
      * Default: "levain"
      */
@@ -351,6 +366,9 @@ public class Config {
         @JsonProperty("shellPath")
         public String shellPath;
 
+        @JsonProperty("shellCheckForUpdate")
+        public Boolean shellCheckForUpdate;
+
         @JsonProperty("defaultPackage")
         public String defaultPackage;
 
@@ -376,6 +394,7 @@ public class Config {
                     ", backupKeepCount=" + backupKeepCount +
                     ", backupMaxAgeDays=" + backupMaxAgeDays +
                     ", shellPath='" + shellPath + '\'' +
+                    ", shellCheckForUpdate=" + shellCheckForUpdate +
                     ", defaultPackage='" + defaultPackage + '\'' +
                     ", variables=" + variables +
                     ", repositories=" + repositories +

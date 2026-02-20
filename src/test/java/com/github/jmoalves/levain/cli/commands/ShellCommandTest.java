@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 
@@ -13,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.github.jmoalves.levain.config.Config;
+import com.github.jmoalves.levain.service.InstallService;
 import com.github.jmoalves.levain.service.ShellService;
 
 import picocli.CommandLine;
@@ -23,10 +27,17 @@ class ShellCommandTest {
     @Mock
     private ShellService shellService;
 
+    @Mock
+    private InstallService installService;
+
+    @Mock
+    private Config config;
+
     @Test
     void testShellCommandWithPackages() throws Exception {
-        ShellCommand command = new ShellCommand(shellService);
+        ShellCommand command = new ShellCommand(shellService, installService, config);
 
+        when(config.isShellCheckForUpdate()).thenReturn(false);
         doNothing().when(shellService).openShell(List.of("jdk-21", "maven"));
 
         CommandLine cmd = new CommandLine(command);
@@ -34,12 +45,14 @@ class ShellCommandTest {
 
         assertEquals(0, exitCode);
         verify(shellService).openShell(List.of("jdk-21", "maven"));
+        verify(installService, never()).findUpdates(List.of("jdk-21", "maven"));
     }
 
     @Test
     void testShellCommandWithoutPackages() throws Exception {
-        ShellCommand command = new ShellCommand(shellService);
+        ShellCommand command = new ShellCommand(shellService, installService, config);
 
+        when(config.isShellCheckForUpdate()).thenReturn(false);
         doNothing().when(shellService).openShell(List.of());
 
         CommandLine cmd = new CommandLine(command);
@@ -47,12 +60,14 @@ class ShellCommandTest {
 
         assertEquals(0, exitCode);
         verify(shellService).openShell(List.of());
+        verify(installService, never()).findUpdates(List.of());
     }
 
     @Test
     void testShellCommandFailure() throws Exception {
-        ShellCommand command = new ShellCommand(shellService);
+        ShellCommand command = new ShellCommand(shellService, installService, config);
 
+        when(config.isShellCheckForUpdate()).thenReturn(false);
         doThrow(new RuntimeException("Shell error")).when(shellService).openShell(any());
 
         CommandLine cmd = new CommandLine(command);
@@ -60,5 +75,6 @@ class ShellCommandTest {
 
         assertEquals(1, exitCode);
         verify(shellService).openShell(List.of("jdk-21"));
+        verify(installService, never()).findUpdates(List.of("jdk-21"));
     }
 }

@@ -64,6 +64,13 @@ class ConfigDataTest {
     }
 
     @Test
+    @DisplayName("Should set and get shellCheckForUpdate")
+    void testShellCheckForUpdate() {
+        configData.shellCheckForUpdate = Boolean.FALSE;
+        assertEquals(Boolean.FALSE, configData.shellCheckForUpdate, "shellCheckForUpdate should be set and retrievable");
+    }
+
+    @Test
     @DisplayName("Should set and get defaultPackage")
     void testDefaultPackage() {
         String pkg = "jdk-21";
