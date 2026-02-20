@@ -1,6 +1,7 @@
 package com.github.jmoalves.levain.cli.commands;
 
 import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.Callable;
 
 import org.slf4j.Logger;
@@ -48,7 +49,21 @@ public class InstallCommand implements Callable<Integer> {
         logger.debug("Installing {} packages", packages.length);
         try {
             List<String> requested = List.of(packages);
-            InstallService.PlanResult result = installService.buildInstallationPlan(requested, force);
+            List<String> updatePackages = List.of();
+            if (!force && !noUpdate) {
+                updatePackages = installService.findUpdates(requested);
+                if (!updatePackages.isEmpty()) {
+                    console.info("\nPackage updates available:");
+                    for (String name : updatePackages) {
+                        console.info("  - {}", name);
+                    }
+                    if (!confirmUpdate()) {
+                        updatePackages = List.of();
+                    }
+                }
+            }
+
+            InstallService.PlanResult result = installService.buildInstallationPlan(requested, force, updatePackages);
             List<Recipe> plan = result.plan();
             boolean hasPlanOutput = !plan.isEmpty() || !result.alreadyInstalled().isEmpty();
             if (!hasPlanOutput && result.missing().isEmpty()) {
@@ -79,6 +94,14 @@ public class InstallCommand implements Callable<Integer> {
             logger.error("Failed to install packages", e);
             console.error("✗ Failed to install packages. See logs for details. Hint: check network/proxy and permissions.");
             return 1;
+        }
+    }
+
+    private boolean confirmUpdate() {
+        console.info("Proceed with update? [Y/n] ");
+        try (Scanner scanner = new Scanner(System.in)) {
+            String response = scanner.nextLine().trim();
+            return response.isBlank() || response.equalsIgnoreCase("y") || response.equalsIgnoreCase("yes");
         }
     }
 }

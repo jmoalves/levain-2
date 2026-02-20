@@ -329,6 +329,23 @@ class InstallServiceTest {
     }
 
     @Test
+    void testBuildInstallationPlanIncludesUpdatePackages() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        setRegistry(installService, registry);
+
+        Recipe recipeA = new Recipe();
+        recipeA.setName("pkg-a");
+
+        when(dependencyResolver.resolveAndSortWithMissing(List.of("pkg-a")))
+            .thenReturn(new ResolutionResult(List.of(recipeA), List.of()));
+
+        InstallService.PlanResult result = installService.buildInstallationPlan(List.of("pkg-a"), false, List.of("pkg-a"));
+
+        assertEquals(1, result.plan().size());
+        assertTrue(result.alreadyInstalled().isEmpty());
+    }
+
+    @Test
     void testBuildInstallationPlanSkipsWhenSkipInstallDir() throws Exception {
         Registry registry = org.mockito.Mockito.mock(Registry.class);
         when(registry.isInstalled("pkg-a")).thenReturn(true);
@@ -370,6 +387,43 @@ class InstallServiceTest {
 
         assertTrue(result.plan().isEmpty());
         assertEquals(List.of("pkg-a"), result.alreadyInstalled());
+    }
+
+    @Test
+    void testFindUpdatesReturnsUpdatedPackages() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        when(registry.isInstalled("pkg-a")).thenReturn(true);
+        when(registry.getRecipeYamlContent("pkg-a"))
+            .thenReturn(Optional.of("name: pkg-a\nversion: 1.0.0\n"));
+        setRegistry(installService, registry);
+
+        Recipe recipeA = new Recipe();
+        recipeA.setName("pkg-a");
+
+        when(dependencyResolver.resolveAndSortWithMissing(List.of("pkg-a")))
+            .thenReturn(new ResolutionResult(List.of(recipeA), List.of()));
+        when(recipeService.getRecipeYamlContent("pkg-a"))
+            .thenReturn(Optional.of("name: pkg-a\nversion: 2.0.0\n"));
+
+        List<String> updates = installService.findUpdates(List.of("pkg-a"));
+
+        assertEquals(List.of("pkg-a"), updates);
+    }
+
+    @Test
+    void testFindUpdatesSkipsUninstalledPackages() throws Exception {
+        Registry registry = org.mockito.Mockito.mock(Registry.class);
+        when(registry.isInstalled("pkg-a")).thenReturn(false);
+        setRegistry(installService, registry);
+
+        Recipe recipeA = new Recipe();
+        recipeA.setName("pkg-a");
+
+        when(dependencyResolver.resolveAndSortWithMissing(List.of("pkg-a")))
+            .thenReturn(new ResolutionResult(List.of(recipeA), List.of()));
+        List<String> updates = installService.findUpdates(List.of("pkg-a"));
+
+        assertTrue(updates.isEmpty());
     }
 
     @Test

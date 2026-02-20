@@ -101,6 +101,10 @@ public class InstallService {
     }
 
     public PlanResult buildInstallationPlan(List<String> packageNames, boolean force) {
+        return buildInstallationPlan(packageNames, force, List.of());
+    }
+
+    public PlanResult buildInstallationPlan(List<String> packageNames, boolean force, List<String> updatePackages) {
         if (packageNames == null || packageNames.isEmpty()) {
             return new PlanResult(List.of(), List.of(), List.of());
         }
@@ -121,9 +125,24 @@ public class InstallService {
             registry.init();
         }
 
+        java.util.Set<String> updateSet = new java.util.LinkedHashSet<>();
+        if (updatePackages != null) {
+            for (String name : updatePackages) {
+                if (name != null && !name.isBlank()) {
+                    updateSet.add(name);
+                }
+            }
+        }
+
         List<Recipe> toInstall = new ArrayList<>();
         java.util.Set<String> alreadyInstalled = new java.util.LinkedHashSet<>();
         for (Recipe recipe : resolution.recipes()) {
+            if (updateSet.contains(recipe.getName())) {
+                logger.info("Package update available (installing): {}", recipe.getName());
+                toInstall.add(recipe);
+                continue;
+            }
+
             if (force || !registry.isInstalled(recipe.getName())) {
                 toInstall.add(recipe);
                 continue;
@@ -152,6 +171,58 @@ public class InstallService {
         }
 
         return new PlanResult(toInstall, resolution.missing(), new ArrayList<>(alreadyInstalled));
+    }
+
+    public List<String> findUpdates(List<String> packageNames) {
+        if (packageNames == null || packageNames.isEmpty()) {
+            return List.of();
+        }
+
+        DependencyResolver.ResolutionResult resolution = dependencyResolver
+                .resolveAndSortWithMissing(packageNames);
+
+        if (registry == null) {
+            registry = new Registry();
+            registry.init();
+        }
+
+        List<String> updates = new ArrayList<>();
+        for (Recipe recipe : resolution.recipes()) {
+            String name = recipe.getName();
+            if (!registry.isInstalled(name)) {
+                continue;
+            }
+            if (isUpdateAvailable(name)) {
+                updates.add(name);
+            }
+        }
+
+        return updates;
+    }
+
+    private boolean isUpdateAvailable(String packageName) {
+        if (packageName == null || packageName.isBlank()) {
+            return false;
+        }
+
+        var installedYaml = registry.getRecipeYamlContent(packageName);
+        var currentYaml = recipeService.getRecipeYamlContent(packageName);
+
+        if (installedYaml.isEmpty() || currentYaml.isEmpty()) {
+            return false;
+        }
+
+        String installedNormalized = normalizeYaml(installedYaml.get());
+        String currentNormalized = normalizeYaml(currentYaml.get());
+
+        return !installedNormalized.equals(currentNormalized);
+    }
+
+    private String normalizeYaml(String yaml) {
+        if (yaml == null) {
+            return "";
+        }
+        return yaml.replace("\r\n", "\n").trim();
     }
 
     public void installPlan(List<Recipe> plan) {

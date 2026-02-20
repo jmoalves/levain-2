@@ -33,7 +33,9 @@ class InstallCommandTest {
         InstallService.PlanResult result = new InstallService.PlanResult(List.of(recipe), List.of(), List.of());
 
         doNothing().when(installService).installPlan(List.of(recipe));
-        org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21"), false))
+        org.mockito.Mockito.when(installService.findUpdates(List.of("jdk-21")))
+            .thenReturn(List.of());
+        org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21"), false, List.of()))
             .thenReturn(result);
         org.mockito.Mockito.when(installService.formatInstallationPlan(result, List.of("jdk-21")))
             .thenReturn("Installation Plan:\n1.   ✓ jdk-21\n");
@@ -42,7 +44,7 @@ class InstallCommandTest {
         int exitCode = cmd.execute("jdk-21");
 
         assertEquals(0, exitCode);
-        verify(installService).buildInstallationPlan(List.of("jdk-21"), false);
+        verify(installService).buildInstallationPlan(List.of("jdk-21"), false, List.of());
         verify(installService).installPlan(List.of(recipe));
     }
 
@@ -58,7 +60,9 @@ class InstallCommandTest {
         List<Recipe> plan = List.of(recipe1, recipe2, recipe3);
         InstallService.PlanResult result = new InstallService.PlanResult(plan, List.of(), List.of());
 
-        org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21", "maven", "git"), false))
+        org.mockito.Mockito.when(installService.findUpdates(List.of("jdk-21", "maven", "git")))
+            .thenReturn(List.of());
+        org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21", "maven", "git"), false, List.of()))
             .thenReturn(result);
         org.mockito.Mockito.when(installService.formatInstallationPlan(result, List.of("jdk-21", "maven", "git")))
             .thenReturn("Installation Plan:\n1.   ✓ jdk-21\n2.   ✓ maven\n3.   ✓ git\n");
@@ -68,7 +72,7 @@ class InstallCommandTest {
         int exitCode = cmd.execute("jdk-21", "maven", "git");
 
         assertEquals(0, exitCode);
-        verify(installService).buildInstallationPlan(List.of("jdk-21", "maven", "git"), false);
+        verify(installService).buildInstallationPlan(List.of("jdk-21", "maven", "git"), false, List.of());
         verify(installService).installPlan(plan);
     }
 
@@ -79,7 +83,7 @@ class InstallCommandTest {
         recipe.setName("jdk-21");
         InstallService.PlanResult result = new InstallService.PlanResult(List.of(recipe), List.of(), List.of());
 
-        org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21"), true))
+        org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21"), true, List.of()))
             .thenReturn(result);
         org.mockito.Mockito.when(installService.formatInstallationPlan(result, List.of("jdk-21")))
             .thenReturn("Installation Plan:\n1.   ✓ jdk-21\n");
@@ -89,7 +93,7 @@ class InstallCommandTest {
         int exitCode = cmd.execute("--force", "jdk-21");
 
         assertEquals(0, exitCode);
-        verify(installService).buildInstallationPlan(List.of("jdk-21"), true);
+        verify(installService).buildInstallationPlan(List.of("jdk-21"), true, List.of());
     }
 
     @Test
@@ -97,7 +101,9 @@ class InstallCommandTest {
         InstallCommand command = new InstallCommand(installService);
         InstallService.PlanResult result = new InstallService.PlanResult(List.of(), List.of(), List.of("jdk-21"));
 
-        org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21"), false))
+        org.mockito.Mockito.when(installService.findUpdates(List.of("jdk-21")))
+            .thenReturn(List.of());
+        org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21"), false, List.of()))
             .thenReturn(result);
         org.mockito.Mockito.when(installService.formatInstallationPlan(result, List.of("jdk-21")))
             .thenReturn("Installation Plan:\n1. * jdk-21 [installed]\n");
@@ -106,8 +112,30 @@ class InstallCommandTest {
         int exitCode = cmd.execute("jdk-21");
 
         assertEquals(0, exitCode); // Should succeed even if already installed
-        verify(installService).buildInstallationPlan(List.of("jdk-21"), false);
+        verify(installService).buildInstallationPlan(List.of("jdk-21"), false, List.of());
         verify(installService, never()).installPlan(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void testInstallWithNoUpdateSkipsUpdateCheck() throws Exception {
+        InstallCommand command = new InstallCommand(installService);
+        Recipe recipe = new Recipe();
+        recipe.setName("jdk-21");
+        InstallService.PlanResult result = new InstallService.PlanResult(List.of(recipe), List.of(), List.of());
+
+        org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21"), false, List.of()))
+            .thenReturn(result);
+        org.mockito.Mockito.when(installService.formatInstallationPlan(result, List.of("jdk-21")))
+            .thenReturn("Installation Plan:\n1.   ✓ jdk-21\n");
+        doNothing().when(installService).installPlan(List.of(recipe));
+
+        CommandLine cmd = new CommandLine(command);
+        int exitCode = cmd.execute("--noUpdate", "jdk-21");
+
+        assertEquals(0, exitCode);
+        verify(installService, never()).findUpdates(List.of("jdk-21"));
+        verify(installService).buildInstallationPlan(List.of("jdk-21"), false, List.of());
+        verify(installService).installPlan(List.of(recipe));
     }
 
     @Test
@@ -115,14 +143,16 @@ class InstallCommandTest {
         InstallCommand command = new InstallCommand(installService);
         InstallService.PlanResult result = new InstallService.PlanResult(List.of(), List.of("invalid-package"), List.of());
 
-        org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("invalid-package"), false))
+        org.mockito.Mockito.when(installService.findUpdates(List.of("invalid-package")))
+            .thenReturn(List.of());
+        org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("invalid-package"), false, List.of()))
             .thenReturn(result);
 
         CommandLine cmd = new CommandLine(command);
         int exitCode = cmd.execute("invalid-package");
 
         assertEquals(1, exitCode);
-        verify(installService).buildInstallationPlan(List.of("invalid-package"), false);
+        verify(installService).buildInstallationPlan(List.of("invalid-package"), false, List.of());
         verify(installService, never()).installPlan(org.mockito.ArgumentMatchers.any());
     }
 
@@ -149,7 +179,9 @@ class InstallCommandTest {
         List<Recipe> plan = List.of(recipe1, recipe2, recipe3);
         InstallService.PlanResult result = new InstallService.PlanResult(plan, List.of(), List.of());
 
-        org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21", "invalid-package", "maven"), false))
+        org.mockito.Mockito.when(installService.findUpdates(List.of("jdk-21", "invalid-package", "maven")))
+            .thenReturn(List.of());
+        org.mockito.Mockito.when(installService.buildInstallationPlan(List.of("jdk-21", "invalid-package", "maven"), false, List.of()))
             .thenReturn(result);
         org.mockito.Mockito.when(installService.formatInstallationPlan(result, List.of("jdk-21", "invalid-package", "maven")))
             .thenReturn("Installation Plan:\n1.   ✓ jdk-21\n2.   ✓ invalid-package\n3.   ✓ maven\n");
@@ -159,7 +191,7 @@ class InstallCommandTest {
         int exitCode = cmd.execute("jdk-21", "invalid-package", "maven");
 
         assertEquals(1, exitCode);
-        verify(installService).buildInstallationPlan(List.of("jdk-21", "invalid-package", "maven"), false);
+        verify(installService).buildInstallationPlan(List.of("jdk-21", "invalid-package", "maven"), false, List.of());
         verify(installService).installPlan(plan);
     }
 }
