@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -151,7 +152,7 @@ public class RollbackService {
     public void cleanupOldBackups(String packageName) {
         int keepCount = config.getBackupKeepCount();
         int maxAgeDays = config.getBackupMaxAgeDays();
-        LocalDateTime cutoffDate = LocalDateTime.now().minusDays(maxAgeDays);
+        LocalDate cutoffDate = LocalDate.now().minusDays(maxAgeDays);
         
         // Get fresh list of all backups (already sorted newest first)
         Map<String, List<BackupInfo>> allBackups = listAllBackups();
@@ -172,7 +173,7 @@ public class RollbackService {
                 String reason = "";
                 
                 // Check if backup is too old
-                if (backup.timestamp().isBefore(cutoffDate)) {
+                if (backup.timestamp().toLocalDate().isBefore(cutoffDate)) {
                     shouldDelete = true;
                     reason = String.format("older than %d days", maxAgeDays);
                 }
