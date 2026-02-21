@@ -102,6 +102,18 @@ jobs:
                   tag="${{ needs.resolve-tag.outputs.tag }}"
                   ./${{ matrix.script_name }} --tag "$tag" --binary --install-dir "$HOME/levain" --add-to-path
 
+            - name: Configure levain-pkgs repository (Windows)
+              if: runner.os == 'Windows'
+              shell: pwsh
+              run: |
+                  levain config repo add https://github.com/jmoalves/levain-pkgs levain-pkgs
+
+            - name: Configure levain-pkgs repository (Unix)
+              if: runner.os != 'Windows'
+              shell: bash
+              run: |
+                  levain config repo add https://github.com/jmoalves/levain-pkgs levain-pkgs
+
             - name: Install all recipes (Windows)
               if: runner.os == 'Windows'
               shell: pwsh
@@ -112,16 +124,16 @@ jobs:
                     $ignore = Get-Content $ignoreFile | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith("#") }
                   }
 
-                  $recipes = levain --addRepo https://github.com/jmoalves/levain-pkgs list | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^[a-zA-Z0-9]' }
+                  $recipes = levain list | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^[a-zA-Z0-9]' }
                   $failed = @()
                   $batch = @()
 
                   function Install-Batch($items) {
                     if ($items.Count -eq 0) { return }
-                    & levain --addRepo https://github.com/jmoalves/levain-pkgs install @items
+                    & levain install @items
                     if ($LASTEXITCODE -ne 0) {
                       foreach ($pkg in $items) {
-                        & levain --addRepo https://github.com/jmoalves/levain-pkgs install $pkg
+                        & levain install $pkg
                         if ($LASTEXITCODE -ne 0) {
                           $script:failed += $pkg
                         }
@@ -154,16 +166,16 @@ jobs:
                   recipes=()
                   while IFS= read -r recipe; do
                     recipes+=("$recipe")
-                  done < <(levain --addRepo https://github.com/jmoalves/levain-pkgs list | sed 's/^\s*//' | grep -E '^[a-zA-Z0-9]')
+                  done < <(levain list | sed 's/^\s*//' | grep -E '^[a-zA-Z0-9]')
 
                   failed=()
 
                   install_batch() {
-                    if levain --addRepo https://github.com/jmoalves/levain-pkgs install "$@"; then
+                    if levain install "$@"; then
                       return
                     fi
                     for pkg in "$@"; do
-                      if ! levain --addRepo https://github.com/jmoalves/levain-pkgs install "$pkg"; then
+                      if ! levain install "$pkg"; then
                         failed+=("$pkg")
                       fi
                     done
@@ -252,6 +264,18 @@ jobs:
                   tag="${{ needs.resolve-tag.outputs.tag }}"
                   ./${{ matrix.script_name }} --tag "$tag" --jar --install-dir "$HOME/levain" --add-to-path
 
+            - name: Configure levain-pkgs repository (Windows)
+              if: runner.os == 'Windows'
+              shell: pwsh
+              run: |
+                  levain config repo add https://github.com/jmoalves/levain-pkgs levain-pkgs
+
+            - name: Configure levain-pkgs repository (Unix)
+              if: runner.os != 'Windows'
+              shell: bash
+              run: |
+                  levain config repo add https://github.com/jmoalves/levain-pkgs levain-pkgs
+
             - name: Install all recipes (Windows)
               if: runner.os == 'Windows'
               shell: pwsh
@@ -262,16 +286,16 @@ jobs:
                     $ignore = Get-Content $ignoreFile | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith("#") }
                   }
 
-                  $recipes = levain --addRepo https://github.com/jmoalves/levain-pkgs list | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^[a-zA-Z0-9]' }
+                  $recipes = levain list | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^[a-zA-Z0-9]' }
                   $failed = @()
                   $batch = @()
 
                   function Install-Batch($items) {
                     if ($items.Count -eq 0) { return }
-                    & levain --addRepo https://github.com/jmoalves/levain-pkgs install @items
+                    & levain install @items
                     if ($LASTEXITCODE -ne 0) {
                       foreach ($pkg in $items) {
-                        & levain --addRepo https://github.com/jmoalves/levain-pkgs install $pkg
+                        & levain install $pkg
                         if ($LASTEXITCODE -ne 0) {
                           $script:failed += $pkg
                         }
@@ -304,16 +328,16 @@ jobs:
                   recipes=()
                   while IFS= read -r recipe; do
                     recipes+=("$recipe")
-                  done < <(levain --addRepo https://github.com/jmoalves/levain-pkgs list | sed 's/^\s*//' | grep -E '^[a-zA-Z0-9]')
+                  done < <(levain list | sed 's/^\s*//' | grep -E '^[a-zA-Z0-9]')
 
                   failed=()
 
                   install_batch() {
-                    if levain --addRepo https://github.com/jmoalves/levain-pkgs install "$@"; then
+                    if levain install "$@"; then
                       return
                     fi
                     for pkg in "$@"; do
-                      if ! levain --addRepo https://github.com/jmoalves/levain-pkgs install "$pkg"; then
+                      if ! levain install "$pkg"; then
                         failed+=("$pkg")
                       fi
                     done
