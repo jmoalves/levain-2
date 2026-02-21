@@ -77,4 +77,36 @@ class ShellCommandTest {
         verify(shellService).openShell(List.of("jdk-21"));
         verify(installService, never()).findUpdates(List.of("jdk-21"));
     }
+
+    @Test
+    void testShellCommandWithNoUpdateFlag() throws Exception {
+        ShellCommand command = new ShellCommand(shellService, installService, config);
+
+        doNothing().when(shellService).openShell(List.of("jdk-21", "maven"));
+
+        CommandLine cmd = new CommandLine(command);
+        int exitCode = cmd.execute("--noUpdate", "jdk-21", "maven");
+
+        assertEquals(0, exitCode);
+        verify(shellService).openShell(List.of("jdk-21", "maven"));
+        // Should NOT call findUpdates when --noUpdate is passed
+        verify(installService, never()).findUpdates(List.of("jdk-21", "maven"));
+    }
+
+    @Test
+    void testShellCommandWithUpdateCheckEnabled() throws Exception {
+        ShellCommand command = new ShellCommand(shellService, installService, config);
+
+        when(config.isShellCheckForUpdate()).thenReturn(true);
+        when(installService.findUpdates(List.of("jdk-21"))).thenReturn(List.of());
+        doNothing().when(shellService).openShell(List.of("jdk-21"));
+
+        CommandLine cmd = new CommandLine(command);
+        int exitCode = cmd.execute("jdk-21");
+
+        assertEquals(0, exitCode);
+        verify(shellService).openShell(List.of("jdk-21"));
+        // Should call findUpdates when update check is enabled
+        verify(installService).findUpdates(List.of("jdk-21"));
+    }
 }

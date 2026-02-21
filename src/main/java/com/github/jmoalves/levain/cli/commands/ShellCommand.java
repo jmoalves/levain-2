@@ -13,6 +13,7 @@ import com.github.jmoalves.levain.config.Config;
 
 import jakarta.inject.Inject;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
@@ -25,6 +26,9 @@ public class ShellCommand implements Callable<Integer> {
 
     @Parameters(arity = "0..*", description = "Package(s) to include in shell environment")
     private List<String> packages;
+
+    @Option(names = { "--noUpdate" }, description = "Skip checking for updates to packages")
+    private boolean noUpdate = false;
 
     private final ShellService shellService;
     private final InstallService installService;
@@ -43,7 +47,7 @@ public class ShellCommand implements Callable<Integer> {
 
         try {
             List<String> requested = packages != null ? packages : List.of();
-            if (config.isShellCheckForUpdate() && !requested.isEmpty()) {
+            if (!noUpdate && config.isShellCheckForUpdate() && !requested.isEmpty()) {
                 handleUpdateCheck(requested);
             }
 
