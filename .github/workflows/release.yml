@@ -106,6 +106,20 @@ jobs:
             cp "release-artifacts/levain-macos-arm64/levain" "release/levain-${VERSION}-macos-arm64"
           fi
 
+          if [ -f "install/install-windows.ps1" ]; then
+            cp "install/install-windows.ps1" "release/install-windows.ps1"
+          fi
+
+          if [ -f "install/install-linux.sh" ]; then
+            cp "install/install-linux.sh" "release/install-linux.sh"
+            chmod +x "release/install-linux.sh"
+          fi
+
+          if [ -f "install/install-macos.sh" ]; then
+            cp "install/install-macos.sh" "release/install-macos.sh"
+            chmod +x "release/install-macos.sh"
+          fi
+
           ls -la release/
 
       - name: Create Release

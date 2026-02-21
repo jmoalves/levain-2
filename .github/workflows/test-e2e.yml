@@ -1,0 +1,335 @@
+name: Test - e2e
+
+on:
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: "Nightly tag to test (default: latest nightly)"
+                required: false
+    schedule:
+        - cron: "0 6 * * SUN"
+
+permissions:
+    contents: read
+
+jobs:
+    resolve-tag:
+        runs-on: ubuntu-latest
+        outputs:
+            tag: ${{ steps.resolve.outputs.tag }}
+        steps:
+            - name: Resolve nightly tag
+              id: resolve
+              uses: actions/github-script@v7
+              env:
+                  TAG_INPUT: ${{ github.event.inputs.tag }}
+              with:
+                  script: |
+                      const inputTag = process.env.TAG_INPUT;
+                      if (inputTag) {
+                        core.setOutput("tag", inputTag);
+                        return;
+                      }
+
+                      const releases = await github.paginate(
+                        github.rest.repos.listReleases,
+                        { owner: context.repo.owner, repo: context.repo.repo, per_page: 100 }
+                      );
+
+                      const nightlies = releases
+                        .filter(release => release.prerelease && release.tag_name.startsWith("nightly-"))
+                        .sort((a, b) => new Date(a.published_at) - new Date(b.published_at));
+
+                      if (nightlies.length === 0) {
+                        core.setFailed("No nightly releases found.");
+                        return;
+                      }
+
+                      core.setOutput("tag", nightlies[nightlies.length - 1].tag_name);
+
+    e2e-binary:
+        name: E2E Binary (${{ matrix.os }})
+        needs: resolve-tag
+        runs-on: ${{ matrix.os }}
+        timeout-minutes: 180
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: windows-latest
+                      script_name: install-windows.ps1
+                      ignore_file: e2e/ignore-windows.txt
+                    - os: ubuntu-latest
+                      script_name: install-linux.sh
+                      ignore_file: e2e/ignore-linux.txt
+                    - os: macos-latest
+                      script_name: install-macos.sh
+                      ignore_file: e2e/ignore-macos.txt
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Download install script (Windows)
+              if: runner.os == 'Windows'
+              shell: pwsh
+              run: |
+                  $tag = "${{ needs.resolve-tag.outputs.tag }}"
+                  $repo = "${{ github.repository }}"
+                  $url = "https://github.com/$repo/releases/download/$tag/${{ matrix.script_name }}"
+                  Invoke-WebRequest -Uri $url -OutFile "${{ matrix.script_name }}" -UseBasicParsing
+
+            - name: Download install script (Unix)
+              if: runner.os != 'Windows'
+              shell: bash
+              run: |
+                  tag="${{ needs.resolve-tag.outputs.tag }}"
+                  repo="${{ github.repository }}"
+                  curl -fsSL -o "${{ matrix.script_name }}" "https://github.com/${repo}/releases/download/${tag}/${{ matrix.script_name }}"
+                  chmod +x "${{ matrix.script_name }}"
+
+            - name: Install Levain binary (Windows)
+              if: runner.os == 'Windows'
+              shell: pwsh
+              run: |
+                  $tag = "${{ needs.resolve-tag.outputs.tag }}"
+                  .\${{ matrix.script_name }} -Tag $tag -Binary -InstallDir "$HOME\levain" -AddToPath
+
+            - name: Install Levain binary (Unix)
+              if: runner.os != 'Windows'
+              shell: bash
+              run: |
+                  tag="${{ needs.resolve-tag.outputs.tag }}"
+                  ./${{ matrix.script_name }} --tag "$tag" --binary --install-dir "$HOME/levain" --add-to-path
+
+            - name: Install all recipes (Windows)
+              if: runner.os == 'Windows'
+              shell: pwsh
+              run: |
+                  $ignoreFile = "${{ matrix.ignore_file }}"
+                  $ignore = @()
+                  if (Test-Path $ignoreFile) {
+                    $ignore = Get-Content $ignoreFile | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith("#") }
+                  }
+
+                  $recipes = levain list | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^[a-zA-Z0-9]' }
+                  $failed = @()
+                  $batch = @()
+
+                  function Install-Batch($items) {
+                    if ($items.Count -eq 0) { return }
+                    & levain install @items
+                    if ($LASTEXITCODE -ne 0) {
+                      foreach ($pkg in $items) {
+                        & levain install $pkg
+                        if ($LASTEXITCODE -ne 0) {
+                          $script:failed += $pkg
+                        }
+                      }
+                    }
+                  }
+
+                  foreach ($recipe in $recipes) {
+                    if ($ignore -contains $recipe) { continue }
+                    $batch += $recipe
+                    if ($batch.Count -ge 10) {
+                      Install-Batch $batch
+                      $batch = @()
+                    }
+                  }
+
+                  Install-Batch $batch
+
+                  if ($failed.Count -gt 0) {
+                    Write-Error ("Failed recipes: {0}" -f ($failed -join ", "))
+                    exit 1
+                  }
+
+            - name: Install all recipes (Unix)
+              if: runner.os != 'Windows'
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  ignore_file="${{ matrix.ignore_file }}"
+                  mapfile -t recipes < <(levain list | sed 's/^\s*//' | grep -E '^[a-zA-Z0-9]')
+
+                  failed=()
+
+                  install_batch() {
+                    if levain install "$@"; then
+                      return
+                    fi
+                    for pkg in "$@"; do
+                      if ! levain install "$pkg"; then
+                        failed+=("$pkg")
+                      fi
+                    done
+                  }
+
+                  batch=()
+                  for recipe in "${recipes[@]}"; do
+                    if [[ -f "$ignore_file" ]] && grep -qx "$recipe" "$ignore_file"; then
+                      continue
+                    fi
+                    batch+=("$recipe")
+                    if [[ ${#batch[@]} -ge 10 ]]; then
+                      install_batch "${batch[@]}"
+                      batch=()
+                    fi
+                  done
+
+                  if [[ ${#batch[@]} -gt 0 ]]; then
+                    install_batch "${batch[@]}"
+                  fi
+
+                  if [[ ${#failed[@]} -gt 0 ]]; then
+                    echo "Failed recipes: ${failed[*]}"
+                    exit 1
+                  fi
+
+    e2e-jar:
+        name: E2E Jar (${{ matrix.os }})
+        needs: resolve-tag
+        runs-on: ${{ matrix.os }}
+        timeout-minutes: 180
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: windows-latest
+                      script_name: install-windows.ps1
+                      ignore_file: e2e/ignore-windows.txt
+                    - os: ubuntu-latest
+                      script_name: install-linux.sh
+                      ignore_file: e2e/ignore-linux.txt
+                    - os: macos-latest
+                      script_name: install-macos.sh
+                      ignore_file: e2e/ignore-macos.txt
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up JDK 25
+              uses: actions/setup-java@v4
+              with:
+                  java-version: "25"
+                  distribution: "temurin"
+                  cache: maven
+
+            - name: Download install script (Windows)
+              if: runner.os == 'Windows'
+              shell: pwsh
+              run: |
+                  $tag = "${{ needs.resolve-tag.outputs.tag }}"
+                  $repo = "${{ github.repository }}"
+                  $url = "https://github.com/$repo/releases/download/$tag/${{ matrix.script_name }}"
+                  Invoke-WebRequest -Uri $url -OutFile "${{ matrix.script_name }}" -UseBasicParsing
+
+            - name: Download install script (Unix)
+              if: runner.os != 'Windows'
+              shell: bash
+              run: |
+                  tag="${{ needs.resolve-tag.outputs.tag }}"
+                  repo="${{ github.repository }}"
+                  curl -fsSL -o "${{ matrix.script_name }}" "https://github.com/${repo}/releases/download/${tag}/${{ matrix.script_name }}"
+                  chmod +x "${{ matrix.script_name }}"
+
+            - name: Install Levain jar (Windows)
+              if: runner.os == 'Windows'
+              shell: pwsh
+              run: |
+                  $tag = "${{ needs.resolve-tag.outputs.tag }}"
+                  .\${{ matrix.script_name }} -Tag $tag -Jar -InstallDir "$HOME\levain" -AddToPath
+
+            - name: Install Levain jar (Unix)
+              if: runner.os != 'Windows'
+              shell: bash
+              run: |
+                  tag="${{ needs.resolve-tag.outputs.tag }}"
+                  ./${{ matrix.script_name }} --tag "$tag" --jar --install-dir "$HOME/levain" --add-to-path
+
+            - name: Install all recipes (Windows)
+              if: runner.os == 'Windows'
+              shell: pwsh
+              run: |
+                  $ignoreFile = "${{ matrix.ignore_file }}"
+                  $ignore = @()
+                  if (Test-Path $ignoreFile) {
+                    $ignore = Get-Content $ignoreFile | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith("#") }
+                  }
+
+                  $recipes = levain list | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^[a-zA-Z0-9]' }
+                  $failed = @()
+                  $batch = @()
+
+                  function Install-Batch($items) {
+                    if ($items.Count -eq 0) { return }
+                    & levain install @items
+                    if ($LASTEXITCODE -ne 0) {
+                      foreach ($pkg in $items) {
+                        & levain install $pkg
+                        if ($LASTEXITCODE -ne 0) {
+                          $script:failed += $pkg
+                        }
+                      }
+                    }
+                  }
+
+                  foreach ($recipe in $recipes) {
+                    if ($ignore -contains $recipe) { continue }
+                    $batch += $recipe
+                    if ($batch.Count -ge 10) {
+                      Install-Batch $batch
+                      $batch = @()
+                    }
+                  }
+
+                  Install-Batch $batch
+
+                  if ($failed.Count -gt 0) {
+                    Write-Error ("Failed recipes: {0}" -f ($failed -join ", "))
+                    exit 1
+                  }
+
+            - name: Install all recipes (Unix)
+              if: runner.os != 'Windows'
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  ignore_file="${{ matrix.ignore_file }}"
+                  mapfile -t recipes < <(levain list | sed 's/^\s*//' | grep -E '^[a-zA-Z0-9]')
+
+                  failed=()
+
+                  install_batch() {
+                    if levain install "$@"; then
+                      return
+                    fi
+                    for pkg in "$@"; do
+                      if ! levain install "$pkg"; then
+                        failed+=("$pkg")
+                      fi
+                    done
+                  }
+
+                  batch=()
+                  for recipe in "${recipes[@]}"; do
+                    if [[ -f "$ignore_file" ]] && grep -qx "$recipe" "$ignore_file"; then
+                      continue
+                    fi
+                    batch+=("$recipe")
+                    if [[ ${#batch[@]} -ge 10 ]]; then
+                      install_batch "${batch[@]}"
+                      batch=()
+                    fi
+                  done
+
+                  if [[ ${#batch[@]} -gt 0 ]]; then
+                    install_batch "${batch[@]}"
+                  fi
+
+                  if [[ ${#failed[@]} -gt 0 ]]; then
+                    echo "Failed recipes: ${failed[*]}"
+                    exit 1
+                  fi
