@@ -214,7 +214,7 @@ jobs:
               uses: actions/setup-java@v4
               with:
                   java-version: "25"
-                  distribution: "temurin"
+                  distribution: "semeru"
                   cache: maven
 
             - name: Download install script (Windows)
