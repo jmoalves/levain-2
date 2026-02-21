@@ -107,7 +107,8 @@ jobs:
 
     nightly-release:
         name: Create Nightly Release
-        needs: [check-changes, build-jar, build-windows, build-linux, build-macos]
+        needs:
+            [check-changes, build-jar, build-windows, build-linux, build-macos]
         if: needs.check-changes.outputs.has-changes == 'true'
         runs-on: ubuntu-latest
 
@@ -177,10 +178,10 @@ jobs:
                     release/*
 
     cleanup-old-nightlies:
-      name: Cleanup Old Nightly Releases
-      needs: [nightly-release, check-changes]
-      if: needs.check-changes.outputs.has-changes == 'true'
-      runs-on: ubuntu-latest
+        name: Cleanup Old Nightly Releases
+        needs: [nightly-release, check-changes]
+        if: needs.check-changes.outputs.has-changes == 'true'
+        runs-on: ubuntu-latest
 
         steps:
             - name: Checkout code
