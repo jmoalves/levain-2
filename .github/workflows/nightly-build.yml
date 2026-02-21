@@ -45,9 +45,69 @@ jobs:
                     fi
                   fi
 
-    build-nightly:
+    build-jar:
         name: Build Nightly JAR
         needs: check-changes
+        if: needs.check-changes.outputs.has-changes == 'true'
+        uses: ./.github/workflows/reusable-build.yml
+        with:
+            runs-on: ubuntu-latest
+            java-version: "25"
+            jdk-distribution: "semeru"
+            maven-goals: "clean package"
+            upload-test-results: true
+            upload-artifact: true
+            artifact-name: "levain-jar"
+            artifact-path: "target/levain.jar"
+
+    build-windows:
+        name: Build Windows x64 Executable
+        needs: check-changes
+        if: needs.check-changes.outputs.has-changes == 'true'
+        uses: ./.github/workflows/reusable-build.yml
+        with:
+            runs-on: windows-latest
+            java-version: "25"
+            use-graalvm: true
+            maven-goals: "clean package"
+            maven-args: "-DskipTests -Pnative-windows"
+            upload-artifact: true
+            artifact-name: "levain-windows-x64-exe"
+            artifact-path: "target/levain.exe"
+
+    build-linux:
+        name: Build Linux x64 Executable
+        needs: check-changes
+        if: needs.check-changes.outputs.has-changes == 'true'
+        uses: ./.github/workflows/reusable-build.yml
+        with:
+            runs-on: ubuntu-latest
+            java-version: "25"
+            use-graalvm: true
+            maven-goals: "clean package"
+            maven-args: "-DskipTests -Pnative-linux"
+            upload-artifact: true
+            artifact-name: "levain-linux-x64"
+            artifact-path: "target/levain"
+
+    build-macos:
+        name: Build macOS Native Executable
+        needs: check-changes
+        if: needs.check-changes.outputs.has-changes == 'true'
+        uses: ./.github/workflows/reusable-build.yml
+        with:
+            runs-on: macos-latest
+            java-version: "25"
+            use-graalvm: true
+            maven-goals: "clean package"
+            maven-args: "-DskipTests -Pnative-macos"
+            upload-artifact: true
+            artifact-name: "levain-macos-arm64"
+            artifact-path: "target/levain"
+
+    nightly-release:
+        name: Create Nightly Release
+        needs: [check-changes, build-jar, build-windows, build-linux, build-macos]
         if: needs.check-changes.outputs.has-changes == 'true'
         runs-on: ubuntu-latest
 
@@ -55,55 +115,72 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
-            - name: Set up JDK 25
-              uses: actions/setup-java@v4
-              with:
-                  java-version: "25"
-                  distribution: "semeru"
-                  cache: maven
-
-            - name: Build and test with Maven
-              run: mvn -B clean test package -DskipTests
-              env:
-                  MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
-
-            - name: Upload test results
-              if: always()
-              uses: actions/upload-artifact@v4
-              with:
-                  name: test-results
-                  path: target/surefire-reports/
-                  retention-days: 1
-
-            - name: Create nightly release
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Generate nightly tag
+              id: nightly
               run: |
-                  # Create tag and release
                   DATE=$(date -u +'%Y%m%d')
                   TAG="nightly-$DATE"
 
-                  # Check if tag already exists (in case of multiple runs same day)
                   if git rev-parse "$TAG" >/dev/null 2>&1; then
                     echo "Tag $TAG already exists, using timestamp variant"
                     TAG="nightly-$DATE-$(date -u +'%H%M%S')"
                   fi
 
-                  git tag "$TAG"
-                  git push origin "$TAG"
+                  echo "tag=$TAG" >> $GITHUB_OUTPUT
+                  echo "date=$DATE" >> $GITHUB_OUTPUT
 
-                  # Create release with the JAR
-                  gh release create "$TAG" \
-                    --title "Nightly Build $DATE" \
+            - name: Create nightly tag
+              run: |
+                  git tag "${{ steps.nightly.outputs.tag }}"
+                  git push origin "${{ steps.nightly.outputs.tag }}"
+
+            - name: Download all artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  path: release-artifacts
+
+            - name: Prepare release files
+              run: |
+                  mkdir -p release
+                  VERSION="${{ steps.nightly.outputs.tag }}"
+
+                  if [ -f "release-artifacts/levain-jar/levain.jar" ]; then
+                    cp "release-artifacts/levain-jar/levain.jar" "release/levain.jar"
+                    cp "release-artifacts/levain-jar/levain.jar" "release/levain-${VERSION}.jar"
+                  fi
+
+                  if [ -f "release-artifacts/levain-windows-x64-exe/levain.exe" ]; then
+                    cp "release-artifacts/levain-windows-x64-exe/levain.exe" "release/levain.exe"
+                    cp "release-artifacts/levain-windows-x64-exe/levain.exe" "release/levain-${VERSION}-windows-x64.exe"
+                  fi
+
+                  if [ -f "release-artifacts/levain-linux-x64/levain" ]; then
+                    cp "release-artifacts/levain-linux-x64/levain" "release/levain-linux-x64"
+                    cp "release-artifacts/levain-linux-x64/levain" "release/levain-${VERSION}-linux-x64"
+                  fi
+
+                  if [ -f "release-artifacts/levain-macos-arm64/levain" ]; then
+                    cp "release-artifacts/levain-macos-arm64/levain" "release/levain-macos-arm64"
+                    cp "release-artifacts/levain-macos-arm64/levain" "release/levain-${VERSION}-macos-arm64"
+                  fi
+
+                  ls -la release/
+
+            - name: Create nightly release
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh release create "${{ steps.nightly.outputs.tag }}" \
+                    --title "Nightly Build ${{ steps.nightly.outputs.date }}" \
                     --notes "Nightly build from commit $(git rev-parse --short HEAD)" \
                     --prerelease \
-                    target/levain.jar
+                    release/*
 
     cleanup-old-nightlies:
-        name: Cleanup Old Nightly Releases
-        needs: build-nightly
-        if: needs.check-changes.outputs.has-changes == 'true'
-        runs-on: ubuntu-latest
+      name: Cleanup Old Nightly Releases
+      needs: [nightly-release, check-changes]
+      if: needs.check-changes.outputs.has-changes == 'true'
+      runs-on: ubuntu-latest
 
         steps:
             - name: Checkout code
@@ -119,7 +196,7 @@ jobs:
                   gh release list --limit 100 | grep "nightly-" | while read -r line; do
                     RELEASE_NAME=$(echo "$line" | awk '{print $1}')
                     RELEASE_DATE=$(echo "$line" | awk '{print $NF " " $(NF-1) " " $(NF-2)}' | xargs -I {} date -d "{}" -u +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "$CUTOFF_DATE")
-                    
+
                     # Simple date comparison
                     if [[ "$RELEASE_DATE" < "$CUTOFF_DATE" ]]; then
                       echo "Deleting old nightly release: $RELEASE_NAME"

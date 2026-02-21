@@ -1,0 +1,167 @@
+name: Reusable Maven Build
+
+on:
+    workflow_call:
+        inputs:
+            runs-on:
+                type: string
+                required: true
+            java-version:
+                type: string
+                required: false
+                default: "25"
+            jdk-distribution:
+                type: string
+                required: false
+                default: "semeru"
+            use-graalvm:
+                type: boolean
+                required: false
+                default: false
+            graalvm-distribution:
+                type: string
+                required: false
+                default: "graalvm-community"
+            maven-goals:
+                type: string
+                required: true
+            maven-args:
+                type: string
+                required: false
+                default: ""
+            upload-artifact:
+                type: boolean
+                required: false
+                default: false
+            artifact-name:
+                type: string
+                required: false
+                default: ""
+            artifact-path:
+                type: string
+                required: false
+                default: ""
+            upload-test-results:
+                type: boolean
+                required: false
+                default: false
+            test-results-path:
+                type: string
+                required: false
+                default: "target/surefire-reports/"
+            upload-jacoco:
+                type: boolean
+                required: false
+                default: false
+            jacoco-path:
+                type: string
+                required: false
+                default: "target/site/jacoco/"
+            generate-jacoco-badge:
+                type: boolean
+                required: false
+                default: false
+            codecov-coverage:
+                type: boolean
+                required: false
+                default: false
+            codecov-test-results:
+                type: boolean
+                required: false
+                default: false
+            comment-pr-coverage:
+                type: boolean
+                required: false
+                default: false
+
+jobs:
+    build:
+        runs-on: ${{ inputs.runs-on }}
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up JDK ${{ inputs.java-version }}
+              if: ${{ !inputs.use-graalvm }}
+              uses: actions/setup-java@v4
+              with:
+                  java-version: ${{ inputs.java-version }}
+                  distribution: ${{ inputs.jdk-distribution }}
+                  cache: maven
+
+            - name: Set up GraalVM JDK ${{ inputs.java-version }}
+              if: ${{ inputs.use-graalvm }}
+              uses: graalvm/setup-graalvm@v1
+              with:
+                  java-version: ${{ inputs.java-version }}
+                  distribution: ${{ inputs.graalvm-distribution }}
+                  cache: maven
+                  native-image-job-reports: "true"
+
+            - name: Build with Maven
+              run: mvn -B ${{ inputs.maven-goals }} ${{ inputs.maven-args }}
+              env:
+                  MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
+
+            - name: Generate JaCoCo Badge
+              if: ${{ inputs.generate-jacoco-badge }}
+              uses: cicirello/jacoco-badge-generator@v2
+              with:
+                  badges-directory: .github/badges
+                  generate-branches-badge: true
+                  generate-summary: true
+
+            - name: Upload coverage reports to Codecov
+              if: ${{ inputs.codecov-coverage }}
+              uses: codecov/codecov-action@v5
+              with:
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  files: ${{ inputs.jacoco-path }}jacoco.xml
+                  flags: unittests
+                  name: codecov-umbrella
+                  fail_ci_if_error: false
+
+            - name: Upload test results to Codecov
+              if: ${{ inputs.codecov-test-results && !cancelled() }}
+              uses: codecov/test-results-action@v1
+              with:
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  file: ${{ inputs.test-results-path }}*.xml
+                  flags: unittests
+                  name: JUnit Test Results
+                  fail_ci_if_error: false
+                  verbose: true
+
+            - name: Upload JaCoCo coverage report
+              if: ${{ inputs.upload-jacoco }}
+              uses: actions/upload-artifact@v4
+              with:
+                  name: jacoco-report
+                  path: ${{ inputs.jacoco-path }}
+
+            - name: Upload test results
+              if: ${{ inputs.upload-test-results }}
+              uses: actions/upload-artifact@v4
+              with:
+                  name: test-results
+                  path: ${{ inputs.test-results-path }}
+                  retention-days: 1
+
+            - name: Upload build artifact
+              if: ${{ inputs.upload-artifact }}
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ inputs.artifact-name }}
+                  path: ${{ inputs.artifact-path }}
+                  retention-days: 1
+
+            - name: Comment PR with coverage
+              if: ${{ inputs.comment-pr-coverage && github.event_name == 'pull_request' }}
+              uses: madrapps/jacoco-report@v1.6.1
+              with:
+                  paths: ${{ github.workspace }}/${{ inputs.jacoco-path }}jacoco.xml
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  min-coverage-overall: 40
+                  min-coverage-changed-files: 60
+                  title: Code Coverage Report

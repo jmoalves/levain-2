@@ -2,70 +2,22 @@ name: Java CI with Maven
 
 on:
   push:
-    branches: [ "main", "master", "develop" ]
+    branches: ["main", "master", "develop"]
   pull_request:
-    branches: [ "main", "master", "develop" ]
+    branches: ["main", "master", "develop"]
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up JDK 25
-      uses: actions/setup-java@v4
-      with:
-        java-version: '25'
-        distribution: 'temurin'
-        cache: maven
-
-    - name: Build with Maven
-      run: mvn -B clean verify
-      env:
-        MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
-
-    - name: Generate JaCoCo Badge
-      uses: cicirello/jacoco-badge-generator@v2
-      with:
-        badges-directory: .github/badges
-        generate-branches-badge: true
-        generate-summary: true
-
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        files: ./target/site/jacoco/jacoco.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-
-    - name: Upload test results to Codecov
-      if: ${{ !cancelled() }}
-      uses: codecov/test-results-action@v1
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./target/surefire-reports/*.xml
-        flags: unittests
-        name: JUnit Test Results
-        fail_ci_if_error: false
-        verbose: true
-
-    - name: Upload JaCoCo coverage report
-      uses: actions/upload-artifact@v4
-      with:
-        name: jacoco-report
-        path: target/site/jacoco/
-
-    - name: Comment PR with coverage
-      if: github.event_name == 'pull_request'
-      uses: madrapps/jacoco-report@v1.6.1
-      with:
-        paths: ${{ github.workspace }}/target/site/jacoco/jacoco.xml
-        token: ${{ secrets.GITHUB_TOKEN }}
-        min-coverage-overall: 40
-        min-coverage-changed-files: 60
-        title: Code Coverage Report
+    uses: ./.github/workflows/reusable-build.yml
+    secrets: inherit
+    with:
+      runs-on: ubuntu-latest
+      java-version: "25"
+      jdk-distribution: "temurin"
+      maven-goals: "clean verify"
+      generate-jacoco-badge: true
+      codecov-coverage: true
+      codecov-test-results: true
+      upload-jacoco: true
+      comment-pr-coverage: true

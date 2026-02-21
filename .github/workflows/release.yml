@@ -3,11 +3,11 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release'
+        description: "Version to release"
         required: true
 
 permissions:
@@ -16,90 +16,59 @@ permissions:
 jobs:
   build-jar:
     name: Build Standalone JAR
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 25
-        uses: actions/setup-java@v4
-        with:
-          java-version: '25'
-          distribution: 'semeru'
-          cache: maven
-
-      - name: Build standalone JAR with Maven
-        run: mvn -B clean package -DskipTests
-        env:
-          MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
-
-      - name: Upload JAR artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: levain-jar
-          path: target/levain.jar
-          retention-days: 1
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      runs-on: ubuntu-latest
+      java-version: "25"
+      jdk-distribution: "semeru"
+      maven-goals: "clean package"
+      maven-args: "-DskipTests"
+      upload-artifact: true
+      artifact-name: "levain-jar"
+      artifact-path: "target/levain.jar"
 
   build-windows:
     name: Build Windows x64 Executable
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up GraalVM JDK 25
-        uses: graalvm/setup-graalvm@v1
-        with:
-          java-version: '25'
-          distribution: 'graalvm-community'
-          cache: maven
-          native-image-job-reports: 'true'
-
-      - name: Build Windows executable with Maven
-        run: mvn -B clean package -DskipTests -Pnative-windows
-        env:
-          MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
-
-      - name: Upload Windows executable artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: levain-windows-x64-exe
-          path: target/levain.exe
-          retention-days: 1
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      runs-on: windows-latest
+      java-version: "25"
+      use-graalvm: true
+      maven-goals: "clean package"
+      maven-args: "-DskipTests -Pnative-windows"
+      upload-artifact: true
+      artifact-name: "levain-windows-x64-exe"
+      artifact-path: "target/levain.exe"
 
   build-linux:
     name: Build Linux x64 Executable
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      runs-on: ubuntu-latest
+      java-version: "25"
+      use-graalvm: true
+      maven-goals: "clean package"
+      maven-args: "-DskipTests -Pnative-linux"
+      upload-artifact: true
+      artifact-name: "levain-linux-x64"
+      artifact-path: "target/levain"
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up GraalVM JDK 25
-        uses: graalvm/setup-graalvm@v1
-        with:
-          java-version: '25'
-          distribution: 'graalvm-community'
-          cache: maven
-          native-image-job-reports: 'true'
-
-      - name: Build Linux executable with Maven
-        run: mvn -B clean package -DskipTests -Pnative-linux
-        env:
-          MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
-
-      - name: Upload Linux executable artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: levain-linux-x64-exe
-          path: target/levain
-          retention-days: 1
+  build-macos:
+    name: Build macOS Native Executable
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      runs-on: macos-latest
+      java-version: "25"
+      use-graalvm: true
+      maven-goals: "clean package"
+      maven-args: "-DskipTests -Pnative-macos"
+      upload-artifact: true
+      artifact-name: "levain-macos-arm64"
+      artifact-path: "target/levain"
 
   release:
     name: Create GitHub Release
-    needs: [build-jar, build-windows, build-linux]
+    needs: [build-jar, build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 
@@ -116,23 +85,27 @@ jobs:
         run: |
           mkdir -p release
           VERSION=$(grep '<version>' pom.xml | head -1 | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
-          
-          # Copy all artifacts to release directory
-          find release-artifacts -type f \( -name '*.jar' -o -name '*.exe' -o -name 'levain' \) | while read file; do
-            cp "$file" release/
-          done
-          
-          # Create versioned copies for the GitHub Release
-          if [ -f "release/levain.jar" ]; then
-            cp "release/levain.jar" "release/levain-${VERSION}.jar"
+
+          if [ -f "release-artifacts/levain-jar/levain.jar" ]; then
+            cp "release-artifacts/levain-jar/levain.jar" "release/levain.jar"
+            cp "release-artifacts/levain-jar/levain.jar" "release/levain-${VERSION}.jar"
           fi
-          if [ -f "release/levain.exe" ]; then
-            cp "release/levain.exe" "release/levain-${VERSION}-windows-x64.exe"
+
+          if [ -f "release-artifacts/levain-windows-x64-exe/levain.exe" ]; then
+            cp "release-artifacts/levain-windows-x64-exe/levain.exe" "release/levain.exe"
+            cp "release-artifacts/levain-windows-x64-exe/levain.exe" "release/levain-${VERSION}-windows-x64.exe"
           fi
-          if [ -f "release/levain" ] && [ ! -f "release/levain.exe" ]; then
-            cp "release/levain" "release/levain-${VERSION}-linux-x64"
+
+          if [ -f "release-artifacts/levain-linux-x64/levain" ]; then
+            cp "release-artifacts/levain-linux-x64/levain" "release/levain-linux-x64"
+            cp "release-artifacts/levain-linux-x64/levain" "release/levain-${VERSION}-linux-x64"
           fi
-          
+
+          if [ -f "release-artifacts/levain-macos-arm64/levain" ]; then
+            cp "release-artifacts/levain-macos-arm64/levain" "release/levain-macos-arm64"
+            cp "release-artifacts/levain-macos-arm64/levain" "release/levain-${VERSION}-macos-arm64"
+          fi
+
           ls -la release/
 
       - name: Create Release
