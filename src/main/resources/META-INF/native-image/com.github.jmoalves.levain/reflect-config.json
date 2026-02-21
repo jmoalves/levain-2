@@ -1,0 +1,58 @@
+[
+    {
+        "name": "org.apache.logging.log4j.core.impl.Log4jContextFactory",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "org.apache.logging.log4j.core.config.ConfigurationFactory",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "org.apache.logging.log4j.core.config.xml.XmlConfigurationFactory",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "org.apache.logging.log4j.core.appender.ConsoleAppender",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "org.apache.logging.log4j.core.appender.RollingFileAppender",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "org.apache.logging.log4j.core.layout.PatternLayout",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "org.apache.logging.log4j.core.filter.LevelRangeFilter",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    },
+    {
+        "name": "org.apache.logging.log4j.core.filter.ThresholdFilter",
+        "allDeclaredConstructors": true,
+        "allPublicConstructors": true,
+        "allDeclaredMethods": true,
+        "allPublicMethods": true
+    }
+]

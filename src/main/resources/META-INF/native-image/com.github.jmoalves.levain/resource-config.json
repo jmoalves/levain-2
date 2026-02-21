@@ -1,0 +1,13 @@
+{
+    "resources": {
+        "includes": [
+            {
+                "pattern": "log4j2\\.xml"
+            },
+            {
+                "pattern": "recipes/.*"
+            }
+        ]
+    },
+    "bundles": []
+}

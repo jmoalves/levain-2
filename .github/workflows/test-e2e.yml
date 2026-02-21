@@ -112,16 +112,16 @@ jobs:
                     $ignore = Get-Content $ignoreFile | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith("#") }
                   }
 
-                  $recipes = levain list | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^[a-zA-Z0-9]' }
+                  $recipes = levain --addRepo https://github.com/jmoalves/levain-pkgs list | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^[a-zA-Z0-9]' }
                   $failed = @()
                   $batch = @()
 
                   function Install-Batch($items) {
                     if ($items.Count -eq 0) { return }
-                    & levain install @items
+                    & levain --addRepo https://github.com/jmoalves/levain-pkgs install @items
                     if ($LASTEXITCODE -ne 0) {
                       foreach ($pkg in $items) {
-                        & levain install $pkg
+                        & levain --addRepo https://github.com/jmoalves/levain-pkgs install $pkg
                         if ($LASTEXITCODE -ne 0) {
                           $script:failed += $pkg
                         }
@@ -151,16 +151,19 @@ jobs:
               run: |
                   set -euo pipefail
                   ignore_file="${{ matrix.ignore_file }}"
-                  mapfile -t recipes < <(levain list | sed 's/^\s*//' | grep -E '^[a-zA-Z0-9]')
+                  recipes=()
+                  while IFS= read -r recipe; do
+                    recipes+=("$recipe")
+                  done < <(levain --addRepo https://github.com/jmoalves/levain-pkgs list | sed 's/^\s*//' | grep -E '^[a-zA-Z0-9]')
 
                   failed=()
 
                   install_batch() {
-                    if levain install "$@"; then
+                    if levain --addRepo https://github.com/jmoalves/levain-pkgs install "$@"; then
                       return
                     fi
                     for pkg in "$@"; do
-                      if ! levain install "$pkg"; then
+                      if ! levain --addRepo https://github.com/jmoalves/levain-pkgs install "$pkg"; then
                         failed+=("$pkg")
                       fi
                     done
@@ -259,16 +262,16 @@ jobs:
                     $ignore = Get-Content $ignoreFile | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith("#") }
                   }
 
-                  $recipes = levain list | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^[a-zA-Z0-9]' }
+                  $recipes = levain --addRepo https://github.com/jmoalves/levain-pkgs list | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^[a-zA-Z0-9]' }
                   $failed = @()
                   $batch = @()
 
                   function Install-Batch($items) {
                     if ($items.Count -eq 0) { return }
-                    & levain install @items
+                    & levain --addRepo https://github.com/jmoalves/levain-pkgs install @items
                     if ($LASTEXITCODE -ne 0) {
                       foreach ($pkg in $items) {
-                        & levain install $pkg
+                        & levain --addRepo https://github.com/jmoalves/levain-pkgs install $pkg
                         if ($LASTEXITCODE -ne 0) {
                           $script:failed += $pkg
                         }
@@ -298,16 +301,19 @@ jobs:
               run: |
                   set -euo pipefail
                   ignore_file="${{ matrix.ignore_file }}"
-                  mapfile -t recipes < <(levain list | sed 's/^\s*//' | grep -E '^[a-zA-Z0-9]')
+                  recipes=()
+                  while IFS= read -r recipe; do
+                    recipes+=("$recipe")
+                  done < <(levain --addRepo https://github.com/jmoalves/levain-pkgs list | sed 's/^\s*//' | grep -E '^[a-zA-Z0-9]')
 
                   failed=()
 
                   install_batch() {
-                    if levain install "$@"; then
+                    if levain --addRepo https://github.com/jmoalves/levain-pkgs install "$@"; then
                       return
                     fi
                     for pkg in "$@"; do
-                      if ! levain install "$pkg"; then
+                      if ! levain --addRepo https://github.com/jmoalves/levain-pkgs install "$pkg"; then
                         failed+=("$pkg")
                       fi
                     done
