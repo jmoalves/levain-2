@@ -544,6 +544,51 @@ class ConfigTest {
         assertThrows(RuntimeException.class, () -> config.save());
     }
 
+    @Test
+    @DisplayName("Should default auto-update to true")
+    void shouldDefaultAutoUpdateToTrue() {
+        assertTrue(config.isAutoUpdate());
+    }
+
+    @Test
+    @DisplayName("Should set and get auto-update setting")
+    void shouldSetAndGetAutoUpdate() {
+        config.setAutoUpdate(false);
+        assertFalse(config.isAutoUpdate());
+
+        config.setAutoUpdate(true);
+        assertTrue(config.isAutoUpdate());
+    }
+
+    @Test
+    @DisplayName("Should set and get last update question timestamp")
+    void shouldSetAndGetLastUpdateQuestion() {
+        String timestamp = "1708450000000";
+        config.setLastUpdateQuestion(timestamp);
+
+        assertEquals(timestamp, config.getLastUpdateQuestion());
+    }
+
+    @Test
+    @DisplayName("Should default last update question to null")
+    void shouldDefaultLastUpdateQuestionToNull() {
+        assertNull(config.getLastUpdateQuestion());
+    }
+
+    @Test
+    @DisplayName("Should set and get last known version")
+    void shouldSetAndGetLastKnownVersion() {
+        config.setLastKnownVersion("v2.1.0");
+
+        assertEquals("v2.1.0", config.getLastKnownVersion());
+    }
+
+    @Test
+    @DisplayName("Should default last known version to null")
+    void shouldDefaultLastKnownVersionToNull() {
+        assertNull(config.getLastKnownVersion());
+    }
+
     private void restoreProperty(String key, String original) {
         if (original == null) {
             System.clearProperty(key);

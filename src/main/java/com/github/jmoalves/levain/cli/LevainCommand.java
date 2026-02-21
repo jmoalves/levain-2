@@ -53,6 +53,9 @@ public class LevainCommand implements Callable<Integer> {
     @Option(names = { "--verbose", "-v" }, description = "Enable verbose output")
     private boolean verbose;
 
+    @Option(names = { "--skip-levain-updates" }, description = "Skip checking for Levain updates")
+    private boolean skipLevainUpdates;
+
     @Inject
     private Config config;
 
@@ -66,6 +69,13 @@ public class LevainCommand implements Callable<Integer> {
         if (levainCache != null && !levainCache.isBlank()) {
             config.setCacheDir(levainCache);
         }
+    }
+
+    /**
+     * Check if Levain update checks should be skipped.
+     */
+    public boolean shouldSkipLevainUpdates() {
+        return skipLevainUpdates;
     }
 
     @Override

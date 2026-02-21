@@ -6,6 +6,7 @@ import org.mockito.Mockito;
 
 import com.github.jmoalves.levain.cli.LevainCommand;
 import com.github.jmoalves.levain.config.Config;
+import com.github.jmoalves.levain.service.UpdateCheckStartupHook;
 
 import org.jboss.weld.inject.WeldInstance;
 
@@ -116,8 +117,15 @@ class LevainTest {
         org.jboss.weld.environment.se.WeldContainer container = Mockito.mock(org.jboss.weld.environment.se.WeldContainer.class);
         @SuppressWarnings("unchecked")
         WeldInstance<LevainCommand> instance = Mockito.mock(WeldInstance.class);
+        @SuppressWarnings("unchecked")
+        WeldInstance<UpdateCheckStartupHook> hookInstance = Mockito.mock(WeldInstance.class);
+        
+        UpdateCheckStartupHook hook = Mockito.mock(UpdateCheckStartupHook.class);
+        
         Mockito.when(container.select(LevainCommand.class)).thenReturn(instance);
         Mockito.when(instance.get()).thenReturn(command);
+        Mockito.when(container.select(UpdateCheckStartupHook.class)).thenReturn(hookInstance);
+        Mockito.when(hookInstance.get()).thenReturn(hook);
 
         var method = Levain.class.getDeclaredMethod("executeCommand",
                 org.jboss.weld.environment.se.WeldContainer.class, String[].class);
@@ -137,8 +145,15 @@ class LevainTest {
         org.jboss.weld.environment.se.WeldContainer container = Mockito.mock(org.jboss.weld.environment.se.WeldContainer.class);
         @SuppressWarnings("unchecked")
         WeldInstance<LevainCommand> instance = Mockito.mock(WeldInstance.class);
+        @SuppressWarnings("unchecked")
+        WeldInstance<UpdateCheckStartupHook> hookInstance = Mockito.mock(WeldInstance.class);
+        
+        UpdateCheckStartupHook hook = Mockito.mock(UpdateCheckStartupHook.class);
+        
         Mockito.when(container.select(LevainCommand.class)).thenReturn(instance);
         Mockito.when(instance.get()).thenReturn(command);
+        Mockito.when(container.select(UpdateCheckStartupHook.class)).thenReturn(hookInstance);
+        Mockito.when(hookInstance.get()).thenReturn(hook);
 
         Supplier<org.jboss.weld.environment.se.WeldContainer> supplier = () -> container;
 

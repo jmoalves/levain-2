@@ -272,6 +272,51 @@ public class Config {
     }
 
     /**
+     * Check if automatic Levain self-update checks are enabled.
+     * Default: true
+     */
+    public boolean isAutoUpdate() {
+        return configData.autoUpdate != null ? configData.autoUpdate : true;
+    }
+
+    /**
+     * Set whether automatic Levain self-update checks are enabled.
+     */
+    public void setAutoUpdate(boolean enabled) {
+        configData.autoUpdate = enabled;
+    }
+
+    /**
+     * Get the timestamp of the last time we prompted for a Levain update.
+     * Default: null (never prompted)
+     */
+    public String getLastUpdateQuestion() {
+        return configData.lastUpdateQuestion;
+    }
+
+    /**
+     * Set the timestamp of the last time we prompted for a Levain update.
+     */
+    public void setLastUpdateQuestion(String timestamp) {
+        configData.lastUpdateQuestion = timestamp;
+    }
+
+    /**
+     * Get the last known available version of Levain.
+     * Default: null
+     */
+    public String getLastKnownVersion() {
+        return configData.lastKnownVersion;
+    }
+
+    /**
+     * Set the last known available version of Levain.
+     */
+    public void setLastKnownVersion(String version) {
+        configData.lastKnownVersion = version;
+    }
+
+    /**
      * Get the default package name.
      * Default: "levain"
      */
@@ -369,6 +414,15 @@ public class Config {
         @JsonProperty("shellCheckForUpdate")
         public Boolean shellCheckForUpdate;
 
+        @JsonProperty("autoUpdate")
+        public Boolean autoUpdate;
+
+        @JsonProperty("lastUpdateQuestion")
+        public String lastUpdateQuestion;
+
+        @JsonProperty("lastKnownVersion")
+        public String lastKnownVersion;
+
         @JsonProperty("defaultPackage")
         public String defaultPackage;
 
@@ -395,6 +449,9 @@ public class Config {
                     ", backupMaxAgeDays=" + backupMaxAgeDays +
                     ", shellPath='" + shellPath + '\'' +
                     ", shellCheckForUpdate=" + shellCheckForUpdate +
+                    ", autoUpdate=" + autoUpdate +
+                    ", lastUpdateQuestion='" + lastUpdateQuestion + '\'' +
+                    ", lastKnownVersion='" + lastKnownVersion + '\'' +
                     ", defaultPackage='" + defaultPackage + '\'' +
                     ", variables=" + variables +
                     ", repositories=" + repositories +

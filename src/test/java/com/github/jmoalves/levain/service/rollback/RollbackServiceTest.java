@@ -204,22 +204,22 @@ class RollbackServiceTest {
     void shouldCleanupBackupsExceedingMaxAge() throws IOException {
         when(config.getBackupMaxAgeDays()).thenReturn(5);
         
-        // Create old and new backups
-        createBackupDirectory("jdk-21", "20260101-100000"); // ~47 days ago
-        createBackupDirectory("jdk-21", "20260210-100000"); // ~7 days ago
-        createBackupDirectory("jdk-21", "20260215-100000"); // ~2 days ago
+        // Create old and new backups (relative to current date Feb 21, 2026)
+        createBackupDirectory("jdk-21", "20260101-100000"); // ~50 days ago
+        createBackupDirectory("jdk-21", "20260210-100000"); // ~11 days ago
+        createBackupDirectory("jdk-21", "20260219-100000"); // ~2 days ago
         
-        // Cleanup (current date approximately 2026-02-17)
+        // Cleanup
         rollbackService.cleanupOldBackups("jdk-21");
         
         List<RollbackService.BackupInfo> remaining = 
             rollbackService.listBackups("jdk-21");
         
-        // Should have removed the oldest ones
+        // Should have removed the oldest ones (older than 5 days)
         assertTrue(remaining.size() <= 3);
         // Most recent should still be there
         assertTrue(remaining.stream()
-            .anyMatch(b -> b.timestampStr().equals("20260215-100000")));
+            .anyMatch(b -> b.timestampStr().equals("20260219-100000")));
     }
     
     @Test

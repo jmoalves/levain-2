@@ -177,4 +177,43 @@ class ConfigDataTest {
         assertTrue(Config.ConfigData.class.isAnnotationPresent(JsonIgnoreProperties.class),
                 "ConfigData should be annotated for JSON serialization");
     }
+
+    @Test
+    @DisplayName("Should set and get autoUpdate")
+    void testAutoUpdate() {
+        configData.autoUpdate = Boolean.TRUE;
+        assertEquals(Boolean.TRUE, configData.autoUpdate);
+
+        configData.autoUpdate = Boolean.FALSE;
+        assertEquals(Boolean.FALSE, configData.autoUpdate);
+    }
+
+    @Test
+    @DisplayName("Should set and get lastUpdateQuestion")
+    void testLastUpdateQuestion() {
+        String timestamp = "1708450000000";
+        configData.lastUpdateQuestion = timestamp;
+        assertEquals(timestamp, configData.lastUpdateQuestion);
+    }
+
+    @Test
+    @DisplayName("Should set and get lastKnownVersion")
+    void testLastKnownVersion() {
+        String version = "v2.1.0";
+        configData.lastKnownVersion = version;
+        assertEquals(version, configData.lastKnownVersion);
+    }
+
+    @Test
+    @DisplayName("Should include auto-update fields in toString")
+    void testAutoUpdateFieldsInToString() {
+        configData.autoUpdate = Boolean.TRUE;
+        configData.lastUpdateQuestion = "1708450000000";
+        configData.lastKnownVersion = "v2.1.0";
+
+        String str = configData.toString();
+        assertTrue(str.contains("autoUpdate=true"), "toString should contain autoUpdate field");
+        assertTrue(str.contains("lastUpdateQuestion"), "toString should contain lastUpdateQuestion field");
+        assertTrue(str.contains("lastKnownVersion"), "toString should contain lastKnownVersion field");
+    }
 }

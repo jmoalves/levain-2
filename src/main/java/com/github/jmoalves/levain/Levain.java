@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import com.github.jmoalves.levain.cli.CdiCommandFactory;
 import com.github.jmoalves.levain.cli.LevainCommand;
+import com.github.jmoalves.levain.service.UpdateCheckStartupHook;
 
 import picocli.CommandLine;
 
@@ -72,11 +73,20 @@ public class Levain {
      */
     private static int executeCommand(WeldContainer container, String[] args) {
         LevainCommand command = container.select(LevainCommand.class).get();
+        UpdateCheckStartupHook updateCheckHook = container.select(UpdateCheckStartupHook.class).get();
+        
         CommandLine cmd = new CommandLine(command, new CdiCommandFactory());
         CommandLine.IExecutionStrategy executionStrategy = parseResult -> {
             Object root = parseResult.commandSpec().root().userObject();
             if (root instanceof LevainCommand levainCommand) {
                 levainCommand.applyOverrides();
+                // Run update check on startup (only if a subcommand is being executed)
+                if (parseResult.subcommand() != null) {
+                    updateCheckHook.runUpdateCheck(
+                            levainCommand.shouldSkipLevainUpdates(),
+                            parseResult.commandSpec().root().version()[0]
+                    );
+                }
             }
             return new CommandLine.RunLast().execute(parseResult);
         };
