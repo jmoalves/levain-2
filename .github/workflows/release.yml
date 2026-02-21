@@ -75,6 +75,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -122,10 +124,19 @@ jobs:
 
           ls -la release/
 
+      - name: Generate release notes
+        run: |
+          bash scripts/release-notes.sh \
+            --mode stable \
+            --current-tag "${{ github.ref_name }}" \
+            --output "release/RELEASE_NOTES.md" \
+            --release-dir "release" \
+            --repo "${{ github.repository }}"
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: release/*
-          generate_release_notes: true
+          body_path: release/RELEASE_NOTES.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
