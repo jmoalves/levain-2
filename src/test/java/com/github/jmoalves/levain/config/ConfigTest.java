@@ -589,6 +589,22 @@ class ConfigTest {
         assertNull(config.getLastKnownVersion());
     }
 
+    @Test
+    @DisplayName("Should default update channel to stable")
+    void shouldDefaultUpdateChannelToStable() {
+        assertEquals("stable", config.getUpdateChannel());
+    }
+
+    @Test
+    @DisplayName("Should set and get update channel")
+    void shouldSetAndGetUpdateChannel() {
+        config.setUpdateChannel("nightly");
+        assertEquals("nightly", config.getUpdateChannel());
+
+        config.setUpdateChannel("stable");
+        assertEquals("stable", config.getUpdateChannel());
+    }
+
     private void restoreProperty(String key, String original) {
         if (original == null) {
             System.clearProperty(key);

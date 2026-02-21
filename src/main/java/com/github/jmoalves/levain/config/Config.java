@@ -317,6 +317,21 @@ public class Config {
     }
 
     /**
+     * Get the Levain update channel.
+     * Default: "stable" (options: "stable", "nightly")
+     */
+    public String getUpdateChannel() {
+        return configData.updateChannel != null ? configData.updateChannel : "stable";
+    }
+
+    /**
+     * Set the Levain update channel.
+     */
+    public void setUpdateChannel(String channel) {
+        configData.updateChannel = channel;
+    }
+
+    /**
      * Get the default package name.
      * Default: "levain"
      */
@@ -426,6 +441,9 @@ public class Config {
         @JsonProperty("defaultPackage")
         public String defaultPackage;
 
+        @JsonProperty("updateChannel")
+        public String updateChannel;
+
         @JsonProperty("variables")
         public Map<String, String> variables;
 
@@ -453,6 +471,7 @@ public class Config {
                     ", lastUpdateQuestion='" + lastUpdateQuestion + '\'' +
                     ", lastKnownVersion='" + lastKnownVersion + '\'' +
                     ", defaultPackage='" + defaultPackage + '\'' +
+                    ", updateChannel='" + updateChannel + '\'' +
                     ", variables=" + variables +
                     ", repositories=" + repositories +
                     '}';
