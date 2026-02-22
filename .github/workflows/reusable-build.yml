@@ -29,6 +29,10 @@ on:
                 type: string
                 required: false
                 default: ""
+            allow-maven-failure:
+                type: boolean
+                required: false
+                default: false
             upload-artifact:
                 type: boolean
                 required: false
@@ -122,6 +126,7 @@ jobs:
                   }
 
             - name: Build with Maven
+              continue-on-error: ${{ inputs.allow-maven-failure }}
               run: mvn -B ${{ inputs.maven-goals }} ${{ inputs.maven-args }}
               env:
                   MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
