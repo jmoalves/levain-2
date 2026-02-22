@@ -25,8 +25,37 @@ jobs:
                   TAG_INPUT: ${{ github.event.inputs.tag }}
               with:
                   script: |
+                      const requiredAssets = [
+                        "install-windows.ps1",
+                        "install-linux.sh",
+                        "install-macos.sh",
+                        "levain.jar",
+                        "levain.exe",
+                        "levain-linux-x64",
+                        "levain-macos-arm64"
+                      ];
+
+                      function hasRequiredAssets(release) {
+                        const assetNames = new Set((release.assets || []).map(asset => asset.name));
+                        return requiredAssets.every(name => assetNames.has(name));
+                      }
+
                       const inputTag = process.env.TAG_INPUT;
                       if (inputTag) {
+                        const release = await github.rest.repos.getReleaseByTag({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          tag: inputTag
+                        });
+
+                        if (!hasRequiredAssets(release.data)) {
+                          const missing = requiredAssets.filter(name =>
+                            !(release.data.assets || []).some(asset => asset.name === name)
+                          );
+                          core.setFailed(`Tag ${inputTag} is missing required assets: ${missing.join(", ")}`);
+                          return;
+                        }
+
                         core.setOutput("tag", inputTag);
                         return;
                       }
@@ -37,15 +66,25 @@ jobs:
                       );
 
                       const nightlies = releases
-                        .filter(release => release.prerelease && release.tag_name.startsWith("nightly-"))
-                        .sort((a, b) => new Date(a.published_at) - new Date(b.published_at));
+                        .filter(release => release.prerelease && release.tag_name.startsWith("nightly-"));
 
                       if (nightlies.length === 0) {
                         core.setFailed("No nightly releases found.");
                         return;
                       }
 
-                      core.setOutput("tag", nightlies[nightlies.length - 1].tag_name);
+                      const sorted = nightlies
+                        .slice()
+                        .sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
+
+                      const selected = sorted.find(hasRequiredAssets);
+
+                      if (!selected) {
+                        core.setFailed("No nightly release with full required assets was found.");
+                        return;
+                      }
+
+                      core.setOutput("tag", selected.tag_name);
 
     e2e-binary-windows:
         needs: resolve-tag
