@@ -50,22 +50,23 @@ while [[ $# -gt 0 ]]; do
  done
 
 get_latest_nightly_tag() {
-  python - "$REPO" <<'PY'
-import json
-import sys
-import urllib.request
+  local tags_json
+  local latest_tag
 
-repo = sys.argv[1]
-url = f"https://api.github.com/repos/{repo}/releases?per_page=100"
-req = urllib.request.Request(url, headers={"User-Agent": "levain-install"})
-with urllib.request.urlopen(req) as resp:
-    releases = json.load(resp)
-nightlies = [r for r in releases if r.get("prerelease") and str(r.get("tag_name", "")).startswith("nightly-")]
-if not nightlies:
-    raise SystemExit("No nightly releases found")
-nightlies.sort(key=lambda r: r.get("published_at") or "")
-print(nightlies[-1].get("tag_name"))
-PY
+  tags_json="$(curl -fsSL -H "User-Agent: levain-install" "https://api.github.com/repos/${REPO}/tags?per_page=100")"
+
+  latest_tag="$(printf '%s\n' "$tags_json" \
+    | grep -oE '"name"[[:space:]]*:[[:space:]]*"nightly-[^"]+"' \
+    | sed -E 's/.*"(nightly-[^"]+)"/\1/' \
+    | sort -V \
+    | tail -n 1 || true)"
+
+  if [[ -z "$latest_tag" ]]; then
+    echo "No nightly releases found for ${REPO}" >&2
+    return 1
+  fi
+
+  printf '%s\n' "$latest_tag"
 }
 
 if [[ -z "$TAG" ]]; then
