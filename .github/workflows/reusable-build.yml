@@ -125,11 +125,33 @@ jobs:
                       Write-Host "cl.exe resolved to: $($clCommand.Source)"
                   }
 
-            - name: Build with Maven
-              continue-on-error: ${{ inputs.allow-maven-failure }}
-              run: mvn -B ${{ inputs.maven-goals }} ${{ inputs.maven-args }}
-              env:
-                  MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
+                        - name: Build with Maven
+                            id: maven_build
+                            shell: bash
+                            continue-on-error: ${{ inputs.allow-maven-failure }}
+                            run: |
+                                    if mvn -B ${{ inputs.maven-goals }} ${{ inputs.maven-args }}; then
+                                        echo "MAVEN_FAILED=false" >> "$GITHUB_ENV"
+                                    else
+                                        echo "MAVEN_FAILED=true" >> "$GITHUB_ENV"
+                                        exit 1
+                                    fi
+                            env:
+                                    MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
+
+                        - name: Report tolerated Maven failure
+                            shell: bash
+                            run: |
+                                    if [[ "${{ inputs.allow-maven-failure }}" == "true" && "${MAVEN_FAILED:-false}" == "true" ]]; then
+                                        echo "::warning title=Tolerated Maven failure::Build failed but was allowed by allow-maven-failure=true."
+                                        {
+                                            echo "## ⚠️ Tolerated build failure"
+                                            echo ""
+                                            echo "- Maven step failed in this job."
+                                            echo "- Job continues because allow-maven-failure is enabled."
+                                            echo "- Inspect the Build with Maven step logs for root cause."
+                                        } >> "$GITHUB_STEP_SUMMARY"
+                                    fi
 
             - name: Generate JaCoCo Badge
               if: ${{ inputs.generate-jacoco-badge }}
