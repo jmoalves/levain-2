@@ -82,7 +82,9 @@ jobs:
                   $tag = "${{ inputs.tag }}"
                   $mode = "${{ inputs.test-mode }}"
                   $flag = if ($mode -eq "binary") { "-Binary" } else { "-Jar" }
-                  & .\${{ inputs.script-name }} -Tag $tag $flag -InstallDir "$HOME\levain" -AddToPath
+                  $scriptPath = Join-Path $PWD "${{ inputs.script-name }}"
+                  Unblock-File -Path $scriptPath -ErrorAction SilentlyContinue
+                  & pwsh -NoProfile -ExecutionPolicy Bypass -File $scriptPath -Tag $tag $flag -InstallDir "$HOME\levain" -AddToPath
 
             - name: Install Levain (Unix)
               if: runner.os != 'Windows'
@@ -98,10 +100,10 @@ jobs:
               shell: pwsh
               run: |
                   try {
-                    levain config repo add https://github.com/jmoalves/levain-pkgs levain-pkgs
+                    levain config repo add https://github.com/jmoalves/levain-pkgs
                   } catch {
                     $repos = levain config repo list | Out-String
-                    if ($repos -notmatch '(?m)^\s*levain-pkgs\b') {
+                    if ($repos -notmatch '(?m)https://github.com/jmoalves/levain-pkgs' -and $repos -notmatch '(?m)^\s*levain-pkgs\b') {
                       throw
                     }
                   }
@@ -111,8 +113,8 @@ jobs:
               shell: bash
               run: |
                   set -euo pipefail
-                  if ! levain config repo add https://github.com/jmoalves/levain-pkgs levain-pkgs; then
-                    if ! levain config repo list | grep -Eq '^\s*levain-pkgs\b'; then
+                  if ! levain config repo add https://github.com/jmoalves/levain-pkgs; then
+                    if ! levain config repo list | grep -Eq 'https://github.com/jmoalves/levain-pkgs|^\s*levain-pkgs\b'; then
                       exit 1
                     fi
                   fi
@@ -127,7 +129,11 @@ jobs:
                     $ignore = Get-Content $ignoreFile | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith("#") }
                   }
 
-                  $recipes = levain list | ForEach-Object { $_.Trim() } | Where-Object { $_ -match '^[a-zA-Z0-9]' }
+                  $recipes = levain list | ForEach-Object {
+                    if ($_ -match '^\s*-\s*([A-Za-z0-9._-]+)') {
+                      $matches[1]
+                    }
+                  }
                   $failed = @()
                   $batch = @()
 
@@ -167,10 +173,9 @@ jobs:
                   set -euo pipefail
 
                   ignore_file="${{ inputs.ignore-file }}"
-                  recipes=()
-                  while IFS= read -r recipe; do
-                    recipes+=("$recipe")
-                  done < <(levain list | sed 's/^\s*//' | grep -E '^[a-zA-Z0-9]')
+                  mapfile -t recipes < <(levain list \
+                    | sed -n 's/^[[:space:]]*-[[:space:]]*\([^[:space:]].*\)$/\1/p' \
+                    | awk '{print $1}' || true)
 
                   failed=()
 
