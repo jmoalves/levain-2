@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,8 @@ import com.github.jmoalves.levain.service.backup.BackupException;
 import com.github.jmoalves.levain.service.backup.BackupService;
 
 class RollbackServiceTest {
+    private static final DateTimeFormatter TIMESTAMP_FORMAT =
+        DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     
     @TempDir
     private Path tempDir;
@@ -203,11 +206,16 @@ class RollbackServiceTest {
     @Test
     void shouldCleanupBackupsExceedingMaxAge() throws IOException {
         when(config.getBackupMaxAgeDays()).thenReturn(5);
+
+        LocalDateTime now = LocalDateTime.now();
+        String veryOldBackup = now.minusDays(50).format(TIMESTAMP_FORMAT);
+        String oldBackup = now.minusDays(10).format(TIMESTAMP_FORMAT);
+        String recentBackup = now.minusDays(2).format(TIMESTAMP_FORMAT);
         
-        // Create old and new backups (relative to current date Feb 21, 2026)
-        createBackupDirectory("jdk-21", "20260101-100000"); // ~50 days ago
-        createBackupDirectory("jdk-21", "20260210-100000"); // ~11 days ago
-        createBackupDirectory("jdk-21", "20260219-100000"); // ~2 days ago
+        // Create backups relative to current date
+        createBackupDirectory("jdk-21", veryOldBackup);
+        createBackupDirectory("jdk-21", oldBackup);
+        createBackupDirectory("jdk-21", recentBackup);
         
         // Cleanup
         rollbackService.cleanupOldBackups("jdk-21");
@@ -217,9 +225,12 @@ class RollbackServiceTest {
         
         // Should have removed the oldest ones (older than 5 days)
         assertTrue(remaining.size() <= 3);
-        // Most recent should still be there
+        // Recent backup should still be there
         assertTrue(remaining.stream()
-            .anyMatch(b -> b.timestampStr().equals("20260219-100000")));
+            .anyMatch(b -> b.timestampStr().equals(recentBackup)));
+        // Old backup should be removed
+        assertFalse(remaining.stream()
+            .anyMatch(b -> b.timestampStr().equals(veryOldBackup)));
     }
     
     @Test
