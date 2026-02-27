@@ -109,9 +109,52 @@ jobs:
       artifact-name: "levain-macos-arm64"
       artifact-path: "target/levain"
 
+  verify-build-results:
+    name: Verify Nightly Build Results
+    needs: [check-changes, build-jar, build-windows, build-linux, build-macos]
+    if: needs.check-changes.outputs.has-changes == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: levain-jar
+          path: verify/levain-jar
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: levain-windows-x64-exe
+          path: verify/levain-windows-x64-exe
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: levain-linux-x64
+          path: verify/levain-linux-x64
+
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: levain-macos-arm64
+          path: verify/levain-macos-arm64
+
+      - name: Verify required artifact files exist
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -s verify/levain-jar/levain.jar
+          test -s verify/levain-windows-x64-exe/levain.exe
+          test -s verify/levain-linux-x64/levain
+          test -s verify/levain-macos-arm64/levain
+
+          echo "All nightly artifacts were produced successfully."
+
   nightly-release:
     name: Create Nightly Release
-    needs: [check-changes, build-jar, build-windows, build-linux, build-macos]
+    needs: [check-changes, verify-build-results]
     if: needs.check-changes.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
 
