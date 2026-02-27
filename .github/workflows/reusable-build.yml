@@ -100,6 +100,7 @@ jobs:
               with:
                   java-version: ${{ inputs.java-version }}
                   distribution: ${{ inputs.graalvm-distribution }}
+                                    components: native-image
                   cache: maven
                   native-image-job-reports: "true"
 
