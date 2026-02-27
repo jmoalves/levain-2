@@ -268,6 +268,22 @@ Installation order: `levain` → `jdk-21` → `maven` → `springboot`
 
 Build instructions and release packaging are maintained in [Build & Releases](build/BUILD_RELEASES.md).
 
+### Local Nexus emergency bypass
+
+When your local Nexus proxy is temporarily unavailable, run Maven directly against Maven Central:
+
+```bash
+./scripts/mvn-bypass-nexus.sh clean package -DskipTests
+```
+
+For other profiles/goals, pass arguments normally:
+
+```bash
+./scripts/mvn-bypass-nexus.sh -Pnative-linux -DskipTests package
+```
+
+This helper is for local development only and does not affect GitHub Actions.
+
 ## Testing
 
 ### Test Coverage
