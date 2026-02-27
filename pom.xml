@@ -418,6 +418,8 @@
                     <buildArgs>
                         <buildArg>--no-fallback</buildArg>
                         <buildArg>-H:+ReportExceptionStackTraces</buildArg>
+                        <buildArg>
+                            --initialize-at-build-time=org.apache.logging.log4j.util.LazyUtil$SafeLazy</buildArg>
                     </buildArgs>
                 </configuration>
             </plugin>
