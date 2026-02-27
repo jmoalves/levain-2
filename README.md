@@ -58,6 +58,22 @@ Start here based on your role:
 
 See [Build & Releases](docs/build/BUILD_RELEASES.md) for build targets, packaging, and release workflows.
 
+### Local Nexus emergency bypass
+
+If your local Nexus proxy is temporarily unavailable, you can run Maven directly against Maven Central using:
+
+```bash
+./scripts/mvn-bypass-nexus.sh clean package -DskipTests
+```
+
+For other goals/profiles, pass them normally:
+
+```bash
+./scripts/mvn-bypass-nexus.sh -Pnative-linux -DskipTests package
+```
+
+This script is local-only and does not affect GitHub Actions workflows.
+
 ## Usage
 
 For detailed usage examples and common workflows, see [User Guide - Getting Started](docs/USER_GUIDE.md#getting-started)
