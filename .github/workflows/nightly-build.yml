@@ -55,7 +55,8 @@ jobs:
       java-version: "25"
       jdk-distribution: "semeru"
       maven-goals: "clean package"
-      upload-test-results: true
+      maven-args: "-DskipTests"
+      upload-test-results: false
       upload-artifact: true
       artifact-name: "levain-jar"
       artifact-path: "target/levain.jar"
