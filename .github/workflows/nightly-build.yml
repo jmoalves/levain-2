@@ -72,7 +72,6 @@ jobs:
       use-graalvm: true
       maven-goals: "clean package"
       maven-args: "-DskipTests -Pnative-windows"
-      allow-maven-failure: true
       upload-artifact: true
       artifact-name: "levain-windows-x64-exe"
       artifact-path: "target/levain.exe"
@@ -88,7 +87,6 @@ jobs:
       use-graalvm: true
       maven-goals: "clean package"
       maven-args: "-DskipTests -Pnative-linux"
-      allow-maven-failure: true
       upload-artifact: true
       artifact-name: "levain-linux-x64"
       artifact-path: "target/levain"
@@ -104,7 +102,6 @@ jobs:
       use-graalvm: true
       maven-goals: "clean package"
       maven-args: "-DskipTests -Pnative-macos"
-      allow-maven-failure: true
       upload-artifact: true
       artifact-name: "levain-macos-arm64"
       artifact-path: "target/levain"
