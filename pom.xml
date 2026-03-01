@@ -431,6 +431,10 @@
                             --initialize-at-build-time=org.apache.logging.log4j.core.selector.ClassLoaderContextSelector</buildArg>
                         <buildArg>
                             --initialize-at-build-time=org.apache.logging.log4j.core.util.DefaultShutdownCallbackRegistry</buildArg>
+                        <buildArg>
+                            --initialize-at-build-time=org.apache.logging.log4j.MarkerManager$Log4jMarker</buildArg>
+                        <buildArg>
+                            --initialize-at-build-time=org.apache.logging.log4j.core.LifeCycle$State</buildArg>
                     </buildArgs>
                 </configuration>
             </plugin>
