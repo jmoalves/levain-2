@@ -427,6 +427,10 @@
                             --initialize-at-build-time=org.apache.logging.log4j.core.impl.Log4jProvider</buildArg>
                         <buildArg>
                             --initialize-at-build-time=org.apache.logging.log4j.core.impl.Log4jContextFactory</buildArg>
+                        <buildArg>
+                            --initialize-at-build-time=org.apache.logging.log4j.core.selector.ClassLoaderContextSelector</buildArg>
+                        <buildArg>
+                            --initialize-at-build-time=org.apache.logging.log4j.core.util.DefaultShutdownCallbackRegistry</buildArg>
                     </buildArgs>
                 </configuration>
             </plugin>
