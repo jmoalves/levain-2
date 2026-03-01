@@ -21,3 +21,15 @@ jobs:
       codecov-test-results: true
       upload-jacoco: true
       comment-pr-coverage: true
+
+  native-smoke:
+    name: Native Smoke (Linux)
+    needs: build
+    uses: ./.github/workflows/reusable-build.yml
+    with:
+      runs-on: ubuntu-latest
+      java-version: "25"
+      use-graalvm: true
+      maven-goals: "clean package"
+      maven-args: "-DskipTests -Dnative.maven.plugin.version=0.11.4 -Pnative-linux"
+      upload-artifact: false
