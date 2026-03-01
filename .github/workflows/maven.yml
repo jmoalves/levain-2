@@ -30,6 +30,6 @@ jobs:
       runs-on: ubuntu-latest
       java-version: "25"
       use-graalvm: true
+      native-profile: "native-linux"
       maven-goals: "clean package"
-      maven-args: "-DskipTests -Dnative.maven.plugin.version=0.11.4 -Pnative-linux"
       upload-artifact: false

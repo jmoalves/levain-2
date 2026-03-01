@@ -29,6 +29,18 @@ on:
                 type: string
                 required: false
                 default: ""
+            native-profile:
+                type: string
+                required: false
+                default: ""
+            native-maven-plugin-version:
+                type: string
+                required: false
+                default: "0.11.4"
+            native-skip-tests:
+                type: boolean
+                required: false
+                default: true
             allow-maven-failure:
                 type: boolean
                 required: false
@@ -129,7 +141,23 @@ jobs:
               shell: bash
               run: |
                   set +e
-                  mvn -B ${{ inputs.maven-goals }} ${{ inputs.maven-args }} 2>&1 | tee maven-build.log
+                                    maven_args="${{ inputs.maven-args }}"
+
+                                    if [[ "${{ inputs.use-graalvm }}" == "true" ]]; then
+                                        if [[ "${{ inputs.native-skip-tests }}" == "true" ]]; then
+                                            maven_args="$maven_args -DskipTests"
+                                        fi
+
+                                        if [[ -n "${{ inputs.native-maven-plugin-version }}" ]]; then
+                                            maven_args="$maven_args -Dnative.maven.plugin.version=${{ inputs.native-maven-plugin-version }}"
+                                        fi
+
+                                        if [[ -n "${{ inputs.native-profile }}" ]]; then
+                                            maven_args="$maven_args -P${{ inputs.native-profile }}"
+                                        fi
+                                    fi
+
+                                    mvn -B ${{ inputs.maven-goals }} $maven_args 2>&1 | tee maven-build.log
                   rc=$?
                   set -e
 
