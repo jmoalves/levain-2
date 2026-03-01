@@ -420,6 +420,7 @@
                         <buildArg>-H:+ReportExceptionStackTraces</buildArg>
                         <buildArg>--initialize-at-build-time=org.apache.logging.log4j.util</buildArg>
                         <buildArg>--initialize-at-build-time=org.apache.logging.log4j.status</buildArg>
+                        <buildArg>--initialize-at-build-time=org.apache.logging.log4j.Level</buildArg>
                     </buildArgs>
                 </configuration>
             </plugin>
