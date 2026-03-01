@@ -419,8 +419,6 @@
                         <buildArg>--no-fallback</buildArg>
                         <buildArg>-H:+ReportExceptionStackTraces</buildArg>
                         <buildArg>--initialize-at-build-time=org.apache.logging.log4j</buildArg>
-                        <buildArg>
-                            --initialize-at-build-time=org.apache.logging.log4j.core.util.SystemClock</buildArg>
                     </buildArgs>
                 </configuration>
             </plugin>
