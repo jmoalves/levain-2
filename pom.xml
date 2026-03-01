@@ -418,7 +418,8 @@
                     <buildArgs>
                         <buildArg>--no-fallback</buildArg>
                         <buildArg>-H:+ReportExceptionStackTraces</buildArg>
-                        <buildArg>--initialize-at-build-time=org.apache.logging.log4j</buildArg>
+                        <buildArg>--initialize-at-build-time=org.apache.logging.log4j.util</buildArg>
+                        <buildArg>--initialize-at-build-time=org.apache.logging.log4j.status</buildArg>
                     </buildArgs>
                 </configuration>
             </plugin>
