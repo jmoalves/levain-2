@@ -190,7 +190,7 @@ jobs:
               if: ${{ always() }}
               uses: actions/upload-artifact@v4
               with:
-                  name: maven-build-log-${{ runner.os }}-${{ inputs.log-artifact-suffix }}
+                  name: maven-build-log-${{ runner.os }}-${{ inputs.log-artifact-suffix != 'default' && inputs.log-artifact-suffix || inputs.artifact-name != '' && inputs.artifact-name || inputs.native-profile != '' && inputs.native-profile || 'default' }}
                   path: maven-build.log
                   retention-days: 3
 
