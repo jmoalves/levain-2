@@ -29,6 +29,10 @@ on:
                 type: string
                 required: false
                 default: ""
+            log-artifact-suffix:
+                type: string
+                required: false
+                default: "default"
             native-profile:
                 type: string
                 required: false
@@ -186,7 +190,7 @@ jobs:
               if: ${{ always() }}
               uses: actions/upload-artifact@v4
               with:
-                  name: maven-build-log-${{ runner.os }}-${{ inputs.artifact-name != '' && inputs.artifact-name || 'default' }}
+                  name: maven-build-log-${{ runner.os }}-${{ inputs.log-artifact-suffix }}
                   path: maven-build.log
                   retention-days: 3
 
@@ -223,10 +227,11 @@ jobs:
 
             - name: Upload test results to Codecov
               if: ${{ inputs.codecov-test-results && !cancelled() }}
-              uses: codecov/test-results-action@v1
+              uses: codecov/codecov-action@v5
               with:
                   token: ${{ secrets.CODECOV_TOKEN }}
-                  file: ${{ inputs.test-results-path }}*.xml
+                  files: ${{ inputs.test-results-path }}*.xml
+                  report_type: test_results
                   flags: unittests
                   name: JUnit Test Results
                   fail_ci_if_error: false

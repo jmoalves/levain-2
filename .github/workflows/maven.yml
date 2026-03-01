@@ -15,6 +15,7 @@ jobs:
       runs-on: ubuntu-latest
       java-version: "25"
       jdk-distribution: "semeru"
+      log-artifact-suffix: "ci-build"
       maven-goals: "clean verify"
       generate-jacoco-badge: true
       codecov-coverage: true
@@ -30,6 +31,7 @@ jobs:
       runs-on: ubuntu-latest
       java-version: "25"
       use-graalvm: true
+      log-artifact-suffix: "ci-native-smoke-linux"
       native-profile: "native-linux"
       maven-goals: "clean package"
       upload-artifact: false
