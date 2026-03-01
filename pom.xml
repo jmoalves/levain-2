@@ -423,6 +423,8 @@
                         <buildArg>--initialize-at-build-time=org.apache.logging.log4j.Level</buildArg>
                         <buildArg>
                             --initialize-at-build-time=org.apache.logging.log4j.message.ParameterizedNoReferenceMessageFactory</buildArg>
+                        <buildArg>
+                            --initialize-at-build-time=org.apache.logging.log4j.core.impl.Log4jProvider</buildArg>
                     </buildArgs>
                 </configuration>
             </plugin>
