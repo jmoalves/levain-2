@@ -425,6 +425,8 @@
                             --initialize-at-build-time=org.apache.logging.log4j.status.StatusLogger$Config</buildArg>
                         <buildArg>
                             --initialize-at-build-time=org.apache.logging.log4j.status.StatusConsoleListener</buildArg>
+                        <buildArg>
+                            --initialize-at-build-time=org.apache.logging.log4j.MarkerManager$Log4jMarker</buildArg>
                         <buildArg>--initialize-at-build-time=org.apache.logging.log4j.Level</buildArg>
                         <buildArg>
                             --initialize-at-build-time=org.apache.logging.log4j.message.ParameterizedNoReferenceMessageFactory</buildArg>
