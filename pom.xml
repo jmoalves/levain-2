@@ -421,6 +421,10 @@
                         <buildArg>--initialize-at-build-time=org.apache.logging.log4j.util</buildArg>
                         <buildArg>
                             --initialize-at-build-time=org.apache.logging.log4j.status.StatusLogger</buildArg>
+                        <buildArg>
+                            --initialize-at-build-time=org.apache.logging.log4j.status.StatusLogger$Config</buildArg>
+                        <buildArg>
+                            --initialize-at-build-time=org.apache.logging.log4j.status.StatusConsoleListener</buildArg>
                         <buildArg>--initialize-at-build-time=org.apache.logging.log4j.Level</buildArg>
                         <buildArg>
                             --initialize-at-build-time=org.apache.logging.log4j.message.ParameterizedNoReferenceMessageFactory</buildArg>
