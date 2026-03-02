@@ -423,18 +423,6 @@
                         <buildArg>--initialize-at-build-time=org.apache.logging.log4j.Level</buildArg>
                         <buildArg>
                             --initialize-at-build-time=org.apache.logging.log4j.message.ParameterizedNoReferenceMessageFactory</buildArg>
-                        <buildArg>
-                            --initialize-at-build-time=org.apache.logging.log4j.core.impl.Log4jProvider</buildArg>
-                        <buildArg>
-                            --initialize-at-build-time=org.apache.logging.log4j.core.impl.Log4jContextFactory</buildArg>
-                        <buildArg>
-                            --initialize-at-build-time=org.apache.logging.log4j.core.selector.ClassLoaderContextSelector</buildArg>
-                        <buildArg>
-                            --initialize-at-build-time=org.apache.logging.log4j.core.util.DefaultShutdownCallbackRegistry</buildArg>
-                        <buildArg>
-                            --initialize-at-build-time=org.apache.logging.log4j.MarkerManager$Log4jMarker</buildArg>
-                        <buildArg>
-                            --initialize-at-build-time=org.apache.logging.log4j.core.LifeCycle$State</buildArg>
                     </buildArgs>
                 </configuration>
             </plugin>
