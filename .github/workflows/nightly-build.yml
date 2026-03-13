@@ -79,12 +79,20 @@ jobs:
       - name: Generate nightly tag
         id: nightly
         run: |
+          set -euo pipefail
           DATE=$(date -u +'%Y%m%d')
           TAG="nightly-$DATE"
 
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists, using timestamp variant"
+          # Check remote first to avoid rejected pushes when the base nightly tag already exists.
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Remote tag $TAG already exists, using timestamp variant"
             TAG="nightly-$DATE-$(date -u +'%H%M%S')"
+
+            # Extremely unlikely, but guard against same-second collisions too.
+            while git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; do
+              sleep 1
+              TAG="nightly-$DATE-$(date -u +'%H%M%S')"
+            done
           fi
 
           echo "tag=$TAG" >> $GITHUB_OUTPUT
