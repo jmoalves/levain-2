@@ -1,0 +1,74 @@
+name: Maven Build
+
+description: Setup Java and run Maven goals with consistent logging and failure handling.
+
+inputs:
+  java-version:
+    description: Java version to install.
+    required: false
+    default: "25"
+  jdk-distribution:
+    description: JDK distribution for setup-java.
+    required: false
+    default: "semeru"
+  maven-goals:
+    description: Maven goals to run.
+    required: true
+  maven-args:
+    description: Additional Maven args.
+    required: false
+    default: ""
+  allow-maven-failure:
+    description: Keep running even if Maven command fails.
+    required: false
+    default: "false"
+  maven-log-file:
+    description: Path to the build log file.
+    required: false
+    default: "maven-build.log"
+
+outputs:
+  maven-exit-code:
+    description: Exit code from the Maven invocation.
+    value: ${{ steps.run_maven.outputs.maven-exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up JDK ${{ inputs.java-version }}
+      uses: actions/setup-java@v5
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: ${{ inputs.jdk-distribution }}
+        cache: maven
+
+    - name: Run Maven
+      id: run_maven
+      shell: bash
+      run: |
+        set +e
+        maven_args="${{ inputs.maven-args }}"
+        log_file="${{ inputs.maven-log-file }}"
+
+        mvn -B ${{ inputs.maven-goals }} $maven_args 2>&1 | tee "$log_file"
+        rc=$?
+        set -e
+
+        echo "maven-exit-code=$rc" >> "$GITHUB_OUTPUT"
+
+        if [[ "$rc" -ne 0 ]]; then
+          {
+            echo "## Maven build failed"
+            echo ""
+            echo "Exit code: $rc"
+            echo ""
+            echo "### Last 120 log lines"
+            echo '```text'
+            tail -n 120 "$log_file"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+        fi
+
+        if [[ "$rc" -ne 0 && "${{ inputs.allow-maven-failure }}" != "true" ]]; then
+          exit "$rc"
+        fi

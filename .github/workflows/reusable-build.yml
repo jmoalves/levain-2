@@ -87,40 +87,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Set up JDK ${{ inputs.java-version }}
-        uses: actions/setup-java@v5
+      - name: Build with Maven
+        id: maven_build
+        uses: ./.github/actions/maven-build
         with:
           java-version: ${{ inputs.java-version }}
-          distribution: ${{ inputs.jdk-distribution }}
-          cache: maven
-
-      - name: Build with Maven
-        shell: bash
-        run: |
-          set +e
-          maven_args="${{ inputs.maven-args }}"
-          mvn -B ${{ inputs.maven-goals }} $maven_args 2>&1 | tee maven-build.log
-          rc=$?
-          set -e
-
-          echo "MAVEN_EXIT_CODE=$rc" >> "$GITHUB_ENV"
-
-          if [[ "$rc" -ne 0 ]]; then
-            {
-              echo "## Maven build failed"
-              echo ""
-              echo "Exit code: $rc"
-              echo ""
-              echo "### Last 120 log lines"
-              echo '```text'
-              tail -n 120 maven-build.log
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-          if [[ "$rc" -ne 0 && "${{ inputs.allow-maven-failure }}" != "true" ]]; then
-            exit "$rc"
-          fi
+          jdk-distribution: ${{ inputs.jdk-distribution }}
+          maven-goals: ${{ inputs.maven-goals }}
+          maven-args: ${{ inputs.maven-args }}
+          allow-maven-failure: ${{ inputs.allow-maven-failure }}
+          maven-log-file: maven-build.log
         env:
           MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
 
@@ -135,12 +111,12 @@ jobs:
       - name: Report tolerated Maven failure
         shell: bash
         run: |
-          if [[ "${{ inputs.allow-maven-failure }}" == "true" && "${MAVEN_EXIT_CODE:-0}" != "0" ]]; then
-            echo "::warning title=Tolerated Maven failure::Maven failed with exit code ${MAVEN_EXIT_CODE}, but allow-maven-failure=true kept the job running."
+          if [[ "${{ inputs.allow-maven-failure }}" == "true" && "${{ steps.maven_build.outputs.maven-exit-code }}" != "0" ]]; then
+            echo "::warning title=Tolerated Maven failure::Maven failed with exit code ${{ steps.maven_build.outputs.maven-exit-code }}, but allow-maven-failure=true kept the job running."
             {
               echo "## ⚠️ Tolerated build failure"
               echo ""
-              echo "Maven failed with exit code ${MAVEN_EXIT_CODE}, but execution continued because allow-maven-failure is enabled."
+              echo "Maven failed with exit code ${{ steps.maven_build.outputs.maven-exit-code }}, but execution continued because allow-maven-failure is enabled."
               echo "Check the Build with Maven step logs for details."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
