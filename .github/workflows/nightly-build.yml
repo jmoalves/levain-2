@@ -15,6 +15,8 @@ jobs:
   check-changes:
     name: Check for Changes
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     outputs:
       has-changes: ${{ steps.check.outputs.has-changes }}
       last-nightly-tag: ${{ steps.check.outputs.last-nightly-tag }}
@@ -66,6 +68,8 @@ jobs:
     needs: [check-changes, build-jar]
     if: needs.check-changes.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
     steps:
       - name: Download JAR artifact
@@ -86,6 +90,8 @@ jobs:
     needs: [check-changes, verify-build-results]
     if: needs.check-changes.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
     steps:
       - name: Checkout code
@@ -166,6 +172,8 @@ jobs:
     needs: [nightly-release, check-changes]
     if: needs.check-changes.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
     steps:
       - name: Checkout code

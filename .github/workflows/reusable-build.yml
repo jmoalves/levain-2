@@ -80,6 +80,8 @@ env:
 jobs:
   build:
     runs-on: ${{ inputs.runs-on }}
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
     steps:
       - name: Checkout code
