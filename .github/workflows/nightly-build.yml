@@ -47,47 +47,9 @@ jobs:
             fi
           fi
 
-  build-jar:
-    name: Build Nightly JAR
+  build-and-release:
+    name: Build and Release Nightly JAR
     needs: check-changes
-    if: needs.check-changes.outputs.has-changes == 'true'
-    uses: ./.github/workflows/reusable-build.yml
-    with:
-      runs-on: ubuntu-latest
-      java-version: "25"
-      jdk-distribution: "semeru"
-      maven-goals: "clean package"
-      maven-args: "-DskipTests"
-      upload-test-results: false
-      upload-artifact: true
-      artifact-name: "levain-jar"
-      artifact-path: "target/levain.jar"
-
-  verify-build-results:
-    name: Verify Nightly Build Results
-    needs: [check-changes, build-jar]
-    if: needs.check-changes.outputs.has-changes == 'true'
-    runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
-    steps:
-      - name: Download JAR artifact
-        uses: actions/download-artifact@v5
-        with:
-          name: levain-jar
-          path: verify/levain-jar
-
-      - name: Verify required artifact files exist
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -s verify/levain-jar/levain.jar
-          echo "Nightly JAR artifact was produced successfully."
-
-  nightly-release:
-    name: Create Nightly Release
-    needs: [check-changes, verify-build-results]
     if: needs.check-changes.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
     env:
@@ -96,8 +58,24 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
         with:
-          fetch-depth: 0
+          java-version: "25"
+          distribution: "semeru"
+          cache: maven
+
+      - name: Build Nightly JAR
+        run: |
+          mvn -B clean package -DskipTests
+
+      - name: Verify required artifact files exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s target/levain.jar
+          echo "Nightly JAR artifact was produced successfully."
 
       - name: Generate nightly tag
         id: nightly
@@ -118,19 +96,14 @@ jobs:
           git tag "${{ steps.nightly.outputs.tag }}"
           git push origin "${{ steps.nightly.outputs.tag }}"
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v5
-        with:
-          path: release-artifacts
-
       - name: Prepare release files
         run: |
           mkdir -p release
           VERSION="${{ steps.nightly.outputs.tag }}"
 
-          if [ -f "release-artifacts/levain-jar/levain.jar" ]; then
-            cp "release-artifacts/levain-jar/levain.jar" "release/levain.jar"
-            cp "release-artifacts/levain-jar/levain.jar" "release/levain-${VERSION}.jar"
+          if [ -f "target/levain.jar" ]; then
+            cp "target/levain.jar" "release/levain.jar"
+            cp "target/levain.jar" "release/levain-${VERSION}.jar"
           fi
 
           if [ -f "install/install-windows.ps1" ]; then
@@ -169,7 +142,7 @@ jobs:
 
   cleanup-old-nightlies:
     name: Cleanup Old Nightly Releases
-    needs: [nightly-release, check-changes]
+    needs: [build-and-release, check-changes]
     if: needs.check-changes.outputs.has-changes == 'true'
     runs-on: ubuntu-latest
     env:
