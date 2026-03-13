@@ -82,11 +82,11 @@ jobs:
         runs-on: ${{ inputs.runs-on }}
 
         steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
+                        - name: Checkout code
+                            uses: actions/checkout@v5
 
-            - name: Set up JDK ${{ inputs.java-version }}
-              uses: actions/setup-java@v4
+                        - name: Set up JDK ${{ inputs.java-version }}
+                            uses: actions/setup-java@v5
               with:
                   java-version: ${{ inputs.java-version }}
                   distribution: ${{ inputs.jdk-distribution }}
@@ -122,9 +122,9 @@ jobs:
               env:
                   MAVEN_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading"
 
-            - name: Upload Maven build log
-              if: ${{ always() }}
-              uses: actions/upload-artifact@v4
+                        - name: Upload Maven build log
+                            if: ${{ always() }}
+                            uses: actions/upload-artifact@v5
               with:
                   name: maven-build-log-${{ runner.os }}-${{ inputs.log-artifact-suffix != 'default' && inputs.log-artifact-suffix || inputs.artifact-name != '' && inputs.artifact-name || 'default' }}
                   path: maven-build.log
@@ -173,24 +173,24 @@ jobs:
                   fail_ci_if_error: false
                   verbose: true
 
-            - name: Upload JaCoCo coverage report
-              if: ${{ inputs.upload-jacoco }}
-              uses: actions/upload-artifact@v4
+                        - name: Upload JaCoCo coverage report
+                            if: ${{ inputs.upload-jacoco }}
+                            uses: actions/upload-artifact@v5
               with:
                   name: jacoco-report
                   path: ${{ inputs.jacoco-path }}
 
-            - name: Upload test results
-              if: ${{ inputs.upload-test-results }}
-              uses: actions/upload-artifact@v4
+                        - name: Upload test results
+                            if: ${{ inputs.upload-test-results }}
+                            uses: actions/upload-artifact@v5
               with:
                   name: test-results
                   path: ${{ inputs.test-results-path }}
                   retention-days: 1
 
-            - name: Upload build artifact
-              if: ${{ inputs.upload-artifact }}
-              uses: actions/upload-artifact@v4
+                        - name: Upload build artifact
+                            if: ${{ inputs.upload-artifact }}
+                            uses: actions/upload-artifact@v5
               with:
                   name: ${{ inputs.artifact-name }}
                   path: ${{ inputs.artifact-path }}
