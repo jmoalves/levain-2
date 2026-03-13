@@ -1,111 +1,114 @@
 name: Test - e2e
 
 on:
-    workflow_dispatch:
-        inputs:
-            tag:
-                description: "Nightly tag to test (default: latest nightly)"
-                required: false
-    schedule:
-        - cron: "0 6 * * SUN"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Nightly tag to test (default: latest nightly)"
+        required: false
+  schedule:
+    - cron: "0 6 * * SUN"
 
 permissions:
-    contents: read
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
-    resolve-tag:
-        runs-on: ubuntu-latest
-        outputs:
-            tag: ${{ steps.resolve.outputs.tag }}
-        steps:
-            - name: Resolve nightly tag
-              id: resolve
-              uses: actions/github-script@v7
-              env:
-                  TAG_INPUT: ${{ github.event.inputs.tag }}
-              with:
-                  script: |
-                      const requiredAssets = [
-                        "install-windows.ps1",
-                        "install-linux.sh",
-                        "install-macos.sh",
-                        "levain.jar"
-                      ];
-
-                      function hasRequiredAssets(release) {
-                        const assetNames = new Set((release.assets || []).map(asset => asset.name));
-                        return requiredAssets.every(name => assetNames.has(name));
-                      }
-
-                      const inputTag = process.env.TAG_INPUT;
-                      if (inputTag) {
-                        const release = await github.rest.repos.getReleaseByTag({
-                          owner: context.repo.owner,
-                          repo: context.repo.repo,
-                          tag: inputTag
-                        });
-
-                        if (!hasRequiredAssets(release.data)) {
-                          const missing = requiredAssets.filter(name =>
-                            !(release.data.assets || []).some(asset => asset.name === name)
-                          );
-                          core.setFailed(`Tag ${inputTag} is missing required assets: ${missing.join(", ")}`);
-                          return;
-                        }
-
-                        core.setOutput("tag", inputTag);
-                        return;
-                      }
-
-                      const releases = await github.paginate(
-                        github.rest.repos.listReleases,
-                        { owner: context.repo.owner, repo: context.repo.repo, per_page: 100 }
-                      );
-
-                      const nightlies = releases
-                        .filter(release => release.prerelease && release.tag_name.startsWith("nightly-"));
-
-                      if (nightlies.length === 0) {
-                        core.setFailed("No nightly releases found.");
-                        return;
-                      }
-
-                      const sorted = nightlies
-                        .slice()
-                        .sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
-
-                      const selected = sorted.find(hasRequiredAssets);
-
-                      if (!selected) {
-                        core.setFailed("No nightly release with full required assets was found.");
-                        return;
-                      }
-
-                      core.setOutput("tag", selected.tag_name);
-
-    e2e-jar-windows:
-        needs: resolve-tag
-        uses: ./.github/workflows/reusable-e2e.yml
+  resolve-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - name: Resolve nightly tag
+        id: resolve
+        uses: actions/github-script@v7
+        env:
+          TAG_INPUT: ${{ github.event.inputs.tag }}
         with:
-            tag: ${{ needs.resolve-tag.outputs.tag }}
-            runs-on: windows-latest
-            script-name: install-windows.ps1
-            ignore-file: e2e/ignore-windows.txt
+          script: |
+            const requiredAssets = [
+              "install-windows.ps1",
+              "install-linux.sh",
+              "install-macos.sh",
+              "levain.jar"
+            ];
 
-    e2e-jar-linux:
-        needs: resolve-tag
-        uses: ./.github/workflows/reusable-e2e.yml
-        with:
-            tag: ${{ needs.resolve-tag.outputs.tag }}
-            runs-on: ubuntu-latest
-            script-name: install-linux.sh
-            ignore-file: e2e/ignore-linux.txt
+            function hasRequiredAssets(release) {
+              const assetNames = new Set((release.assets || []).map(asset => asset.name));
+              return requiredAssets.every(name => assetNames.has(name));
+            }
 
-    e2e-jar-macos:
-        needs: resolve-tag
-        uses: ./.github/workflows/reusable-e2e.yml
-        with:
-            tag: ${{ needs.resolve-tag.outputs.tag }}
-            runs-on: macos-latest
-            script-name: install-macos.sh
-            ignore-file: e2e/ignore-macos.txt
+            const inputTag = process.env.TAG_INPUT;
+            if (inputTag) {
+              const release = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: inputTag
+              });
+
+              if (!hasRequiredAssets(release.data)) {
+                const missing = requiredAssets.filter(name =>
+                  !(release.data.assets || []).some(asset => asset.name === name)
+                );
+                core.setFailed(`Tag ${inputTag} is missing required assets: ${missing.join(", ")}`);
+                return;
+              }
+
+              core.setOutput("tag", inputTag);
+              return;
+            }
+
+            const releases = await github.paginate(
+              github.rest.repos.listReleases,
+              { owner: context.repo.owner, repo: context.repo.repo, per_page: 100 }
+            );
+
+            const nightlies = releases
+              .filter(release => release.prerelease && release.tag_name.startsWith("nightly-"));
+
+            if (nightlies.length === 0) {
+              core.setFailed("No nightly releases found.");
+              return;
+            }
+
+            const sorted = nightlies
+              .slice()
+              .sort((a, b) => new Date(b.published_at) - new Date(a.published_at));
+
+            const selected = sorted.find(hasRequiredAssets);
+
+            if (!selected) {
+              core.setFailed("No nightly release with full required assets was found.");
+              return;
+            }
+
+            core.setOutput("tag", selected.tag_name);
+
+  e2e-jar-windows:
+    needs: resolve-tag
+    uses: ./.github/workflows/reusable-e2e.yml
+    with:
+      tag: ${{ needs.resolve-tag.outputs.tag }}
+      runs-on: windows-latest
+      script-name: install-windows.ps1
+      ignore-file: e2e/ignore-windows.txt
+
+  e2e-jar-linux:
+    needs: resolve-tag
+    uses: ./.github/workflows/reusable-e2e.yml
+    with:
+      tag: ${{ needs.resolve-tag.outputs.tag }}
+      runs-on: ubuntu-latest
+      script-name: install-linux.sh
+      ignore-file: e2e/ignore-linux.txt
+
+  e2e-jar-macos:
+    needs: resolve-tag
+    uses: ./.github/workflows/reusable-e2e.yml
+    with:
+      tag: ${{ needs.resolve-tag.outputs.tag }}
+      runs-on: macos-latest
+      script-name: install-macos.sh
+      ignore-file: e2e/ignore-macos.txt

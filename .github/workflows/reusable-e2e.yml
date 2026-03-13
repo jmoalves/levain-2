@@ -20,6 +20,9 @@ on:
                 required: true
                 type: string
 
+env:
+    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
     e2e-test:
         name: E2E jar (${{ inputs.runs-on }})
