@@ -97,29 +97,11 @@ jobs:
 
       - name: Prepare release files
         run: |
-          mkdir -p release
-          VERSION="${{ steps.nightly.outputs.tag }}"
-
-          if [ -f "target/levain.jar" ]; then
-            cp "target/levain.jar" "release/levain.jar"
-            cp "target/levain.jar" "release/levain-${VERSION}.jar"
-          fi
-
-          if [ -f "install/install-windows.ps1" ]; then
-            cp "install/install-windows.ps1" "release/install-windows.ps1"
-          fi
-
-          if [ -f "install/install-linux.sh" ]; then
-            cp "install/install-linux.sh" "release/install-linux.sh"
-            chmod +x "release/install-linux.sh"
-          fi
-
-          if [ -f "install/install-macos.sh" ]; then
-            cp "install/install-macos.sh" "release/install-macos.sh"
-            chmod +x "release/install-macos.sh"
-          fi
-
-          ls -la release/
+          bash scripts/prepare-release-files.sh \
+            --version "${{ steps.nightly.outputs.tag }}" \
+            --jar-path "target/levain.jar" \
+            --release-dir "release" \
+            --install-dir "install"
 
       - name: Generate release notes
         run: |

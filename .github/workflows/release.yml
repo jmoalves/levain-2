@@ -49,29 +49,10 @@ jobs:
 
       - name: Prepare release files
         run: |
-          mkdir -p release
-          VERSION=$(grep '<version>' pom.xml | head -1 | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
-
-          if [ -f "release-artifacts/levain-jar/levain.jar" ]; then
-            cp "release-artifacts/levain-jar/levain.jar" "release/levain.jar"
-            cp "release-artifacts/levain-jar/levain.jar" "release/levain-${VERSION}.jar"
-          fi
-
-          if [ -f "install/install-windows.ps1" ]; then
-            cp "install/install-windows.ps1" "release/install-windows.ps1"
-          fi
-
-          if [ -f "install/install-linux.sh" ]; then
-            cp "install/install-linux.sh" "release/install-linux.sh"
-            chmod +x "release/install-linux.sh"
-          fi
-
-          if [ -f "install/install-macos.sh" ]; then
-            cp "install/install-macos.sh" "release/install-macos.sh"
-            chmod +x "release/install-macos.sh"
-          fi
-
-          ls -la release/
+          bash scripts/prepare-release-files.sh \
+            --jar-path "release-artifacts/levain-jar/levain.jar" \
+            --release-dir "release" \
+            --install-dir "install"
 
       - name: Generate release notes
         run: |
