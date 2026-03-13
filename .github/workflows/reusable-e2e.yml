@@ -7,10 +7,6 @@ on:
                 description: "Release tag to test"
                 required: true
                 type: string
-            test-mode:
-                description: "Test mode: binary or jar"
-                required: true
-                type: string
             runs-on:
                 description: "Runner OS"
                 required: true
@@ -26,7 +22,7 @@ on:
 
 jobs:
     e2e-test:
-        name: E2E ${{ inputs.test-mode }} (${{ inputs.runs-on }})
+        name: E2E jar (${{ inputs.runs-on }})
         runs-on: ${{ inputs.runs-on }}
         timeout-minutes: 180
 
@@ -40,8 +36,7 @@ jobs:
                       e2e/ignore-windows.txt
                   sparse-checkout-cone-mode: false
 
-            - name: Set up JDK 25 (JAR mode only)
-              if: inputs.test-mode == 'jar'
+            - name: Set up JDK 25
               uses: actions/setup-java@v4
               with:
                   java-version: "25"
@@ -80,11 +75,9 @@ jobs:
               shell: pwsh
               run: |
                   $tag = "${{ inputs.tag }}"
-                  $mode = "${{ inputs.test-mode }}"
-                  $flag = if ($mode -eq "binary") { "-Binary" } else { "-Jar" }
                   $scriptPath = Join-Path $PWD "${{ inputs.script-name }}"
                   Unblock-File -Path $scriptPath -ErrorAction SilentlyContinue
-                  & pwsh -NoProfile -ExecutionPolicy Bypass -File $scriptPath -Tag $tag $flag -InstallDir "$HOME\levain" -AddToPath
+                  & pwsh -NoProfile -ExecutionPolicy Bypass -File $scriptPath -Tag $tag -Jar -InstallDir "$HOME\levain" -AddToPath
 
             - name: Install Levain (Unix)
               if: runner.os != 'Windows'
@@ -92,8 +85,7 @@ jobs:
               run: |
                   set -euo pipefail
                   tag="${{ inputs.tag }}"
-                  mode="${{ inputs.test-mode }}"
-                  ./${{ inputs.script-name }} --tag "$tag" --$mode --install-dir "$HOME/levain" --add-to-path
+                  ./${{ inputs.script-name }} --tag "$tag" --jar --install-dir "$HOME/levain" --add-to-path
 
             - name: Configure levain-pkgs repository (Windows)
               if: runner.os == 'Windows'

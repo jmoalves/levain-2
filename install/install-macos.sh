@@ -3,12 +3,11 @@ set -euo pipefail
 
 REPO="jmoalves/levain-2"
 TAG=""
-MODE="binary"
 INSTALL_DIR="$HOME/levain"
 ADD_TO_PATH="false"
 
 usage() {
-  echo "Usage: $0 [--tag TAG] [--repo OWNER/REPO] [--install-dir DIR] [--jar|--binary] [--add-to-path]"
+  echo "Usage: $0 [--tag TAG] [--repo OWNER/REPO] [--install-dir DIR] [--jar] [--add-to-path]"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -26,11 +25,6 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --jar)
-      MODE="jar"
-      shift
-      ;;
-    --binary)
-      MODE="binary"
       shift
       ;;
     --add-to-path)
@@ -47,7 +41,7 @@ while [[ $# -gt 0 ]]; do
       exit 1
       ;;
   esac
- done
+done
 
 get_latest_nightly_tag() {
   local tags_json
@@ -74,29 +68,18 @@ if [[ -z "$TAG" ]]; then
 fi
 
 mkdir -p "$INSTALL_DIR"
-
-if [[ "$MODE" == "jar" ]]; then
-  ASSET="levain.jar"
-  DEST="$INSTALL_DIR/levain.jar"
-else
-  ASSET="levain-macos-arm64"
-  DEST="$INSTALL_DIR/levain"
-fi
-
+ASSET="levain.jar"
+DEST="$INSTALL_DIR/levain.jar"
 URL="https://github.com/$REPO/releases/download/$TAG/$ASSET"
 
 echo "Downloading $ASSET from $URL"
 curl -fsSL -o "$DEST" "$URL"
 
-if [[ "$MODE" == "jar" ]]; then
-  cat > "$INSTALL_DIR/levain" <<'EOF'
+cat > "$INSTALL_DIR/levain" <<'WRAP'
 #!/usr/bin/env bash
 exec java -jar "$(dirname "$0")/levain.jar" "$@"
-EOF
-  chmod +x "$INSTALL_DIR/levain"
-else
-  chmod +x "$DEST"
-fi
+WRAP
+chmod +x "$INSTALL_DIR/levain"
 
 if [[ "$ADD_TO_PATH" == "true" ]]; then
   if [[ -n "${GITHUB_PATH:-}" ]]; then
@@ -105,4 +88,4 @@ if [[ "$ADD_TO_PATH" == "true" ]]; then
   export PATH="$INSTALL_DIR:$PATH"
 fi
 
-echo "Installed Levain ($MODE) to $INSTALL_DIR using tag $TAG"
+echo "Installed Levain (jar) to $INSTALL_DIR using tag $TAG"

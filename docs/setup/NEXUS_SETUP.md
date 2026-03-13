@@ -185,18 +185,16 @@ For Jenkins, GitLab CI, Azure Pipelines, etc., set the `NEXUS_REPOSITORY_URL` en
 The project includes:
 
 - **`nexus` profile**: Automatically activates when `nexus.repository.url` property is set
-- **`native-windows` profile**: For native Windows executables
-- **`native-linux` profile**: For native Linux executables
 
-Combine profiles as needed:
+Use the profile as needed:
 
 ```bash
-# Build native Windows executable using Nexus (environment variable)
+# Build using Nexus (environment variable)
 export NEXUS_REPOSITORY_URL=http://nexus.example.com:8081/repository/maven-public
-mvn clean package -Pnative-windows
+mvn clean package
 
-# Build native Linux executable using Nexus (command line)
-mvn clean package -Pnative-linux -Dnexus.url=http://nexus.example.com:8081/repository/maven-public
+# Build using Nexus (command line property)
+mvn clean package -Dnexus.url=http://nexus.example.com:8081/repository/maven-public
 ```
 
 ## Troubleshooting

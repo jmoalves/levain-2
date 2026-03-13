@@ -72,7 +72,7 @@ mvn help:active-profiles
 ✅ **Optional**: Build works fine without Nexus configured  
 ✅ **Environment Variable Support**: Easy integration with CI/CD  
 ✅ **Flexible**: Works with any Nexus URL format  
-✅ **Profiles**: Can combine with native builds (-Pnexus,native-linux)  
+✅ **Profiles**: Works with standard Maven profile usage  
 ✅ **Fallback**: Automatically uses Maven Central if Nexus isn't available  
 ✅ **Authentication**: Supports credentials via settings.xml  
 ✅ **Documentation**: Comprehensive setup guide included  

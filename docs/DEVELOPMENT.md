@@ -279,7 +279,7 @@ When your local Nexus proxy is temporarily unavailable, run Maven directly again
 For other profiles/goals, pass arguments normally:
 
 ```bash
-./scripts/mvn-bypass-nexus.sh -Pnative-linux -DskipTests package
+./scripts/mvn-bypass-nexus.sh -DskipTests package
 ```
 
 This helper is for local development only and does not affect GitHub Actions.

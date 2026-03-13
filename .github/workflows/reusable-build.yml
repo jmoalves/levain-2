@@ -14,14 +14,6 @@ on:
                 type: string
                 required: false
                 default: "semeru"
-            use-graalvm:
-                type: boolean
-                required: false
-                default: false
-            graalvm-distribution:
-                type: string
-                required: false
-                default: "graalvm-community"
             maven-goals:
                 type: string
                 required: true
@@ -33,18 +25,6 @@ on:
                 type: string
                 required: false
                 default: "default"
-            native-profile:
-                type: string
-                required: false
-                default: ""
-            native-maven-plugin-version:
-                type: string
-                required: false
-                default: "0.11.4"
-            native-skip-tests:
-                type: boolean
-                required: false
-                default: true
             allow-maven-failure:
                 type: boolean
                 required: false
@@ -103,65 +83,18 @@ jobs:
               uses: actions/checkout@v4
 
             - name: Set up JDK ${{ inputs.java-version }}
-              if: ${{ !inputs.use-graalvm }}
               uses: actions/setup-java@v4
               with:
                   java-version: ${{ inputs.java-version }}
                   distribution: ${{ inputs.jdk-distribution }}
                   cache: maven
 
-            - name: Set up GraalVM JDK ${{ inputs.java-version }}
-              if: ${{ inputs.use-graalvm }}
-              uses: graalvm/setup-graalvm@v1
-              with:
-                  java-version: ${{ inputs.java-version }}
-                  distribution: ${{ inputs.graalvm-distribution }}
-                  cache: maven
-                  native-image-job-reports: "true"
-
-            - name: Set up MSVC toolchain for Native Image
-              if: ${{ inputs.use-graalvm && startsWith(inputs.runs-on, 'windows') }}
-              uses: ilammy/msvc-dev-cmd@v1
-              with:
-                  arch: x64
-
-            - name: Diagnostics for Windows Native Image
-              if: ${{ inputs.use-graalvm && startsWith(inputs.runs-on, 'windows') }}
-              shell: pwsh
-              run: |
-                  Write-Host "JAVA_HOME=$env:JAVA_HOME"
-                  java -version
-                  native-image --version
-                  Write-Host "Checking cl.exe on PATH"
-                  cmd /c "where cl"
-                  $clCommand = Get-Command cl.exe -ErrorAction SilentlyContinue
-                  if ($null -eq $clCommand) {
-                      Write-Host "cl.exe not found via Get-Command"
-                  } else {
-                      Write-Host "cl.exe resolved to: $($clCommand.Source)"
-                  }
-
             - name: Build with Maven
               shell: bash
               run: |
                   set +e
-                                    maven_args="${{ inputs.maven-args }}"
-
-                                    if [[ "${{ inputs.use-graalvm }}" == "true" ]]; then
-                                        if [[ "${{ inputs.native-skip-tests }}" == "true" ]]; then
-                                            maven_args="$maven_args -DskipTests"
-                                        fi
-
-                                        if [[ -n "${{ inputs.native-maven-plugin-version }}" ]]; then
-                                            maven_args="$maven_args -Dnative.maven.plugin.version=${{ inputs.native-maven-plugin-version }}"
-                                        fi
-
-                                        if [[ -n "${{ inputs.native-profile }}" ]]; then
-                                            maven_args="$maven_args -P${{ inputs.native-profile }}"
-                                        fi
-                                    fi
-
-                                    mvn -B ${{ inputs.maven-goals }} $maven_args 2>&1 | tee maven-build.log
+                  maven_args="${{ inputs.maven-args }}"
+                  mvn -B ${{ inputs.maven-goals }} $maven_args 2>&1 | tee maven-build.log
                   rc=$?
                   set -e
 
@@ -190,7 +123,7 @@ jobs:
               if: ${{ always() }}
               uses: actions/upload-artifact@v4
               with:
-                  name: maven-build-log-${{ runner.os }}-${{ inputs.log-artifact-suffix != 'default' && inputs.log-artifact-suffix || inputs.artifact-name != '' && inputs.artifact-name || inputs.native-profile != '' && inputs.native-profile || 'default' }}
+                  name: maven-build-log-${{ runner.os }}-${{ inputs.log-artifact-suffix != 'default' && inputs.log-artifact-suffix || inputs.artifact-name != '' && inputs.artifact-name || 'default' }}
                   path: maven-build.log
                   retention-days: 3
 

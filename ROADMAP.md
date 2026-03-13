@@ -170,7 +170,6 @@ The original levain has a rich action system for recipes. Levain-2 needs:
 - 📋 **Dependency Check** - OWASP dependency vulnerability scanning
 - 📋 **Performance Tests** - Installation and shell performance benchmarks
 - 📋 **Multi-OS Testing** - Test on Windows, Linux, macOS
-- 📋 **Native Image Build** - GraalVM native executable generation
 - 📋 **Docker Build** - Container image for levain
 
 ### Testing Improvements 📋
@@ -364,7 +363,6 @@ Focus: Advanced features and optimization
 ### Long Term 📋
 
 1. **Multi-Platform Builds**
-   - Native image for Windows, Linux, macOS
    - Docker image publication
    - Homebrew formula
    - Chocolatey package
@@ -378,7 +376,7 @@ Focus: Advanced features and optimization
    - Automatic changelog generation
    - Version bumping
    - Release notes from commits
-   - Asset upload (JAR, native images)
+   - Asset upload (JAR)
 
 ---
 

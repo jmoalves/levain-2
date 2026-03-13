@@ -29,10 +29,7 @@ jobs:
                         "install-windows.ps1",
                         "install-linux.sh",
                         "install-macos.sh",
-                        "levain.jar",
-                        "levain.exe",
-                        "levain-linux-x64",
-                        "levain-macos-arm64"
+                        "levain.jar"
                       ];
 
                       function hasRequiredAssets(release) {
@@ -86,42 +83,11 @@ jobs:
 
                       core.setOutput("tag", selected.tag_name);
 
-    e2e-binary-windows:
-        needs: resolve-tag
-        uses: ./.github/workflows/reusable-e2e.yml
-        with:
-            tag: ${{ needs.resolve-tag.outputs.tag }}
-            test-mode: binary
-            runs-on: windows-latest
-            script-name: install-windows.ps1
-            ignore-file: e2e/ignore-windows.txt
-
-    e2e-binary-linux:
-        needs: resolve-tag
-        uses: ./.github/workflows/reusable-e2e.yml
-        with:
-            tag: ${{ needs.resolve-tag.outputs.tag }}
-            test-mode: binary
-            runs-on: ubuntu-latest
-            script-name: install-linux.sh
-            ignore-file: e2e/ignore-linux.txt
-
-    e2e-binary-macos:
-        needs: resolve-tag
-        uses: ./.github/workflows/reusable-e2e.yml
-        with:
-            tag: ${{ needs.resolve-tag.outputs.tag }}
-            test-mode: binary
-            runs-on: macos-latest
-            script-name: install-macos.sh
-            ignore-file: e2e/ignore-macos.txt
-
     e2e-jar-windows:
         needs: resolve-tag
         uses: ./.github/workflows/reusable-e2e.yml
         with:
             tag: ${{ needs.resolve-tag.outputs.tag }}
-            test-mode: jar
             runs-on: windows-latest
             script-name: install-windows.ps1
             ignore-file: e2e/ignore-windows.txt
@@ -131,7 +97,6 @@ jobs:
         uses: ./.github/workflows/reusable-e2e.yml
         with:
             tag: ${{ needs.resolve-tag.outputs.tag }}
-            test-mode: jar
             runs-on: ubuntu-latest
             script-name: install-linux.sh
             ignore-file: e2e/ignore-linux.txt
@@ -141,7 +106,6 @@ jobs:
         uses: ./.github/workflows/reusable-e2e.yml
         with:
             tag: ${{ needs.resolve-tag.outputs.tag }}
-            test-mode: jar
             runs-on: macos-latest
             script-name: install-macos.sh
             ignore-file: e2e/ignore-macos.txt

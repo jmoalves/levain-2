@@ -183,6 +183,7 @@ class RollbackServiceTest {
     @Test
     void shouldCleanupBackupsExceedingKeepCount() throws IOException {
         when(config.getBackupKeepCount()).thenReturn(2);
+        when(config.getBackupMaxAgeDays()).thenReturn(36500);
         
         // Create 5 backups for jdk
         createBackupDirectory("jdk-21", "20260201-100000");
@@ -236,6 +237,7 @@ class RollbackServiceTest {
     @Test
     void shouldCleanupAllPackagesWhenNameIsNull() throws IOException {
         when(config.getBackupKeepCount()).thenReturn(1);
+        when(config.getBackupMaxAgeDays()).thenReturn(36500);
         
         // Create multiple backups per package
         createBackupDirectory("jdk-21", "20260201-100000");

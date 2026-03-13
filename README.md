@@ -25,7 +25,7 @@ A Java standalone console application for development environment installation a
 
 ## Installation Options
 
-For complete installation instructions (JAR, native executables, and bootstrap scripts), see:
+For complete installation instructions (JAR and bootstrap scripts), see:
 
 - [docs/installation/INSTALLATION.md](docs/installation/INSTALLATION.md)
 
@@ -69,7 +69,7 @@ If your local Nexus proxy is temporarily unavailable, you can run Maven directly
 For other goals/profiles, pass them normally:
 
 ```bash
-./scripts/mvn-bypass-nexus.sh -Pnative-linux -DskipTests package
+./scripts/mvn-bypass-nexus.sh -DskipTests package
 ```
 
 This script is local-only and does not affect GitHub Actions workflows.

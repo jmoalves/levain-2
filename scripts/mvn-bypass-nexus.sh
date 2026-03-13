@@ -8,7 +8,7 @@ Usage:
 
 Examples:
   scripts/mvn-bypass-nexus.sh clean package -DskipTests
-  scripts/mvn-bypass-nexus.sh -Pnative-linux -DskipTests package
+  scripts/mvn-bypass-nexus.sh -DskipTests package
 
 Notes:
   - If no arguments are provided, defaults to: clean package

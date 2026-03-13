@@ -37,7 +37,6 @@
         <weld.version>5.1.3.Final</weld.version>
         <disruptor.version>4.0.0</disruptor.version>
         <jgit.version>6.10.0.202406032230-r</jgit.version>
-        <native.maven.plugin.version>0.10.3</native.maven.plugin.version>
 
         <!-- Nexus Repository Configuration (optional for corporate environments) -->
         <!-- Activates automatically when NEXUS_REPOSITORY_URL environment variable is set -->
@@ -406,134 +405,10 @@
                 </executions>
             </plugin>
 
-            <!-- GraalVM Native Image Plugin for creating native executables -->
-            <plugin>
-                <groupId>org.graalvm.buildtools</groupId>
-                <artifactId>native-maven-plugin</artifactId>
-                <version>${native.maven.plugin.version}</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <imageName>levain</imageName>
-                    <mainClass>com.github.jmoalves.levain.Levain</mainClass>
-                    <buildArgs>
-                        <buildArg>--no-fallback</buildArg>
-                        <buildArg>-H:+ReportExceptionStackTraces</buildArg>
-                        <buildArg>--initialize-at-build-time=org.apache.logging.log4j.util</buildArg>
-                        <buildArg>
-                            --initialize-at-build-time=org.apache.logging.log4j.status.StatusLogger</buildArg>
-                        <buildArg>
-                            --initialize-at-build-time=org.apache.logging.log4j.status.StatusLogger$Config</buildArg>
-                        <buildArg>
-                            --initialize-at-build-time=org.apache.logging.log4j.status.StatusConsoleListener</buildArg>
-                        <buildArg>
-                            --initialize-at-build-time=org.apache.logging.log4j.MarkerManager$Log4jMarker</buildArg>
-                        <buildArg>--initialize-at-build-time=org.apache.logging.log4j.Level</buildArg>
-                        <buildArg>
-                            --initialize-at-build-time=org.apache.logging.log4j.message.ParameterizedNoReferenceMessageFactory</buildArg>
-                    </buildArgs>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 
     <profiles>
-        <!-- Profile for building native executables with GraalVM -->
-        <profile>
-            <id>native</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.graalvm.buildtools</groupId>
-                        <artifactId>native-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>build-native</id>
-                                <goals>
-                                    <goal>compile-no-fork</goal>
-                                </goals>
-                                <phase>package</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <!-- Profile for Windows x64 native executable -->
-        <profile>
-            <id>native-windows</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.graalvm.buildtools</groupId>
-                        <artifactId>native-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>build-native-windows</id>
-                                <goals>
-                                    <goal>compile-no-fork</goal>
-                                </goals>
-                                <phase>package</phase>
-                                <configuration>
-                                    <imageName>levain</imageName>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <!-- Profile for Linux x64 native executable -->
-        <profile>
-            <id>native-linux</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.graalvm.buildtools</groupId>
-                        <artifactId>native-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>build-native-linux</id>
-                                <goals>
-                                    <goal>compile-no-fork</goal>
-                                </goals>
-                                <phase>package</phase>
-                                <configuration>
-                                    <imageName>levain</imageName>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-        <!-- Profile for macOS native executable -->
-        <profile>
-            <id>native-macos</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.graalvm.buildtools</groupId>
-                        <artifactId>native-maven-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>build-native-macos</id>
-                                <goals>
-                                    <goal>compile-no-fork</goal>
-                                </goals>
-                                <phase>package</phase>
-                                <configuration>
-                                    <imageName>levain</imageName>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
         <!-- Profile for Nexus Repository (corporate environments) -->
         <!-- Usage: mvn clean package -Pnexus -Dnexus.url=... or set NEXUS_REPOSITORY_URL
         environment variable -->

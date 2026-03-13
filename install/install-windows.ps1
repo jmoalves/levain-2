@@ -3,17 +3,10 @@ param(
     [string]$Repo = "jmoalves/levain-2",
     [string]$InstallDir = "$HOME\levain",
     [switch]$Jar,
-    [switch]$Binary,
     [switch]$AddToPath
 )
 
 $ErrorActionPreference = "Stop"
-
-if ($Jar -and $Binary) {
-    throw "Choose either -Jar or -Binary, not both."
-}
-
-$mode = if ($Jar) { "jar" } else { "binary" }
 
 function Get-LatestNightlyTag {
     param([string]$RepoName)
@@ -34,7 +27,7 @@ if (-not $Tag) {
     $Tag = Get-LatestNightlyTag -RepoName $Repo
 }
 
-$asset = if ($mode -eq "jar") { "levain.jar" } else { "levain.exe" }
+$asset = "levain.jar"
 $downloadUrl = "https://github.com/$Repo/releases/download/$Tag/$asset"
 
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
@@ -43,13 +36,11 @@ $destination = Join-Path $InstallDir $asset
 Write-Output "Downloading $asset from $downloadUrl"
 Invoke-WebRequest -Uri $downloadUrl -OutFile $destination -UseBasicParsing
 
-if ($mode -eq "jar") {
-    $cmdPath = Join-Path $InstallDir "levain.cmd"
-    @"
+$cmdPath = Join-Path $InstallDir "levain.cmd"
+@"
 @echo off
 java -jar "%~dp0levain.jar" %*
 "@ | Set-Content -Path $cmdPath -Encoding ASCII
-}
 
 if ($AddToPath) {
     if ($env:GITHUB_PATH) {
@@ -58,4 +49,4 @@ if ($AddToPath) {
     $env:PATH = "$InstallDir;$env:PATH"
 }
 
-Write-Output "Installed Levain ($mode) to $InstallDir using tag $Tag"
+Write-Output "Installed Levain (jar) to $InstallDir using tag $Tag"
