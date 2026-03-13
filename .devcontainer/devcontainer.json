@@ -14,6 +14,9 @@
       "installMaven": "true",
       "installGradle": "false"
     },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12"
+    },
     "ghcr.io/devcontainers/features/git:1": {
       "version": "latest"
     }
@@ -53,7 +56,7 @@
   "runArgs": [
     "--network=host"
   ],
-  "postCreateCommand": "mvn clean install -DskipTests",
+  "postCreateCommand": "bash scripts/mvn-bypass-nexus.sh -DskipTests clean install || echo '[devcontainer] Maven bootstrap failed (continuing)'; python3 -m pip install --user --upgrade pip pyyaml",
   "forwardPorts": [
     8080
   ],
