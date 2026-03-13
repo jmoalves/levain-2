@@ -19,6 +19,16 @@ on:
         description: "Recipe ignore file path"
         required: true
         type: string
+      e2e-mode:
+        description: "E2E mode: smoke (fast) or full (all recipes)"
+        required: false
+        type: string
+        default: "smoke"
+      smoke-packages:
+        description: "Space-separated package list for smoke mode"
+        required: false
+        type: string
+        default: "jdk-21 git"
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
@@ -114,8 +124,30 @@ jobs:
             fi
           fi
 
+      - name: Install smoke packages (Windows)
+        if: runner.os == 'Windows' && inputs.e2e-mode != 'full'
+        shell: pwsh
+        run: |
+          $packages = "${{ inputs.smoke-packages }}".Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries)
+          $failed = @()
+
+          levain install @packages
+          if ($LASTEXITCODE -ne 0) {
+            foreach ($pkg in $packages) {
+              levain install $pkg
+              if ($LASTEXITCODE -ne 0) {
+                $failed += $pkg
+              }
+            }
+          }
+
+          if ($failed.Count -gt 0) {
+            Write-Error ("Failed smoke packages: {0}" -f ($failed -join ", "))
+            exit 1
+          }
+
       - name: Install all recipes (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && inputs.e2e-mode == 'full'
         shell: pwsh
         run: |
           $ignoreFile = "${{ inputs.ignore-file }}"
@@ -161,8 +193,29 @@ jobs:
             exit 1
           }
 
+      - name: Install smoke packages (Unix)
+        if: runner.os != 'Windows' && inputs.e2e-mode != 'full'
+        shell: bash
+        run: |
+          set -euo pipefail
+          read -r -a packages <<< "${{ inputs.smoke-packages }}"
+
+          failed=()
+          if ! levain install "${packages[@]}"; then
+            for pkg in "${packages[@]}"; do
+              if ! levain install "$pkg"; then
+                failed+=("$pkg")
+              fi
+            done
+          fi
+
+          if [[ ${#failed[@]} -gt 0 ]]; then
+            echo "Failed smoke packages: ${failed[*]}"
+            exit 1
+          fi
+
       - name: Install all recipes (Unix)
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && inputs.e2e-mode == 'full'
         shell: bash
         run: |
           set -euo pipefail

@@ -6,6 +6,22 @@ on:
       tag:
         description: "Nightly tag to test (default: latest nightly)"
         required: false
+      mode:
+        description: "E2E mode"
+        required: false
+        default: "smoke"
+        type: choice
+        options:
+          - smoke
+          - full
+      platforms:
+        description: "Platforms to test"
+        required: false
+        default: "linux"
+        type: choice
+        options:
+          - linux
+          - all
   schedule:
     - cron: "0 6 * * SUN"
 
@@ -87,6 +103,7 @@ jobs:
             core.setOutput("tag", selected.tag_name);
 
   e2e-jar-windows:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.platforms == 'all'
     needs: resolve-tag
     uses: ./.github/workflows/reusable-e2e.yml
     with:
@@ -94,6 +111,7 @@ jobs:
       runs-on: windows-latest
       script-name: install-windows.ps1
       ignore-file: e2e/ignore-windows.txt
+      e2e-mode: ${{ github.event.inputs.mode || 'smoke' }}
 
   e2e-jar-linux:
     needs: resolve-tag
@@ -103,8 +121,10 @@ jobs:
       runs-on: ubuntu-latest
       script-name: install-linux.sh
       ignore-file: e2e/ignore-linux.txt
+      e2e-mode: ${{ github.event_name == 'schedule' && 'smoke' || github.event.inputs.mode || 'smoke' }}
 
   e2e-jar-macos:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.platforms == 'all'
     needs: resolve-tag
     uses: ./.github/workflows/reusable-e2e.yml
     with:
@@ -112,3 +132,4 @@ jobs:
       runs-on: macos-latest
       script-name: install-macos.sh
       ignore-file: e2e/ignore-macos.txt
+      e2e-mode: ${{ github.event.inputs.mode || 'smoke' }}
